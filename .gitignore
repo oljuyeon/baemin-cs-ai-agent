@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node / Vite
+node_modules/
+*.tsbuildinfo
+.DS_Store
+vite.config.js
+vite.config.d.ts
