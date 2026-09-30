@@ -1,43 +1,43 @@
 # CS 공통 실행 환경
 
-Customer, Merchant, Human CS가 같은 Case와 Mock Tool을 사용하기 위한 공통 모듈이다.
+Customer, Merchant, Human CS가 같은 Case, Mock Data, Tool, Policy, Risk, 저장 계약을 사용하기 위한 공통 모듈이다.
 
-## 기본 사용
+이 모듈은 AI Agent가 아니다. 다음 Tool 선택, 추가 질문, 종료, 고객 문장 생성은 이후 Customer 영역의 Agent Loop가 담당한다.
+
+## 포함
+
+- `types.ts`: 공통 계약 타입
+- `demoData.ts`: 주문, 배달, 고객, 매장, 과거 CS 이력, URL별 증빙 분석
+- `policy.ts`: 사람이 정한 Policy와 Risk. 결과만 반환한다.
+- `caseStore.ts`: Case 저장, 업무 이력, Tool 이력, 구독, Merchant 응답 저장
+- `tools.ts`: 요청된 작업의 결과만 반환한다. Case를 직접 바꾸지 않는다.
+
+고객 문의는 `createCase` 또는 `appendConversation`으로 런타임에 들어온다. 데모 문장을 미리 넣은 Case로 스토어를 시작하지 않는다.
+
+## Tool 사용
 
 ```ts
 import { agentTools, caseStore } from './features/cs'
 
-const caseData = caseStore.getCase('CASE-B')
-if (caseData) {
-  const orderResult = await agentTools.getOrder({ orderId: caseData.orderId })
-  if (orderResult.status === 'success') {
-    console.log(orderResult.data)
-  }
-}
-```
-
-## 대화와 증빙
-
-```ts
-caseStore.appendConversation('CASE-C', 'customer', '불고기정식이 누락됐어요.')
-
-const evidenceResult = await agentTools.analyzeEvidence({
-  evidenceUrl: 'mock://evidence/case-c.jpg',
+const caseData = caseStore.createCase({
+  customerId: 'C002',
+  orderId: 'A1002',
+  storeId: 'S002',
+  issueType: 'missing_item',
+  customerClaim: message,
 })
-```
 
-## Policy와 Risk 분리 실행
-
-```ts
-const caseData = caseStore.getCase('CASE-B')
-if (caseData) {
-  await agentTools.checkRisk({ caseData })
-  const updatedCase = caseStore.getCase(caseData.caseId)
-  if (updatedCase) await agentTools.getPolicy({ caseData: updatedCase })
+const result = await agentTools.getOrder({ orderId: caseData.orderId })
+if (result.status === 'success') {
+  console.log(result.data)
 }
 ```
 
-## 역할별 조회
+Tool을 호출해도 Case와 `toolHistory`는 바뀌지 않는다. Agent Loop가 Tool 결과를 Observation으로 저장한다.
+
+`refund`와 `redelivery`는 실제 결제나 배달 시스템에 연결되지 않는다. 주문 일치와 금액 같은 요청 검증 후 Mock 결과만 반환한다. Policy와 Risk로 실행 여부를 결정하지 않는다.
+
+## 역할별 Queue
 
 ```ts
 caseStore.getCasesForRole('customer', 'C001')
@@ -45,20 +45,14 @@ caseStore.getCasesForRole('merchant', 'M001')
 caseStore.getCasesForRole('cs')
 ```
 
-## 독립 화면 검증
+## Merchant 응답 저장
 
 ```ts
-caseStore.loadDemoStage('C', 'waiting_merchant')
-caseStore.loadDemoStage('D', 'escalated')
+caseStore.recordMerchantResponse(
+  caseId,
+  'POSSIBLE_MISSING',
+  '누락 가능성이 있습니다.',
+)
 ```
 
-## 응답과 최종 처리
-
-```ts
-caseStore.recordMerchantResponse('CASE-C', 'POSSIBLE_MISSING', '누락 가능성이 있습니다.')
-caseStore.recordHumanCsResolution('CASE-D', 'reject_refund', 'CS001', '매장 포장 확인')
-```
-
-Case와 로그는 브라우저 `localStorage`에 저장된다. `resetCase` 또는 `resetAllDemoCases`를 명시적으로 호출할 때만 Demo 실행 로그가 초기화된다.
-
-`checkRisk`와 `getPolicy`는 별도 Tool이다. Agent가 현재 Case를 보고 호출 시점을 선택하며, 공통 환경은 두 Tool의 실행 순서를 고정하지 않는다.
+응답 저장 후 어떤 Tool을 호출할지는 Agent Loop가 결정한다.

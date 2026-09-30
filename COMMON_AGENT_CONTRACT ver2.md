@@ -124,6 +124,7 @@ export interface ConversationMessage {
 
 export interface EvidenceAnalysis {
   evidenceUrl: string
+  assessment: 'supports_claim' | 'inconclusive' | 'contradicts_claim'
   observation: string
   limitations: string[]
 }
@@ -408,7 +409,9 @@ export interface HumanEscalationResult {
 }
 ```
 
-`refund`와 `redelivery`는 실제 결제 또는 배달 시스템을 호출하지 않는다. Case와 이력에 Mock 처리 결과만 기록한다.
+Tool은 Mock 또는 외부 시스템의 결과만 반환한다. Tool 내부에서 Case와 `toolHistory`를 직접 변경하지 않고, 다음 행동을 결정하지 않는다. Agent Loop가 Tool 결과를 Observation으로 저장한다.
+
+`refund`와 `redelivery`는 실제 결제 또는 배달 시스템을 호출하지 않는다. 요청 검증 후 Mock 결과만 반환한다. Policy와 Risk로 실행 여부를 결정하지 않는다.
 
 ---
 
@@ -436,7 +439,7 @@ export interface CaseStore {
 ```
 
 - Customer는 자신이 만든 Case를 조회한다.
-- Merchant는 `WAITING_MERCHANT` Case를 조회한다.
+- Merchant는 본인 매장이면서 `WAITING_MERCHANT`인 Case만 Queue에서 조회한다.
 - Human CS는 `ESCALATED` Case를 조회한다.
 - Demo 초기화는 항상 같은 시작 상태를 복원해야 한다.
 
@@ -446,7 +449,7 @@ export interface CaseStore {
 
 ### Policy
 
-- 저가 메뉴 누락이고 같은 메뉴의 기존 환불과 Risk가 없으면 Mock 부분 환불을 허용한다.
+- 저가 메뉴 누락이면 Policy는 Mock 부분 환불을 허용 가능한 Action으로 반환한다.
 - 고가 메뉴 누락이면 Merchant Confirmation이 필요하다.
 - 고객은 누락을 주장하고 Merchant가 `PACKED`로 응답하면 자동 처리를 허용하지 않는다.
 
@@ -460,7 +463,7 @@ export interface CaseStore {
 - 주문과 증빙이 명확히 다르면 `evidence_mismatch`다.
 - Risk가 하나라도 있으면 자동 처리를 금지하고 `ESCALATE` 후보로 전달한다.
 
-Policy와 Risk는 Agent가 사용할 수 있는 공통 정보다. Risk 기준은 사람이 미리 정의하고 `checkRisk`가 같은 입력에 같은 규칙을 적용한다. Agent가 임의로 새로운 Risk 기준을 만들지 않는다. Agent가 언제 Policy 또는 Risk를 확인할지는 담당자 A의 Dynamic Agent Loop가 결정한다.
+Policy와 Risk는 Agent가 사용할 수 있는 서로 독립된 공통 정보다. `evaluatePolicy`는 Risk Flag를 읽어 결론을 바꾸지 않고, `checkRisk`가 자동 실행 가능 여부를 별도로 반환한다. Risk 기준은 사람이 미리 정의하고 같은 입력에 같은 규칙을 적용한다. Agent가 임의로 새로운 Risk 기준을 만들지 않는다. Agent가 언제 Policy 또는 Risk를 확인할지는 Dynamic Agent Loop가 결정한다.
 
 ---
 
@@ -504,7 +507,7 @@ export interface AgentController {
 }
 ```
 
-공통 영역은 `decideNextAction`의 내부 로직을 구현하지 않는다. Agent Loop는 구현 시 간단한 최대 step 제한을 두고, Tool 오류는 Observation으로 전달해 재판단한다. 반복 오류나 더 진행할 수 없는 경우 Human CS로 이관한다. 별도의 복잡한 재시도 시스템이나 `ERROR` CaseStatus는 MVP에서 만들지 않는다.
+공통 영역은 `decideNextAction`의 내부 로직을 구현하지 않는다. Agent Loop는 구현 시 간단한 최대 step 제한을 두고, Tool 오류는 Observation으로 전달해 재판단한다. 반복 오류나 더 진행할 수 없는 경우 Human CS로 이관한다. 별도의 복잡한 재시도 시스템이나 `ERROR` CaseStatus는 MVP에서 만들지 않는다. 고객에게 보여줄 문장은 고객 입력, 조회 데이터, Policy, Risk, 실행된 Action 결과로 생성한다.
 
 ---
 
@@ -535,7 +538,7 @@ Merchant 응답 저장과 Case 갱신은 공통 영역이다. 응답 이후 어�
 | D | 고객은 누락을 주장하고 Merchant는 `PACKED`로 응답 | 주장 충돌로 Human CS 이관 |
 | E | 오배달이며 증빙이 있고 Risk 없음 | Mock 재배달 또는 Policy에 따른 Human CS 이관 |
 
-각 Demo Case는 초기화 후 같은 입력으로 같은 시작 상태를 복원해야 한다. Agent의 Tool 실행 순서까지 고정하지 않는다.
+각 Demo Case의 예상 결과는 테스트 검증용이다. 고객 문장을 미리 넣은 Case로 실행 경로를 시작하지 않고, Agent의 Tool 실행 순서도 고정하지 않는다. Demo에 필요한 주문, 배달, 이력 데이터만 공통 Mock Data로 준비한다.
 
 ---
 
@@ -606,6 +609,10 @@ Merchant 응답 저장과 Case 갱신은 공통 영역이다. 응답 이후 어�
 - 증빙이 필요한 경우 `analyze_evidence` 결과를 Case에 저장할 수 있다.
 - Mock Action 결과를 `finalActionResult`에 저장할 수 있다.
 - Mock 환불과 재배달이 실제 처리처럼 표시되지 않는다.
+- Policy 계산과 Risk 계산이 서로의 책임을 대신하지 않는다.
+- 사진 URL 존재 여부가 아니라 구조화된 증빙 분석 결과로 Policy와 Risk를 판단한다.
+- Tool은 결과만 반환하고 다음 행동을 결정하지 않는다.
+- Demo Case ID에 따른 전용 실행 경로가 존재하지 않는다.
 - 공통 영역에 문의 유형별 고정 Tool 실행 순서가 존재하지 않는다.
 
 이 조건을 통과한 뒤 담당자 A와 B가 각자 화면을 독립적으로 완성한다.

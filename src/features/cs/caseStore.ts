@@ -1,8 +1,4 @@
-import {
-  createDemoCase,
-  createInitialDemoCases,
-  mockMerchants,
-} from './demoData'
+import { mockMerchants } from './demoData'
 import type {
   CaseCommit,
   CaseHistory,
@@ -12,8 +8,6 @@ import type {
   ConversationMessage,
   CreateCaseInput,
   CsCase,
-  DemoCaseId,
-  DemoStage,
   EvidenceAnalysis,
   FinalAction,
   HumanCsAction,
@@ -23,7 +17,7 @@ import type {
   UserRole,
 } from './types'
 
-const STORAGE_KEY = 'delivery-cs-agent:cases:v1'
+const STORAGE_KEY = 'delivery-cs-agent:cases:v2'
 
 const clone = <T>(value: T): T => structuredClone(value)
 const nowIso = () => new Date().toISOString()
@@ -217,7 +211,9 @@ export class LocalCaseStore implements CaseStore {
 
     const merchant = mockMerchants.find((item) => item.merchantUserId === subjectId)
     const storeId = merchant?.storeId ?? subjectId
-    return cases.filter((caseData) => caseData.storeId === storeId)
+    return cases.filter((caseData) =>
+      caseData.storeId === storeId && caseData.status === 'WAITING_MERCHANT',
+    )
   }
 
   appendConversation(
@@ -258,6 +254,8 @@ export class LocalCaseStore implements CaseStore {
       changes: {
         status: 'CHECKING_DATA',
         decision: undefined,
+        appliedPolicy: undefined,
+        riskFlags: [],
         merchantConfirmation: {
           ...current.merchantConfirmation,
           response,
@@ -319,29 +317,20 @@ export class LocalCaseStore implements CaseStore {
   resetCase(caseId: string): CsCase {
     const current = this.requireCase(caseId)
     if (!current.demoCaseId) throw new Error(`Case ${caseId} is not a Demo Case.`)
-    const reset = createDemoCase(current.demoCaseId)
-    this.cases.set(caseId, reset)
-    this.persistAndNotify(caseId)
-    return clone(reset)
+    throw new Error(
+      `Demo ${current.demoCaseId} is not restored from a scripted customer claim.`,
+    )
   }
 
   resetAllDemoCases(): CsCase[] {
+    let removed = false
     for (const [caseId, caseData] of this.cases.entries()) {
-      if (caseData.demoCaseId) this.cases.delete(caseId)
+      if (!caseData.demoCaseId) continue
+      this.cases.delete(caseId)
+      removed = true
     }
-    for (const caseData of createInitialDemoCases()) {
-      this.cases.set(caseData.caseId, caseData)
-    }
-    this.persist()
-    for (const caseData of this.cases.values()) this.notify(caseData.caseId)
-    return this.getAllCases().filter((caseData) => Boolean(caseData.demoCaseId))
-  }
-
-  loadDemoStage(demoCaseId: DemoCaseId, stage: DemoStage = 'start'): CsCase {
-    const caseData = createDemoCase(demoCaseId, stage)
-    this.cases.set(caseData.caseId, caseData)
-    this.persistAndNotify(caseData.caseId)
-    return clone(caseData)
+    if (removed) this.persist()
+    return []
   }
 
   private restore() {
@@ -363,7 +352,7 @@ export class LocalCaseStore implements CaseStore {
       }
     }
 
-    this.cases = new Map(createInitialDemoCases().map((caseData) => [caseData.caseId, caseData]))
+    this.cases = new Map()
     this.persist()
   }
 

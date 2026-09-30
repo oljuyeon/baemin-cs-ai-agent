@@ -2,24 +2,21 @@ import { caseStore } from './caseStore'
 import {
   findCsHistory,
   findDelivery,
+  findEvidenceAnalysis,
   findOrder,
 } from './demoData'
-import { evaluatePolicy } from './policy'
-import { evaluateRisk } from './policy'
+import { evaluatePolicy, evaluateRisk } from './policy'
 import type {
   AgentTools,
-  CaseCommit,
-  CaseHistoryDraft,
   CsCase,
+  CsHistoryData,
+  DeliveryData,
+  EvidenceAnalysis,
   HumanEscalationResult,
   MerchantConfirmationData,
   MockActionResult,
   OrderData,
-  DeliveryData,
-  CsHistoryData,
-  EvidenceAnalysis,
   RiskResult,
-  ToolName,
   ToolResult,
 } from './types'
 
@@ -29,101 +26,53 @@ const newId = (prefix: string) => {
   return `${prefix}-${suffix}`
 }
 
-interface ToolOperation<T> {
-  data: T
-  changes?: CaseCommit['changes']
-  history?: CaseHistoryDraft[]
-}
-
+/**
+ * Tool은 외부/Mock 시스템 결과만 반환한다.
+ * Case 변경과 toolHistory 기록은 Agent Controller가 담당한다.
+ */
 class MockAgentTools implements AgentTools {
   async getOrder(input: { orderId: string }) {
-    const caseId = this.caseIdForOrder(input.orderId)
-    if (!caseId) return this.caseNotFoundForOrder<OrderData>(input.orderId)
-    return this.run<OrderData>(caseId, 'get_order', input, () => {
+    return this.run<OrderData>(() => {
       const order = findOrder(input.orderId)
       if (!order) throw new Error(`Order ${input.orderId} was not found.`)
-      return { data: order, changes: { order } }
+      return order
     })
   }
 
   async getDelivery(input: { orderId: string }) {
-    const caseId = this.caseIdForOrder(input.orderId)
-    if (!caseId) return this.caseNotFoundForOrder<DeliveryData>(input.orderId)
-    return this.run<DeliveryData>(caseId, 'get_delivery', input, () => {
+    return this.run<DeliveryData>(() => {
       const delivery = findDelivery(input.orderId)
       if (!delivery) throw new Error(`Delivery for order ${input.orderId} was not found.`)
-      return { data: delivery, changes: { delivery } }
+      return delivery
     })
   }
 
   async getCsHistory(input: { customerId: string; orderId: string }) {
-    const caseId = this.caseIdForOrder(input.orderId)
-    if (!caseId) return this.caseNotFoundForOrder<CsHistoryData[]>(input.orderId)
-    return this.run<CsHistoryData[]>(caseId, 'get_cs_history', input, () => {
-      const csHistory = findCsHistory(input.customerId, input.orderId)
-      return { data: csHistory, changes: { csHistory } }
-    })
+    return this.run<CsHistoryData[]>(() => findCsHistory(input.customerId, input.orderId))
   }
 
   async getPolicy(input: { caseData: CsCase }) {
-    const caseId = input.caseData.caseId
-    return this.run(caseId, 'get_policy', { caseId }, () => {
-      const current = caseStore.getCase(caseId) ?? input.caseData
-      const policy = evaluatePolicy(current)
-      return {
-        data: policy,
-        changes: {
-          appliedPolicy: policy.policyId,
-        },
-      }
-    })
+    return this.run(() => evaluatePolicy(input.caseData))
   }
 
   async checkRisk(input: { caseData: CsCase }) {
-    const caseId = input.caseData.caseId
-    return this.run<RiskResult>(caseId, 'check_risk', { caseId }, () => {
-      const current = caseStore.getCase(caseId) ?? input.caseData
-      const flags = evaluateRisk(current)
-      return {
-        data: {
-          flags,
-          autoActionAllowed: flags.length === 0,
-        },
-        changes: { riskFlags: flags },
-      }
+    return this.run<RiskResult>(() => {
+      const flags = evaluateRisk(input.caseData)
+      return { flags, autoActionAllowed: flags.length === 0 }
     })
   }
 
   async analyzeEvidence(input: { evidenceUrl: string }) {
-    const caseData = caseStore.getAllCases().find((candidate) =>
-      candidate.evidenceUrls.includes(input.evidenceUrl),
-    )
-    if (!caseData) {
+    return this.run<EvidenceAnalysis>(() => {
+      const analysis = findEvidenceAnalysis(input.evidenceUrl)
+      if (analysis) return analysis
       return {
-        status: 'error' as const,
-        error: `No Case is connected to evidence ${input.evidenceUrl}.`,
+        evidenceUrl: input.evidenceUrl,
+        assessment: 'inconclusive',
+        observation: '첨부 이미지를 받았지만 Mock 분석 데이터와 일치하는 결과가 없습니다.',
+        limitations: ['실제 Vision API가 아닌 PoC Mock 분석입니다.'],
       }
-    }
-
-    return this.run<EvidenceAnalysis>(
-      caseData.caseId,
-      'analyze_evidence',
-      input,
-      () => {
-        const analysis = this.mockEvidenceAnalysis(input.evidenceUrl)
-        const current = this.requireCase(caseData.caseId)
-        const previous = current.evidenceAnalysis ?? []
-        return {
-          data: analysis,
-          changes: {
-            evidenceAnalysis: [
-              ...previous.filter((item) => item.evidenceUrl !== input.evidenceUrl),
-              analysis,
-            ],
-          },
-        }
-      },
-    )
+    })
   }
 
   async requestMerchantConfirmation(input: {
@@ -134,34 +83,16 @@ class MockAgentTools implements AgentTools {
     customerClaim: string
     evidenceUrl?: string
   }) {
-    return this.run(input.caseId, 'request_merchant_confirmation', input, () => {
-      const timestamp = nowIso()
-      const request: MerchantConfirmationData = {
-        requestId: newId('MC'),
-        caseId: input.caseId,
-        orderId: input.orderId,
-        itemName: input.itemName,
-        customerClaim: input.customerClaim,
-        evidenceUrl: input.evidenceUrl,
-        status: 'waiting',
-        requestedAt: timestamp,
-      }
-      return {
-        data: request,
-        changes: {
-          status: 'WAITING_MERCHANT',
-          decision: 'WAITING_MERCHANT',
-          merchantConfirmation: request,
-        },
-        history: [{
-          actor: 'agent',
-          event: 'MERCHANT_REQUESTED',
-          toStatus: 'WAITING_MERCHANT',
-          detail: 'Merchant 확인 요청 생성',
-          createdAt: timestamp,
-        }],
-      }
-    })
+    return this.run<MerchantConfirmationData>(() => ({
+      requestId: newId('MC'),
+      caseId: input.caseId,
+      orderId: input.orderId,
+      itemName: input.itemName,
+      customerClaim: input.customerClaim,
+      evidenceUrl: input.evidenceUrl,
+      status: 'waiting',
+      requestedAt: nowIso(),
+    }))
   }
 
   async refund(input: {
@@ -170,142 +101,55 @@ class MockAgentTools implements AgentTools {
     itemName?: string
     amount: number
   }) {
-    return this.run(input.caseId, 'refund', input, () => {
+    return this.run<MockActionResult>(() => {
       const current = this.requireCase(input.caseId)
-      const timestamp = nowIso()
-      const action: MockActionResult = {
-        actionId: newId('ACTION'),
-        action: 'mock_refund',
-        completedAt: timestamp,
+      if (current.orderId !== input.orderId) {
+        throw new Error('Case와 환불 대상 주문이 일치하지 않습니다.')
+      }
+      if (!Number.isFinite(input.amount) || input.amount <= 0) {
+        throw new Error('환불 금액은 0보다 커야 합니다.')
       }
       return {
-        data: action,
-        changes: {
-          status: 'AUTO_RESOLVED',
-          decision: 'AUTO_RESOLVE',
-          finalAction: 'mock_refund',
-          finalActionResult: action,
-          csHistory: [
-            ...current.csHistory,
-            {
-              customerId: current.customerId,
-              orderId: input.orderId,
-              issueType: current.issueType,
-              itemName: input.itemName,
-              action: 'mock_refund',
-              amount: input.amount,
-              status: 'completed',
-            },
-          ],
-        },
-        history: [this.finalActionHistory(current, 'Mock 부분 환불 완료', timestamp)],
+        actionId: newId('ACTION'),
+        action: 'mock_refund',
+        completedAt: nowIso(),
       }
     })
   }
 
   async redelivery(input: { caseId: string; orderId: string }) {
-    return this.run(input.caseId, 'redelivery', input, () => {
+    return this.run<MockActionResult>(() => {
       const current = this.requireCase(input.caseId)
-      const timestamp = nowIso()
-      const action: MockActionResult = {
-        actionId: newId('ACTION'),
-        action: 'mock_redelivery',
-        completedAt: timestamp,
+      if (current.orderId !== input.orderId) {
+        throw new Error('Case와 재배달 대상 주문이 일치하지 않습니다.')
       }
       return {
-        data: action,
-        changes: {
-          status: 'AUTO_RESOLVED',
-          decision: 'AUTO_RESOLVE',
-          finalAction: 'mock_redelivery',
-          finalActionResult: action,
-        },
-        history: [this.finalActionHistory(current, 'Mock 재배달 요청 완료', timestamp)],
+        actionId: newId('ACTION'),
+        action: 'mock_redelivery',
+        completedAt: nowIso(),
       }
     })
   }
 
   async escalateToHuman(input: { caseId: string; reason: string; summary?: string }) {
-    return this.run(input.caseId, 'escalate_to_human', input, () => {
-      const current = this.requireCase(input.caseId)
-      const timestamp = nowIso()
-      const result: HumanEscalationResult = {
+    return this.run<HumanEscalationResult>(() => {
+      this.requireCase(input.caseId)
+      return {
         queueId: newId('CSQ'),
         status: 'queued',
-        createdAt: timestamp,
-      }
-      return {
-        data: result,
-        changes: {
-          status: 'ESCALATED',
-          decision: 'ESCALATE',
-          finalAction: 'human_review',
-          escalationReason: input.reason,
-          agentSummary: input.summary ?? current.agentSummary,
-        },
-        history: [{
-          actor: 'agent',
-          event: 'ESCALATED',
-          fromStatus: current.status,
-          toStatus: 'ESCALATED',
-          detail: input.reason,
-          createdAt: timestamp,
-        }],
+        createdAt: nowIso(),
       }
     })
   }
 
-  private async run<T>(
-    caseId: string,
-    toolName: ToolName,
-    input: unknown,
-    operation: () => ToolOperation<T>,
-  ): Promise<ToolResult<T>> {
-    const startedAt = nowIso()
+  private async run<T>(operation: () => T): Promise<ToolResult<T>> {
     try {
-      this.requireCase(caseId)
-      const operationResult = operation()
-      const result: ToolResult<T> = { status: 'success', data: operationResult.data }
-      caseStore.commitCase(caseId, {
-        changes: operationResult.changes,
-        history: operationResult.history,
-        toolHistory: [{
-          toolName,
-          input,
-          result,
-          startedAt,
-          completedAt: nowIso(),
-        }],
-      })
-      return result
+      return { status: 'success', data: operation() }
     } catch (error) {
-      const result: ToolResult<T> = {
+      return {
         status: 'error',
         error: error instanceof Error ? error.message : 'Unknown Tool error',
       }
-      if (caseStore.getCase(caseId)) {
-        caseStore.commitCase(caseId, {
-          toolHistory: [{
-            toolName,
-            input,
-            result,
-            startedAt,
-            completedAt: nowIso(),
-          }],
-        })
-      }
-      return result
-    }
-  }
-
-  private caseIdForOrder(orderId: string): string | undefined {
-    return caseStore.findCaseByOrderId(orderId)?.caseId
-  }
-
-  private caseNotFoundForOrder<T>(orderId: string): ToolResult<T> {
-    return {
-      status: 'error',
-      error: `No Case is connected to order ${orderId}.`,
     }
   }
 
@@ -313,48 +157,6 @@ class MockAgentTools implements AgentTools {
     const caseData = caseStore.getCase(caseId)
     if (!caseData) throw new Error(`Case ${caseId} was not found.`)
     return caseData
-  }
-
-  private finalActionHistory(
-    current: CsCase,
-    detail: string,
-    createdAt: string,
-  ): CaseHistoryDraft {
-    return {
-      actor: 'agent',
-      event: 'FINAL_ACTION_COMPLETED',
-      fromStatus: current.status,
-      toStatus: 'AUTO_RESOLVED',
-      detail,
-      createdAt,
-    }
-  }
-
-  private mockEvidenceAnalysis(evidenceUrl: string): EvidenceAnalysis {
-    if (evidenceUrl.includes('case-e')) {
-      return {
-        evidenceUrl,
-        observation: '첨부 이미지의 음식이 주문 메뉴인 양념치킨과 다른 음식으로 보입니다.',
-        limitations: ['PoC에서는 이미지 위변조 여부를 판별하지 않습니다.'],
-      }
-    }
-
-    if (evidenceUrl.includes('case-c') || evidenceUrl.includes('case-d')) {
-      return {
-        evidenceUrl,
-        observation: '첨부 이미지에서 포장된 음식 일부를 확인할 수 있습니다.',
-        limitations: [
-          '사진만으로 누락 여부를 확정할 수 없습니다.',
-          '포장 시점의 전체 구성은 Merchant 확인이 필요합니다.',
-        ],
-      }
-    }
-
-    return {
-      evidenceUrl,
-      observation: '고객이 증빙 이미지를 첨부했습니다.',
-      limitations: ['PoC 분석 결과이며 실제 이미지 판정 시스템과 연결되지 않습니다.'],
-    }
   }
 }
 

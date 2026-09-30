@@ -48,8 +48,14 @@ export interface ConversationMessage {
   createdAt: string
 }
 
+export type EvidenceAssessment =
+  | 'supports_claim'
+  | 'inconclusive'
+  | 'contradicts_claim'
+
 export interface EvidenceAnalysis {
   evidenceUrl: string
+  assessment: EvidenceAssessment
   observation: string
   limitations: string[]
 }
@@ -271,9 +277,29 @@ export interface AgentTools {
   }): Promise<ToolResult<HumanEscalationResult>>
 }
 
-export type DemoCaseId = 'A' | 'B' | 'C' | 'D' | 'E'
+export type AgentAction =
+  | {
+      type: 'ASK_CUSTOMER'
+      question: string
+    }
+  | {
+      type: 'CALL_TOOL'
+      toolName: ToolName
+      input: unknown
+    }
+  | {
+      type: 'FINISH'
+      decision: AgentDecision
+      finalAction: FinalAction
+      customerMessage: string
+    }
 
-export type DemoStage = 'start' | 'waiting_merchant' | 'merchant_responded' | 'escalated'
+export interface AgentController {
+  decideNextAction(caseData: CsCase): Promise<AgentAction>
+  runNextStep(caseId: string): Promise<CsCase>
+}
+
+export type DemoCaseId = 'A' | 'B' | 'C' | 'D' | 'E'
 
 export interface CreateCaseInput {
   caseId?: string
@@ -336,5 +362,4 @@ export interface CaseStore {
   subscribe(caseId: string, listener: (caseData: CsCase) => void): () => void
   resetCase(caseId: string): CsCase
   resetAllDemoCases(): CsCase[]
-  loadDemoStage(demoCaseId: DemoCaseId, stage?: DemoStage): CsCase
 }

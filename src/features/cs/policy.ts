@@ -7,7 +7,7 @@ export const FREQUENT_REFUND_LIMIT_30D = 5
 const unique = <T>(values: T[]): T[] => [...new Set(values)]
 
 export function evaluateRisk(caseData: CsCase): RiskFlag[] {
-  const risks: RiskFlag[] = [...caseData.riskFlags]
+  const risks: RiskFlag[] = []
   const claimedItem = caseData.claimedItemName
 
   if (
@@ -35,21 +35,18 @@ export function evaluateRisk(caseData: CsCase): RiskFlag[] {
     risks.push('order_claim_mismatch')
   }
 
+  if (
+    caseData.evidenceAnalysis?.some(
+      (analysis) => analysis.assessment === 'contradicts_claim',
+    )
+  ) {
+    risks.push('evidence_mismatch')
+  }
+
   return unique(risks)
 }
 
 export function evaluatePolicy(caseData: CsCase): PolicyResult {
-  const riskFlags = caseData.riskFlags
-
-  if (riskFlags.length > 0) {
-    return {
-      policyId: 'RISK_REQUIRES_HUMAN_REVIEW',
-      requiresMerchantConfirmation: false,
-      allowedActions: ['human_review'],
-      reason: 'Risk Flag가 있어 자동 처리를 허용하지 않습니다.',
-    }
-  }
-
   if (caseData.merchantConfirmation?.response === 'PACKED') {
     return {
       policyId: 'MERCHANT_CLAIM_CONFLICT',
@@ -69,16 +66,20 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
   }
 
   if (caseData.issueType === 'wrong_delivery') {
-    const hasEvidence = caseData.evidenceUrls.length > 0
+    const supportiveEvidence = caseData.evidenceAnalysis?.some(
+      (analysis) => analysis.assessment === 'supports_claim',
+    ) ?? false
     return {
-      policyId: hasEvidence ? 'WRONG_DELIVERY_WITH_EVIDENCE' : 'WRONG_DELIVERY_NEEDS_EVIDENCE',
+      policyId: supportiveEvidence
+        ? 'WRONG_DELIVERY_WITH_SUPPORTING_EVIDENCE'
+        : 'WRONG_DELIVERY_NEEDS_REVIEW',
       requiresMerchantConfirmation: false,
-      allowedActions: hasEvidence
+      allowedActions: supportiveEvidence
         ? ['mock_redelivery', 'human_review']
         : ['human_review'],
-      reason: hasEvidence
-        ? '명확한 오배달 증빙이 있어 Mock 재배달을 허용합니다.'
-        : '오배달 판단에 필요한 증빙이 부족합니다.',
+      reason: supportiveEvidence
+        ? '증빙 분석이 고객의 오배달 주장을 뒷받침해 Mock 재배달을 허용합니다.'
+        : '사진 첨부 여부만으로 오배달을 확정하지 않고 분석 결과를 추가 검토합니다.',
     }
   }
 
@@ -109,7 +110,7 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
       allowedActions: ['mock_refund', 'mock_redelivery', 'human_review'],
       reason: caseData.merchantConfirmation?.response === 'POSSIBLE_MISSING'
         ? 'Merchant가 누락 가능성을 인정해 Mock 환불 또는 재배달을 허용합니다.'
-        : '저가 메뉴 누락이며 자동 처리를 차단하는 Risk가 없습니다.',
+        : '저가 메뉴 누락으로 Mock 환불 또는 재배달을 허용합니다.',
     }
   }
 

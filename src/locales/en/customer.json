@@ -42,9 +42,10 @@
     "enterHint": "Enter to send",
     "draftReady": "I drafted a message from your selection. Review it and send it when ready.",
     "requiredHint": "Please attach a photo so we can verify the wrong delivery.",
+    "savedWithoutAgent": "Your message is saved on the case. The AI agent is not connected yet, so no lookup or refund was run.",
     "quickDraft": {
       "delay": "The estimated arrival time has passed, but my delivery is not here yet.",
-      "missing": "The fries from my order were missing.",
+      "missing": "The cola from my order was missing.",
       "wrong": "I received food that is different from what I ordered."
     }
   },
