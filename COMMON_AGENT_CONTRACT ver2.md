@@ -4,7 +4,7 @@
 
 이 문서는 Customer, Merchant, Human CS 화면을 나누어 개발하기 전에 두 담당자가 공통으로 지켜야 할 데이터와 동작 계약을 정의한다.
 
-공통 영역은 Agent가 사용할 수 있는 Case, Mock Data, Tool, Policy, Risk, 저장 기능을 제공한다. Agent가 현재 Case를 보고 다음 행동을 선택하는 Dynamic Agent Loop는 공통 영역에 포함하지 않는다.
+공통 영역의 구현은 `src/features/cs`다. 이 문서의 타입과 동작은 그 코드와 같다. 공통 영역은 Agent가 사용할 Case, Mock Data, Tool, Policy, Risk, 저장 기능을 제공한다. Agent가 현재 Case를 보고 다음 행동을 선택하는 Dynamic Agent Loop는 공통 영역에 포함하지 않는다.
 
 기능 기획의 기준은 `배달 플랫폼 CS AI Agent PoC 기획서 틀`이다. 현재 구현된 Customer UI의 짧은 이름은 화면 내부에서 유지할 수 있지만, 화면 사이에서 교환하는 공통 데이터는 이 문서의 이름을 사용한다.
 
@@ -12,20 +12,23 @@
 
 ## 1 공통 범위
 
-### 공통으로 구현할 것
+### 공통으로 구현되어 있는 것
 
 - 공통 `CsCase` 데이터 계약
 - Case 상태와 Agent 결정값
 - Mock Customer, Order, Delivery, CS History, Merchant 데이터
+- URL별 Mock 증빙 분석 결과
 - Tool 이름과 입출력 계약
 - 엄격한 `ToolResult<T>`
-- Case 조회, 변경, 구독, Demo 초기화
+- Case 생성, 조회, 변경, 구독과 `localStorage` 복원
 - Case 업무 처리 이력 `history`
 - Agent Tool 호출 이력 `toolHistory`
-- Merchant Confirmation 요청과 응답 저장
+- Merchant Confirmation 응답 저장
+- Human CS 처리 결과 저장
 - 가상 Policy와 Risk 규칙
-- 고객 대화와 증빙 분석의 최소 저장 형식
-- 발표용 Demo Case
+- 고객 대화와 증빙 분석의 저장 형식
+
+고객 문장은 채팅 입력으로 `customerClaim`에 저장한다. 문의 문장을 미리 넣은 실행용 Case는 만들지 않는다. Demo A~E의 예상 결과는 검증 기준이며, Tool 실행 순서는 아니다.
 
 ### 공통으로 구현하지 않을 것
 
@@ -195,6 +198,7 @@ export interface DeliveryData {
   expectedAt: string
   deliveredAt?: string
   deliveryStatus: string
+  delayMinutes: number
 }
 
 export interface CsHistoryData {
@@ -226,6 +230,20 @@ export interface MerchantConfirmationData {
   requestedAt: string
   respondedAt?: string
 }
+
+export type HumanCsAction =
+  | 'approve_refund'
+  | 'reject_refund'
+  | 'approve_redelivery'
+  | 'request_more_info'
+  | 'request_additional_confirmation'
+
+export interface HumanCsResolution {
+  action: HumanCsAction
+  comment?: string
+  handledBy: string
+  handledAt: string
+}
 ```
 
 ---
@@ -244,6 +262,7 @@ export type CaseEvent =
   | 'MERCHANT_REQUESTED'
   | 'MERCHANT_RESPONDED'
   | 'ESCALATED'
+  | 'HUMAN_CS_ACTION_COMPLETED'
   | 'FINAL_ACTION_COMPLETED'
 
 export interface CaseHistory {
@@ -286,8 +305,11 @@ export interface ToolCallLog {
 ## 7 공통 CsCase 계약
 
 ```ts
+export type DemoCaseId = 'A' | 'B' | 'C' | 'D' | 'E'
+
 export interface CsCase {
   caseId: string
+  demoCaseId?: DemoCaseId
 
   customerId: string
   orderId: string
@@ -298,6 +320,8 @@ export interface CsCase {
   decision?: AgentDecision
 
   customerClaim: string
+  claimedItemName?: string
+  receivedItemDescription?: string
   conversation: ConversationMessage[]
   evidenceUrls: string[]
   evidenceAnalysis?: EvidenceAnalysis[]
@@ -307,11 +331,13 @@ export interface CsCase {
   csHistory: CsHistoryData[]
 
   merchantConfirmation?: MerchantConfirmationData
+  humanCsResolution?: HumanCsResolution
 
   appliedPolicy?: string
   riskFlags: RiskFlag[]
 
   agentSummary?: string
+  escalationReason?: string
   finalAction?: FinalAction
   finalActionResult?: MockActionResult
 
@@ -419,20 +445,32 @@ Tool은 Mock 또는 외부 시스템의 결과만 반환한다. Tool 내부에�
 
 ```ts
 export interface CaseStore {
+  createCase(input: CreateCaseInput): CsCase
   getCase(caseId: string): CsCase | undefined
-
-  updateCase(
-    caseId: string,
-    changes: Partial<CsCase>,
-  ): CsCase
-
+  getAllCases(): CsCase[]
+  findCaseByOrderId(orderId: string): CsCase | undefined
+  commitCase(caseId: string, commit: CaseCommit): CsCase
+  updateCase(caseId: string, changes: CaseChanges): CsCase
   getCasesByStatus(status: CaseStatus): CsCase[]
-
-  subscribe(
+  getCasesForRole(role: UserRole, subjectId?: string): CsCase[]
+  appendConversation(
     caseId: string,
-    listener: (caseData: CsCase) => void,
-  ): () => void
-
+    role: ConversationMessage['role'],
+    content: string,
+  ): CsCase
+  recordEvidenceAnalysis(caseId: string, analysis: EvidenceAnalysis): CsCase
+  recordMerchantResponse(
+    caseId: string,
+    response: MerchantResponse,
+    comment?: string,
+  ): CsCase
+  recordHumanCsResolution(
+    caseId: string,
+    action: HumanCsAction,
+    handledBy: string,
+    comment?: string,
+  ): CsCase
+  subscribe(caseId: string, listener: (caseData: CsCase) => void): () => void
   resetCase(caseId: string): CsCase
   resetAllDemoCases(): CsCase[]
 }
@@ -440,8 +478,11 @@ export interface CaseStore {
 
 - Customer는 자신이 만든 Case를 조회한다.
 - Merchant는 본인 매장이면서 `WAITING_MERCHANT`인 Case만 Queue에서 조회한다.
-- Human CS는 `ESCALATED` Case를 조회한다.
-- Demo 초기화는 항상 같은 시작 상태를 복원해야 한다.
+- Human CS는 `ESCALATED` Case와 Human CS가 처리한 `CLOSED` Case를 조회한다.
+- `createCase`는 채팅으로 들어온 `customerClaim`으로 Case를 만든다.
+- `recordMerchantResponse`는 같은 Case에 매장 응답을 저장한다.
+- `recordHumanCsResolution`은 Human CS 처리 결과를 저장하고 상태를 `CLOSED`로 바꾼다.
+- `resetAllDemoCases`는 `demoCaseId`가 있는 기존 Case만 지운다. 고객 문장이 들어 있는 시작 Case를 다시 만들지 않는다.
 
 ---
 
@@ -449,16 +490,22 @@ export interface CaseStore {
 
 ### Policy
 
-- 저가 메뉴 누락이면 Policy는 Mock 부분 환불을 허용 가능한 Action으로 반환한다.
-- 고가 메뉴 누락이면 Merchant Confirmation이 필요하다.
-- 고객은 누락을 주장하고 Merchant가 `PACKED`로 응답하면 자동 처리를 허용하지 않는다.
+저가와 고가의 기준은 5,000원이다. 5,000원 이하는 저가이고, 5,000원을 넘으면 고가이다.
 
-정확한 저가와 고가 기준 금액은 임시값으로 시작할 수 있다. 금액이 바뀌더라도 Demo Case의 예상 결과는 두 담당자가 함께 갱신한다.
+- 저가 메뉴 누락이고 Merchant 응답이 없으면 `mock_refund`만 허용한다. 재배달은 허용하지 않는다. 기획서의 PoC 가상 정책과 Demo B의 예상 결과는 Mock 부분 환불이다.
+- 재배달은 증빙만으로 허용하지 않는다. Merchant가 `POSSIBLE_MISSING`으로 확인한 뒤에 `mock_redelivery`를 허용한다.
+- 고가 메뉴 누락이고 Merchant 응답이 없으면 Merchant Confirmation이 필요하다.
+- Merchant가 `POSSIBLE_MISSING`으로 확인하면 고가 누락의 `mock_refund`와 `mock_redelivery`를 허용한다.
+- Merchant가 `UNKNOWN`으로 응답하면 자동 처리를 허용하지 않고 상담원 이관 후보로 둔다.
+- 고객 주장과 Merchant의 `PACKED` 응답이 충돌하면 자동 처리를 허용하지 않는다.
+- 배달 지연은 `delayMinutes`로 본다. 예상 도착 시각 `expectedAt`은 고정된 시각이다. 배달 완료 시각이 있으면 그 시각에서 빼고, 없으면 앱을 연 시각에서 뺀다. 0보다 크면 지연이고 0 이하면 정상 진행이다. 장기 지연 기준은 두지 않는다.
+
+Policy는 허용 Action만 반환한다. `refund` 호출은 Agent Loop가 결정한다.
 
 ### Risk
 
 - 동일 주문과 동일 메뉴의 기존 환불은 `duplicate_refund`다.
-- 최근 반복 환불은 `frequent_refund`다.
+- 최근 반복 환불은 `frequent_refund`다. 기준은 최근 30일 환불 5회 이상이고, 샘플 고객은 `C008`이다.
 - 주문에 없는 메뉴를 주장하면 `order_claim_mismatch`다.
 - 주문과 증빙이 명확히 다르면 `evidence_mismatch`다.
 - Risk가 하나라도 있으면 자동 처리를 금지하고 `ESCALATE` 후보로 전달한다.
@@ -532,13 +579,15 @@ Merchant 응답 저장과 Case 갱신은 공통 영역이다. 응답 이후 어�
 
 | Case | 시작 상황 | 예상 결과 |
 | --- | --- | --- |
-| A | 배달 지연 문의지만 아직 ETA 전 | 배달 정보 확인 후 정상 진행 안내 |
+| A | 배달 지연 문의지만 아직 ETA 전. 주문 `A1001` | 배달 정보 확인 후 정상 진행 안내 |
 | B | 저가 메뉴 누락이고 기존 동일 환불과 Risk 없음 | Mock 부분 환불 |
 | C | 고가 메뉴 누락 | Merchant Queue 생성 후 응답을 받아 같은 Case 재개 |
 | D | 고객은 누락을 주장하고 Merchant는 `PACKED`로 응답 | 주장 충돌로 Human CS 이관 |
-| E | 오배달이며 증빙이 있고 Risk 없음 | Mock 재배달 또는 Policy에 따른 Human CS 이관 |
+| E | 오배달이며 증빙이 있고 Risk 없음 | Merchant 확인 후 Mock 재배달. `UNKNOWN`이면 Human CS 이관 |
 
 각 Demo Case의 예상 결과는 테스트 검증용이다. 고객 문장을 미리 넣은 Case로 실행 경로를 시작하지 않고, Agent의 Tool 실행 순서도 고정하지 않는다. Demo에 필요한 주문, 배달, 이력 데이터만 공통 Mock Data로 준비한다.
+
+예상 도착 시각은 고정이다. `A1001`은 21:30, `A1006`은 20:05, `A1007`은 19:05다. 지연 분은 앱을 연 시각에서 이 시각을 뺀 값이다. 앱을 21:30 전에 열면 `A1001`은 정상 진행이고, `A1006`과 `A1007`은 지연이다. 두 주문의 차이로 장기 지연을 나누지 않는다. `C008`의 주문 `A1008`은 최근 30일 환불 5회로 `frequent_refund` 샘플이다.
 
 ---
 
@@ -601,8 +650,8 @@ Merchant 응답 저장과 Case 갱신은 공통 영역이다. 응답 이후 어�
 - Case 변경이 구독 중인 화면에 반영된다.
 - `history`와 `toolHistory`가 서로 다른 목적으로 기록된다.
 - Tool 성공 결과에는 `data`, 실패 결과에는 `error`가 반드시 존재한다.
-- Demo Case를 초기화할 수 있다.
-- Merchant 요청이 `WAITING_MERCHANT` 상태로 저장된다.
+- 고객 문장을 미리 넣은 실행용 Demo Case는 없다.
+- Merchant 확인 요청 결과는 Case에 저장할 수 있고, 저장 후 상태는 `WAITING_MERCHANT`가 될 수 있다.
 - Merchant 응답이 같은 Case에 저장된다.
 - Risk와 주장 충돌 Case가 `ESCALATED` 상태로 저장될 수 있다.
 - 고객과 Agent의 추가 대화가 `conversation`에 누적된다.

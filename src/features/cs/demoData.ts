@@ -7,12 +7,21 @@ import type {
   OrderData,
 } from './types'
 
+let appStartedAt = Date.now()
+
+export const markAppStarted = () => {
+  appStartedAt = Date.now()
+}
+
 export const mockCustomers: CustomerData[] = [
-  { customerId: 'C001', name: '김고객', recentOrderCount: 8, refundCount30d: 1 },
-  { customerId: 'C002', name: '이민지', recentOrderCount: 3, refundCount30d: 0 },
+  { customerId: 'C001', name: '김지연', recentOrderCount: 8, refundCount30d: 1 },
+  { customerId: 'C002', name: '정누락', recentOrderCount: 3, refundCount30d: 0 },
   { customerId: 'C003', name: '박현우', recentOrderCount: 5, refundCount30d: 1 },
   { customerId: 'C004', name: '최유진', recentOrderCount: 11, refundCount30d: 2 },
-  { customerId: 'C005', name: '정도윤', recentOrderCount: 2, refundCount30d: 0 },
+  { customerId: 'C005', name: '오배송', recentOrderCount: 2, refundCount30d: 0 },
+  { customerId: 'C006', name: '한소율', recentOrderCount: 4, refundCount30d: 0 },
+  { customerId: 'C007', name: '오세진', recentOrderCount: 6, refundCount30d: 1 },
+  { customerId: 'C008', name: '김진상', recentOrderCount: 14, refundCount30d: 5 },
 ]
 
 export const mockMerchants: MerchantData[] = [
@@ -24,9 +33,21 @@ export const mockMerchants: MerchantData[] = [
 export const mockOrders: OrderData[] = [
   {
     orderId: 'A1001', customerId: 'C001', storeId: 'S001',
-    orderedAt: '2026-09-30T19:20:00+09:00',
+    orderedAt: '2026-09-30T20:10:00+09:00',
     items: [{ itemId: 'I001', name: '김치찌개', price: 12000 }],
     totalAmount: 12000, orderStatus: 'delivering',
+  },
+  {
+    orderId: 'A1006', customerId: 'C006', storeId: 'S002',
+    orderedAt: '2026-09-30T19:00:00+09:00',
+    items: [{ itemId: 'I009', name: '간장치킨', price: 21000 }],
+    totalAmount: 21000, orderStatus: 'delivering',
+  },
+  {
+    orderId: 'A1007', customerId: 'C007', storeId: 'S003',
+    orderedAt: '2026-09-30T17:40:00+09:00',
+    items: [{ itemId: 'I010', name: '모둠튀김', price: 9000 }],
+    totalAmount: 9000, orderStatus: 'delivering',
   },
   {
     orderId: 'A1002', customerId: 'C002', storeId: 'S002',
@@ -61,13 +82,31 @@ export const mockOrders: OrderData[] = [
     items: [{ itemId: 'I008', name: '양념치킨', price: 21000 }],
     totalAmount: 21000, orderStatus: 'delivered',
   },
+  {
+    orderId: 'A1008', customerId: 'C008', storeId: 'S001',
+    orderedAt: '2026-09-30T17:10:00+09:00',
+    items: [{ itemId: 'I011', name: '된장찌개', price: 11000 }],
+    totalAmount: 11000, orderStatus: 'delivered',
+  },
 ]
 
-export const mockDeliveries: DeliveryData[] = [
+type StoredDelivery = Omit<DeliveryData, 'delayMinutes'>
+
+export const mockDeliveries: StoredDelivery[] = [
   {
-    orderId: 'A1001', riderAssignedAt: '2026-09-30T19:30:00+09:00',
-    pickedUpAt: '2026-09-30T19:45:00+09:00',
-    expectedAt: '2026-09-30T20:20:00+09:00', deliveryStatus: 'picked_up',
+    orderId: 'A1001', riderAssignedAt: '2026-09-30T20:18:00+09:00',
+    pickedUpAt: '2026-09-30T20:25:00+09:00',
+    expectedAt: '2026-09-30T21:30:00+09:00', deliveryStatus: 'picked_up',
+  },
+  {
+    orderId: 'A1006', riderAssignedAt: '2026-09-30T19:25:00+09:00',
+    pickedUpAt: '2026-09-30T19:40:00+09:00',
+    expectedAt: '2026-09-30T20:05:00+09:00', deliveryStatus: 'picked_up',
+  },
+  {
+    orderId: 'A1007', riderAssignedAt: '2026-09-30T18:10:00+09:00',
+    pickedUpAt: '2026-09-30T18:25:00+09:00',
+    expectedAt: '2026-09-30T19:05:00+09:00', deliveryStatus: 'picked_up',
   },
   {
     orderId: 'A1002', riderAssignedAt: '2026-09-30T18:15:00+09:00',
@@ -89,7 +128,21 @@ export const mockDeliveries: DeliveryData[] = [
     pickedUpAt: '2026-09-30T19:10:00+09:00', expectedAt: '2026-09-30T19:35:00+09:00',
     deliveredAt: '2026-09-30T19:37:00+09:00', deliveryStatus: 'delivered',
   },
+  {
+    orderId: 'A1008', riderAssignedAt: '2026-09-30T17:20:00+09:00',
+    pickedUpAt: '2026-09-30T17:35:00+09:00', expectedAt: '2026-09-30T18:00:00+09:00',
+    deliveredAt: '2026-09-30T18:04:00+09:00', deliveryStatus: 'delivered',
+  },
 ]
+
+/** 배달 완료 시각이 있으면 그 시각, 없으면 앱을 연 시각을 고정된 예상 도착 시각과 비교한다. */
+export const calculateDelayMinutes = (
+  delivery: Pick<DeliveryData, 'expectedAt' | 'deliveredAt'>,
+  now = appStartedAt,
+) => {
+  const reference = delivery.deliveredAt ? new Date(delivery.deliveredAt).getTime() : now
+  return Math.floor((reference - new Date(delivery.expectedAt).getTime()) / 60_000)
+}
 
 export const mockCsHistory: CsHistoryData[] = [
   {
@@ -134,8 +187,11 @@ export const findCustomer = (customerId: string) =>
 export const findOrder = (orderId: string) =>
   clone(mockOrders.find((order) => order.orderId === orderId))
 
-export const findDelivery = (orderId: string) =>
-  clone(mockDeliveries.find((delivery) => delivery.orderId === orderId))
+export const findDelivery = (orderId: string) => {
+  const delivery = clone(mockDeliveries.find((item) => item.orderId === orderId))
+  if (!delivery) return undefined
+  return { ...delivery, delayMinutes: calculateDelayMinutes(delivery) }
+}
 
 export const findCsHistory = (customerId: string, orderId?: string) =>
   clone(mockCsHistory.filter((record) =>

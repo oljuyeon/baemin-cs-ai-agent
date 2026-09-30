@@ -101,6 +101,8 @@ export interface DeliveryData {
   expectedAt: string
   deliveredAt?: string
   deliveryStatus: string
+  /** 예상 도착 시각 대비 지난 분. 0보다 크면 지연이다. */
+  delayMinutes: number
 }
 
 export interface CsHistoryData {
