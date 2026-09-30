@@ -1,0 +1,46 @@
+{
+  "brand": {
+    "name": "RightNow AI",
+    "tagline": "Your delivery issue assistant"
+  },
+  "meta": {
+    "title": "RightNow AI",
+    "description": "AI support that resolves delivery issues faster"
+  },
+  "nav": {
+    "service": "About",
+    "roles": "Choose a role",
+    "login": "Log in"
+  },
+  "actions": {
+    "start": "Get started",
+    "login": "Log in",
+    "backHome": "Back to home",
+    "learnMore": "Learn more"
+  },
+  "language": {
+    "label": "Select language",
+    "ko": "한국어",
+    "en": "English"
+  },
+  "accessibility": {
+    "mainNav": "Main navigation",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "home": "Go to home"
+  },
+  "placeholder": {
+    "eyebrow": "Coming soon",
+    "description": "This route is ready for another teammate to build the page independently.",
+    "customer": "Customer AI support",
+    "merchant": "Merchant confirmation queue",
+    "cs": "Platform CS dashboard",
+    "demo": "AI Agent demo",
+    "notFound": "Page not found"
+  },
+  "login": {
+    "eyebrow": "PoC login",
+    "title": "Which role would you like to use?",
+    "description": "Real authentication will be connected later. For now, use a sample account to enter each role."
+  }
+}

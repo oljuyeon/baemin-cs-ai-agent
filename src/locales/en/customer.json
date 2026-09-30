@@ -1,0 +1,145 @@
+{
+  "header": {
+    "title": "AI Support",
+    "back": "Home",
+    "history": "My cases"
+  },
+  "welcome": {
+    "eyebrow": "Hi, Minji",
+    "title": "What went wrong?",
+    "description": "AI will review your recent order and start resolving it right away."
+  },
+  "order": {
+    "sectionTitle": "Order for this inquiry",
+    "recent": "Most recent order",
+    "change": "Choose another order",
+    "store": "Happy Chicken Seongsu",
+    "orderNumber": "Order A1024",
+    "menu": "Fried chicken · Fries · Cola",
+    "price": "₩28,500",
+    "statusLabel": "Delivery",
+    "status": "On the way",
+    "etaLabel": "Estimated arrival",
+    "eta": "7:35 PM",
+    "orderedAt": "Ordered today at 6:42 PM"
+  },
+  "issues": {
+    "sectionTitle": "Quick select",
+    "description": "You can also describe it yourself.",
+    "delay": { "title": "My delivery is late", "short": "Delivery delay" },
+    "missing": { "title": "An item is missing", "short": "Missing item" },
+    "wrong": { "title": "I got the wrong order", "short": "Wrong delivery" },
+    "other": "Type it myself"
+  },
+  "chat": {
+    "status": "AI support available",
+    "intro": "I found your order. Tell me what went wrong and I’ll check the required data and take the next action.",
+    "placeholder": "Tell us what happened",
+    "attach": "Attach photo",
+    "attached": "Photo attached",
+    "photoIncluded": "Photo included",
+    "send": "Send message",
+    "enterHint": "Enter to send",
+    "draftReady": "I drafted a message from your selection. Review it and send it when ready.",
+    "requiredHint": "Please attach a photo so we can verify the wrong delivery.",
+    "savedWithoutAgent": "Your message is saved on the case. The AI agent is not connected yet, so no lookup or refund was run.",
+    "quickDraft": {
+      "delay": "The estimated arrival time has passed, but my delivery is not here yet.",
+      "missing": "The cola from my order was missing.",
+      "wrong": "I received food that is different from what I ordered."
+    }
+  },
+  "agent": {
+    "state": {
+      "ready": "Tell me what you need resolved",
+      "working": "Taking the required actions",
+      "waiting": "Waiting for your choice",
+      "resolved": "Action complete · chat remains open"
+    },
+    "newCase": "New case",
+    "thinking": "Checking your order and policy",
+    "toolLabel": "Agent action complete",
+    "nextAction": "Solutions I can execute now",
+    "analysis": {
+      "delay": "I checked the delivery data. The order is 18 minutes past its ETA and the rider is heading from the restaurant toward you. I can enable live updates or check delay compensation now.",
+      "missing": "I verified that one order of fries is included. After checking the price and CS history, I can check instant refund eligibility or ask the restaurant to confirm packing.",
+      "wrong": "I compared your order and photo. The delivered food appears different from your order. I can request redelivery now or send the full context to a human agent."
+    },
+    "tools": {
+      "delay": "Checked order, rider location, and ETA",
+      "missing": "Checked ordered items, prices, and refund history",
+      "wrong": "Compared ordered items, photo, and delivery data",
+      "trackingEnabled": "Enabled live delivery notifications",
+      "policyChecked": "Checked delay policy and eligibility",
+      "refundPolicyChecked": "Checked price, refund policy, and duplicate refunds",
+      "merchantRequested": "Created a merchant confirmation and sent an alert",
+      "redeliveryCreated": "Created a redelivery order and notified the restaurant",
+      "escalationCreated": "Escalated the order, photo, and AI findings",
+      "couponIssued": "Issued delay compensation coupon",
+      "refundExecuted": "Requested a partial refund to the original payment method",
+      "noAction": "Kept the current delivery without an additional action"
+    },
+    "actions": {
+      "trackDelivery": "Turn on delivery updates",
+      "checkCompensation": "Check delay compensation",
+      "checkRefund": "Check instant refund",
+      "requestMerchant": "Ask the restaurant",
+      "requestRedelivery": "Request redelivery now",
+      "escalateHuman": "Request human review",
+      "confirmCoupon": "Get ₩3,000 coupon",
+      "confirmRefund": "Refund ₩3,500 for fries",
+      "cancelAction": "Wait without extra action"
+    },
+    "results": {
+      "trackingDone": "Live delivery updates are on. I’ll notify you when the location or ETA changes. You can keep asking for help in this chat.",
+      "compensationOffer": "The delay policy applies. Would you like me to issue a ₩3,000 coupon now?",
+      "refundOffer": "This meets the automated resolution policy. I can refund ₩3,500 for the missing fries to your original payment method.",
+      "merchantPending": "I sent the restaurant a confirmation request. When they reply, the Agent will automatically continue in this chat. Progress is saved if you close the page.",
+      "redeliveryDone": "Redelivery is confirmed. The restaurant has started preparing it and the new ETA is 8:20 PM. You can track it in this chat.",
+      "escalationDone": "I sent the order, photo, and findings so the agent can decide immediately. You won’t need to explain everything again.",
+      "couponDone": "Your ₩3,000 delay coupon has been issued. You can find it in Coupons. Is there anything else to resolve?",
+      "refundDone": "The ₩3,500 refund is complete. It may take 2–3 business days to appear on your original payment method.",
+      "noAction": "Got it. The current delivery will continue, and I’ll post any status changes in this chat."
+    },
+    "followUp": "I still have the order details and actions from this case. I’ve received your follow-up and can continue from here."
+  },
+  "processing": {
+    "title": "AI is checking your order",
+    "description": "Please wait while we securely review the details we need.",
+    "steps": {
+      "intent": "Understand the inquiry",
+      "order": "Check order and delivery",
+      "policy": "Review policy and risk",
+      "decision": "Choose next action"
+    }
+  },
+  "result": {
+    "eyebrow": "AI check complete",
+    "delay": {
+      "title": "We confirmed a delivery delay",
+      "description": "The order is 18 minutes past its ETA. Your rider is on the way and no extra evidence is needed.",
+      "status": "Delivery update provided",
+      "next": "Keep tracking delivery"
+    },
+    "missing": {
+      "title": "We asked the restaurant to confirm",
+      "description": "We verified that fries were included in your order. AI will continue once the restaurant responds.",
+      "status": "Waiting for restaurant",
+      "next": "View progress"
+    },
+    "wrong": {
+      "title": "Your evidence was submitted",
+      "description": "We sent the order details and photo together. A human agent is reviewing the case.",
+      "status": "Under agent review",
+      "next": "View case"
+    },
+    "caseNumber": "Case CS-240924-18",
+    "newInquiry": "Start a new inquiry"
+  },
+  "trust": {
+    "title": "What AI checks",
+    "items": ["Current order and delivery status", "Previous cases for this order", "Issue-specific support policy"],
+    "note": "We only check necessary information. If AI cannot resolve it, a human agent receives the full context."
+  },
+  "nav": { "home": "Home", "orders": "Orders", "cases": "Cases", "profile": "MY" }
+}

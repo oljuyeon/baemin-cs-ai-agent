@@ -1,0 +1,31 @@
+@font-face {
+  font-family: "BM Hanna Pro";
+  src: url("/fonts/BMHANNAPro.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  --color-primary: #2ac1bc;
+  --color-primary-dark: #158e8a;
+  --color-primary-soft: #dff8f5;
+  --color-primary-pale: #f0fbfa;
+  --color-ink: #202425;
+  --color-text: #404747;
+  --color-muted: #7a8484;
+  --color-line: #e6eceb;
+  --color-surface: #ffffff;
+  --color-background: #f7f9f8;
+  --color-lime: #dff36a;
+  --color-peach: #ffe7d6;
+  --color-lavender: #e9e7ff;
+  --shadow-card: 0 22px 60px rgba(34, 89, 87, 0.11);
+  --shadow-soft: 0 12px 32px rgba(24, 83, 80, 0.08);
+  --radius-sm: 14px;
+  --radius-md: 22px;
+  --radius-lg: 32px;
+  --radius-pill: 999px;
+  --shell: 1180px;
+  --font-sans: "BM Hanna Pro", Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}

@@ -1,0 +1,87 @@
+{
+  "hero": {
+    "eyebrow": "AI support without the wait",
+    "title": "Delivery issues,\nresolved right away",
+    "description": "AI reviews your order, delivery, and support history, then keeps the resolution moving.",
+    "primaryCta": "Start the AI demo",
+    "secondaryCta": "Explore each role",
+    "status": "AI is checking now",
+    "message": "I checked your order and delivery. It is currently 18 minutes past the estimated arrival time.",
+    "resolution": "Delay compensation policy checked",
+    "time": "First guidance in about 3 minutes"
+  },
+  "roles": {
+    "eyebrow": "Start by role",
+    "title": "Which workspace do you need?",
+    "description": "Each role sees only the information and actions they need.",
+    "customer": {
+      "label": "Customer",
+      "title": "Report a delivery issue",
+      "description": "Describe the issue, attach a photo, and follow the resolution.",
+      "action": "Open customer view"
+    },
+    "merchant": {
+      "label": "Restaurant owner",
+      "title": "Respond to a request",
+      "description": "Review the order and quickly confirm packing or missing-item details.",
+      "action": "Open merchant view"
+    },
+    "cs": {
+      "label": "Platform CS agent",
+      "title": "Review escalated cases",
+      "description": "See the AI summary, relevant policy, and risks in one place to make the final call.",
+      "action": "Open CS view"
+    }
+  },
+  "features": {
+    "eyebrow": "What the AI Agent does",
+    "title": "From question to resolution,\nwithout losing context",
+    "description": "It goes beyond answering: it gathers missing details, checks systems, and takes the next action.",
+    "items": {
+      "understand": {
+        "number": "01",
+        "title": "Understand",
+        "description": "Classifies delays, missing items, and wrong deliveries, then asks for anything missing."
+      },
+      "check": {
+        "number": "02",
+        "title": "Check",
+        "description": "Reviews order, delivery, and CS history, and asks the merchant when needed."
+      },
+      "resolve": {
+        "number": "03",
+        "title": "Resolve",
+        "description": "Applies policy and risk checks to resolve automatically or escalate with full context."
+      }
+    }
+  },
+  "issues": {
+    "eyebrow": "PoC coverage",
+    "title": "Starting with three common issues",
+    "delay": "Delivery delay",
+    "missing": "Missing item",
+    "wrong": "Wrong delivery",
+    "note": "Other issues are safely passed to a human agent."
+  },
+  "process": {
+    "eyebrow": "Agentic workflow",
+    "agentLabel": "AI",
+    "title": "AI checks the details\nand knows when people are needed",
+    "steps": {
+      "inquiry": "Receive inquiry",
+      "data": "Check data",
+      "policy": "Policy & risk check",
+      "result": "Resolve or escalate"
+    },
+    "badge": "A resolution journey that keeps its context"
+  },
+  "finalCta": {
+    "title": "Experience a faster way\nto resolve delivery issues",
+    "description": "Use a sample order to walk through the full AI Agent flow.",
+    "button": "Enter demo mode"
+  },
+  "footer": {
+    "notice": "This service is a PoC for validating an AI-powered CS workflow.",
+    "copyright": "© 2026 RightNow AI"
+  }
+}
