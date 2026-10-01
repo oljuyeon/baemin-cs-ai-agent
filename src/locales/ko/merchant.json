@@ -1,0 +1,125 @@
+{
+  "header": {
+    "back": "메인으로",
+    "title": "사장님 확인",
+    "owner": "사장님 계정"
+  },
+  "stores": {
+    "label": "운영 매장",
+    "hint": "한 계정으로 세 매장을 운영 중이에요. 확인할 매장을 선택하세요.",
+    "id": "매장 {{storeId}}"
+  },
+  "alerts": {
+    "newRequest": "새 확인 요청이 도착했어요.",
+    "overdue": "3분 넘게 답하지 않은 요청이 있어요.",
+    "dismiss": "알림 닫기",
+    "sampleCreated": "샘플 확인 요청을 이 매장 Queue에 넣었어요.",
+    "sampleCreatedMany": "샘플 {{count}}건을 이 매장 Queue에 넣었어요.",
+    "sampleExists": "이 샘플은 이미 대기 중이에요.",
+    "sampleNoneLeft": "넣을 수 있는 샘플이 더 없어요.",
+    "sampleFailed": "샘플 요청을 만들지 못했어요."
+  },
+  "queue": {
+    "title": "확인 요청",
+    "empty": "대기 중인 확인 요청이 없어요.",
+    "emptyHint": "아래 샘플을 넣으면, 에이전트 없이 확인 요청이 들어온 모습을 볼 수 있어요.",
+    "sample": "남은 샘플 모두 넣기",
+    "sampleLegend": "샘플 요청",
+    "sampleWaiting": "대기 중",
+    "count": "{{count}}건",
+    "overdue": "미응답"
+  },
+  "samples": {
+    "s001-missing-bulgogi": "고가 누락 · 불고기정식",
+    "s001-missing-doenjang": "고가 누락 · 된장찌개",
+    "s001-wrong-kimchi": "오배달 · 김치찌개",
+    "s001-missing-jeyuk": "고가 누락 · 제육정식",
+    "s001-wrong-bibim": "오배달 · 비빔밥",
+    "s001-missing-galbi": "고가 누락 · 갈비탕",
+    "s001-wrong-naengmyeon": "오배달 · 물냉면",
+    "s002-wrong-yangnyeom": "오배달 · 양념치킨",
+    "s002-missing-cola": "사이드 누락 · 콜라",
+    "s002-missing-ganjang": "고가 누락 · 간장치킨",
+    "s002-missing-beer": "사이드 누락 · 맥주",
+    "s002-wrong-sunsall": "오배달 · 순살양념",
+    "s002-missing-honey": "사이드 누락 · 허니콤보 콜라",
+    "s002-missing-half": "메뉴 누락 · 양념반마리",
+    "s003-missing-tteok": "메뉴 누락 · 떡볶이",
+    "s003-missing-twigim": "메뉴 누락 · 튀김세트",
+    "s003-wrong-modum": "오배달 · 모둠튀김",
+    "s003-missing-gimbap": "메뉴 누락 · 참치김밥",
+    "s003-missing-sundae": "메뉴 누락 · 순대",
+    "s003-missing-gimbap-rabokki": "메뉴 누락 · 김밥",
+    "s003-wrong-jjolmyeon": "오배달 · 쫄면"
+  },
+  "detail": {
+    "emptyTitle": "확인할 주문을 선택해 주세요",
+    "emptyBody": "대기 목록에서 주문을 고르면 메뉴, 고객 주장, 첨부 사진을 볼 수 있어요.",
+    "orderId": "주문번호",
+    "orderedAt": "주문 시각",
+    "items": "주문 메뉴",
+    "claim": "고객 주장",
+    "item": "확인 메뉴",
+    "photos": "고객 첨부 사진",
+    "photoCaption": "첨부 사진",
+    "noPhoto": "첨부된 사진이 없어요.",
+    "opening": "이 주문을 확인해 주세요. 아래에서 선택하거나, 선택 없이 문장으로 답할 수 있습니다.",
+    "agentName": "상담 에이전트",
+    "merchantName": "사장님",
+    "question": "확인 결과를 선택해 주세요",
+    "messageLabel": "메시지",
+    "messagePlaceholder": "선택에 대한 설명이나, 선택 없이 답할 내용을 적어 주세요.",
+    "send": "보내기",
+    "choiceSaved": "선택이 저장되었어요. 확인은 아직 끝나지 않았고, 추가 질문은 이 대화에 표시됩니다.",
+    "messageSaved": "메시지가 대화에 저장되었어요.",
+    "followUpNote": "에이전트가 더 물어보면 이 대화에 이어서 표시됩니다.",
+    "error": "응답을 저장하지 못했어요.",
+    "back": "목록으로"
+  },
+  "responses": {
+    "ADMITTED_MISSING": "누락을 인정합니다",
+    "CLAIMS_PACKED": "포장했다고 진술합니다",
+    "POSSIBLE_MISSING": "누락 가능성이 있습니다",
+    "UNKNOWN": "확인이 어렵습니다"
+  },
+  "history": {
+    "title": "처리 요청 이력",
+    "empty": "아직 응답한 요청이 없어요.",
+    "responded": "응답",
+    "status": "현재 상태",
+    "finalAction": "최종 조치",
+    "comment": "의견",
+    "noFinal": "Agent 판단 대기",
+    "noComment": "추가 의견 없음"
+  },
+  "nav": {
+    "queue": "요청",
+    "history": "이력"
+  },
+  "issue": {
+    "delivery_delay": "배달 지연",
+    "missing_item": "메뉴 누락",
+    "wrong_delivery": "오배달",
+    "other": "기타"
+  },
+  "status": {
+    "NEW": "접수",
+    "COLLECTING_INFO": "정보 확인 중",
+    "WAITING_EVIDENCE": "증빙 대기",
+    "CHECKING_DATA": "정보 확인 중",
+    "WAITING_MERCHANT": "사장님 확인 중",
+    "POLICY_CHECK": "정책 확인 중",
+    "RISK_CHECK": "리스크 확인 중",
+    "AUTO_RESOLVED": "자동 처리 완료",
+    "ESCALATED": "상담원 검토 중",
+    "CLOSED": "처리 완료"
+  },
+  "finalAction": {
+    "guide_customer": "안내",
+    "mock_coupon": "Mock 쿠폰",
+    "mock_refund": "Mock 부분 환불",
+    "mock_redelivery": "Mock 재배달",
+    "human_review": "상담원 검토",
+    "no_action": "추가 조치 없음"
+  }
+}
