@@ -1,13 +1,38 @@
-# 바로해결 AI — Main Page PoC
+# 바로해결 AI — 배달 플랫폼 CS AI Agent PoC
 
-Google PRD **배달 플랫폼 CS AI Agent PoC 기획서 틀**을 기준으로 만든 모바일 우선 메인페이지입니다. 배달 지연, 메뉴 누락, 오배달을 다루는 AI 고객센터의 개념과 고객·음식점 사장님·플랫폼 CS 담당자 역할별 진입점을 제공합니다.
+배달 지연, 메뉴 누락, 오배달 문의를 Customer, Merchant, Human CS가 하나의 `CsCase`로 이어서 처리하는 모바일 우선 PoC입니다.
 
-전체 UI 글꼴은 우아한형제들의 **배민 한나체 Pro**를 사용합니다. 공식 TTF 파일과 라이선스 전문은 `public/fonts`에 포함되어 있습니다.
+현재 공통 데이터·Tool·Policy·Risk·저장 기능과 세 역할 화면은 `main`에 통합되어 있습니다. Customer 문의도 공통 Case로 저장됩니다. 다만 현재 Case와 Observation을 보고 다음 행동을 고르는 **Dynamic Agent Loop는 아직 연결되지 않았습니다.** Merchant 확인 요청과 Human CS 이관은 임시 샘플 버튼으로 화면 흐름을 확인합니다.
+
+데이터 형식, 상태, Tool 입출력, Policy, Risk, Guardrail의 최종 기준은 [`COMMON_AGENT_CONTRACT ver4.3`](./README/COMMON_AGENT_CONTRACT%20ver4.3.md)입니다.
+
+## 현재 구현 상태
+
+| 영역 | 상태 | 설명 |
+| --- | --- | --- |
+| 공통 계약·타입 | 구현됨 | `CsCase`, 상태, 결정값, Merchant 응답, 엄격한 `ToolResult<T>` |
+| Mock Data·Tool | 구현됨 | Customer, Order, Delivery, CS 이력, Merchant, 증빙 분석, Mock Action |
+| Case Store | 구현됨 | 생성·조회·변경·구독, 역할별 조회, `localStorage` 복원, 이력 저장 |
+| Policy·Risk | 구현됨 | 허용 Action·제약과 Risk Flag·차단 Action을 분리해 반환 |
+| Customer 화면 | 부분 구현 | Case 생성과 후속 대화 저장. Agent 실행·결과·이전 문의 연결은 남음 |
+| Merchant 화면 | 구현됨 | 매장별 Queue, 구조화 응답, 자연어 대화, 응답 이력·알림 |
+| Human CS 화면 | 부분 구현 | 이관 Queue, 상세, Policy, 최종 처리·이력. 전체 Risk 표시 보완 필요 |
+| Dynamic Agent Loop | 미구현 | 다음 행동 선택, Tool 실행·재판단, 자동 처리·이관 판단 필요 |
+| 전체 화면 연결 | 미완료 | 세 화면은 통합됨. 실제 Agent 요청 대신 일부 Queue를 샘플로 생성 |
+
+상세 현황과 역할별 완료 기준은 [`구현현황과_역할분담.md`](./README/구현현황과_역할분담.md)에서 확인합니다.
 
 ## 실행
 
+요구 환경:
+
+- Node.js 20 이상
+- npm
+
+의존성 설치와 개발 서버 실행:
+
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -17,70 +42,230 @@ npm run dev
 npm run build
 ```
 
-## 구조
+타입 검사:
 
-```text
-src/
-├── app/                 # 전역 라우팅
-├── components/
-│   ├── common/          # Header, Footer, Button, 언어 전환, 아이콘
-│   ├── main/            # 메인페이지 전용 섹션
-│   └── customer/        # 고객 주문·문의·AI 처리 플로우
-├── features/
-│   ├── cs/              # Case, Mock Tool, Policy, Risk, 저장 계약
-│   └── roles/           # 역할 정의 및 진입 경로
-├── i18n/                # i18next 초기화
-├── locales/
-│   ├── ko/              # common.json, main.json, customer.json
-│   └── en/              # common.json, main.json, customer.json
-├── pages/               # Main, Customer, Login, Placeholder 페이지
-├── public/fonts/        # 배민 한나체 Pro TTF 및 공식 라이선스 전문
-├── styles/              # 디자인 토큰 및 전역/반응형 스타일
-└── types/               # 공유 TypeScript 타입
+```bash
+npm run lint
 ```
 
-## 메인페이지 구성
+## 화면 파일 경로
 
-- 공통 헤더: 브랜드, 서비스/역할 앵커, 언어 전환, 로그인
-- Hero: 서비스 핵심 가치와 AI 처리 상태 미리보기
-- 역할별 진입: 고객, 음식점 사장님, 플랫폼 CS 담당자
-- 주요 기능: 문의 이해 → 정보 확인 → 해결 연결
-- PoC 범위: 배달 지연, 메뉴 누락, 오배달
-- Agentic workflow 소개
-- 데모 모드 CTA와 공통 푸터
+화면 연결은 [`src/app/router.tsx`](./src/app/router.tsx)에서 관리합니다.
 
-## 고객 화면 구성
+| 화면 | 구현 파일 | 연결된 URL | 현재 용도 |
+| --- | --- | --- | --- |
+| 메인 | [`src/pages/MainPage.tsx`](./src/pages/MainPage.tsx) | `/` | 서비스 소개와 역할별 진입 |
+| 가상 로그인 | [`src/pages/LoginPage.tsx`](./src/pages/LoginPage.tsx) | `/login` | Customer, Merchant, Human CS 역할 선택 |
+| Customer | [`src/pages/CustomerPage.tsx`](./src/pages/CustomerPage.tsx) | `/customer` | 문의 유형 선택, 고객 문장·첨부 입력, Case 생성 |
+| Merchant | [`src/pages/MerchantPage.tsx`](./src/pages/MerchantPage.tsx) | `/merchant` | 매장별 확인 요청 Queue와 응답 이력 |
+| Human CS | [`src/pages/CsPage.tsx`](./src/pages/CsPage.tsx) | `/cs` | 이관 Queue, 상세 검토, 최종 처리 이력 |
+| Policy 상세 | [`src/pages/PolicyPage.tsx`](./src/pages/PolicyPage.tsx) | `/cs/cases/:caseId/policy` | 해당 Case에 적용되는 허용 Action과 제약 확인 |
+| Demo·미등록 경로 | [`src/pages/PlaceholderPage.tsx`](./src/pages/PlaceholderPage.tsx) | `/demo`, `*` | 전체 Agent Demo 연결 예정·Not Found 표시 |
 
-- 최근 주문 정보와 현재 배달 상태
+## 핵심 처리 원칙
+
+### 하나의 Case를 세 화면이 공유
+
+Customer, Merchant, Human CS는 같은 `caseId`와 `CsCase`를 사용합니다. 화면마다 별도 Case를 만들지 않습니다.
+
+```text
+Customer 문의 접수
+→ Agent가 필요한 정보와 Tool 선택
+→ 필요하면 Merchant 확인
+→ 같은 Case로 Agent 재개
+→ 자동 처리 또는 Human CS 이관
+→ Customer 결과·이력 반영
+```
+
+현재는 첫 단계인 Customer Case 생성과 Merchant·Human CS 화면이 구현되어 있고, 그 사이를 연결할 Agent Loop가 남아 있습니다.
+
+### 고정 Workflow를 만들지 않음
+
+문의 유형에 따라 Tool 순서를 하드코딩하지 않습니다. Agent는 현재 Case와 이전 Tool Observation을 보고 다음 행동을 선택해야 합니다. Demo A~E도 검증용 예상 결과이며 전용 실행 경로가 아닙니다.
+
+### Tool은 결과만 반환
+
+Tool은 Mock 또는 외부 시스템의 결과만 반환합니다. Case 상태, `history`, `toolHistory`와 다음 행동은 Agent Loop가 관리합니다. `refund`와 `redelivery`도 실제 결제·배달을 호출하지 않는 Mock Tool입니다.
+
+### Policy와 Risk를 분리
+
+- Policy: 현재 Case에서 허용되는 Action과 제약
+- Risk: Risk Flag와 그 Flag가 막는 Action
+
+Risk Flag만으로 즉시 Human CS에 이관하지 않습니다. 허용된 추가 질문이나 조회로 해결할 수 있는지 먼저 판단합니다.
+
+## 화면별 구현 내용
+
+### Customer
+
+구현됨:
+
+- 최근 주문 형태의 주문·배달 카드
 - 배달 지연, 메뉴 누락, 오배달 빠른 선택
-- 빠른 선택 시 입력 초안만 생성하며, 사용자가 직접 전송해야 Agent가 시작
-- 자연어 상세 설명과 사진 첨부 UI
-- 채팅 문장으로 `CsCase`를 생성한다. 문의 유형별 고정 Tool 순서는 없다
-- 공통 Tool, Policy, Risk, Mock 주문 데이터를 Agent가 나중에 사용할 수 있다
-- 조치가 끝나도 대화와 주문 맥락을 유지해 후속 요청 가능
-- 모바일 하단 내비게이션과 영어 실시간 전환
+- 자연어 문의와 이미지 파일 선택 UI
+- 고객 문장으로 공통 `CsCase` 생성
+- 같은 Case에 후속 고객 대화 저장
+- 선택한 첨부 파일 이름을 `evidenceUrls`에 저장
+- `ready`, `working`, `waiting`, `resolved` 고객용 표시 상태
+- 한국어·영어 전환과 모바일 하단 내비게이션
 
-## i18n
+현재 제한:
 
-- 기본 언어는 `ko`, 추가 언어는 `en`입니다.
-- 메인페이지 문구는 `locales/{lang}/main.json`, 공통 UI는 `locales/{lang}/common.json`에서 관리합니다.
-- 헤더 언어 버튼은 새로고침 없이 언어를 전환하며 선택을 `localStorage`에 보존합니다.
-- 새 페이지를 추가할 때 `locales/ko/{page}.json`과 `locales/en/{page}.json`을 만들고 `src/i18n/index.ts`의 resources에 namespace를 등록합니다.
+- 문의 유형에 따라 샘플 주문이 고정되어 있으며 주문 변경 버튼은 아직 연결되지 않음
+- 파일 내용이나 미리보기가 아니라 파일 이름만 저장
+- Case를 저장한 뒤 Agent Tool을 실행하지 않음
+- Case 구독, 최종 결과, 처리 시각, 이전 문의 내역은 아직 화면에 연결되지 않음
 
-## 다른 페이지 추가 방법
+### Merchant
 
-1. `src/pages`에 페이지 엔트리를 생성합니다.
-2. 페이지 전용 UI는 `src/components/{page}`에 둡니다.
-3. 공용으로 승격할 요소만 `src/components/common`에 둡니다.
-4. `src/app/router.tsx`에 route를 등록합니다.
-5. 역할/도메인 데이터는 `src/features` 아래 별도 모듈로 유지합니다.
-6. 새 문구는 페이지 namespace locale JSON에 추가합니다.
+경로는 `/merchant`입니다. 한 가상 계정에서 다음 세 매장을 선택할 수 있습니다.
 
-## Assumptions / TODO
+- 한식당 `S001`
+- 치킨하우스 `S002`
+- 분식연구소 `S003`
 
-- 현재 로그인은 가상 계정 진입점이며, 사장님·CS 담당자 페이지는 placeholder입니다.
-- 고객 화면의 주문과 고객명은 Mock Data입니다. 고객 문장은 채팅 입력으로 Case에 저장됩니다.
-- 다음 Tool을 고르는 AI Agent Loop와 외부 LLM API는 아직 연결하지 않았습니다.
-- 실제 인증, 역할 기반 접근 제어, 주문·배달·CS 데이터 연동은 후속 구현 대상입니다.
-- 데모 버튼은 `/demo` placeholder로 연결됩니다. 실제 Agent workflow 시뮬레이션은 별도 페이지에서 구현합니다.
-- 배달의민족의 민트 계열 친근한 UX 톤을 참고했으며 로고와 실제 화면은 복제하지 않았습니다. 글꼴은 사용자 요청에 따라 공식 배포되는 배민 한나체 Pro를 적용했습니다.
+구현됨:
+
+- 선택한 매장의 `WAITING_MERCHANT` Case만 Queue에 표시
+- 주문 메뉴, 고객 주장, 첨부 증빙 상세
+- 다음 네 가지 구조화 응답
+  - `ADMITTED_MISSING`: 누락 인정
+  - `CLAIMS_PACKED`: 포장했다고 진술
+  - `POSSIBLE_MISSING`: 누락 가능성
+  - `UNKNOWN`: 확인 어려움
+- 선택 없이 자연어로 답하거나 선택 뒤 설명 추가
+- 선택 응답과 Merchant 대화를 같은 Case에 저장
+- 선택을 저장해도 확인을 닫지 않고 `waiting` 유지
+- 응답 이력, 새 요청 알림, 요청 후 3분 미응답 표시
+
+Agent Loop가 아직 없으므로 현재는 샘플 버튼으로 임시 확인 요청을 만듭니다. 실제 연결 후 샘플 버튼과 fixture를 제거합니다.
+
+### Human CS
+
+경로는 `/cs`이며 가상 처리 계정은 `CS001`입니다.
+
+구현됨:
+
+- `ESCALATED` Case Queue와 Human CS가 처리한 `CLOSED` 이력
+- 주문, 배달, 고객 주장, 증빙 분석, Merchant 응답·대화 표시
+- 이관 사유와 Agent Summary 분리
+- 해당 상황의 Policy 상세 페이지
+- 반복 환불 고객 표시
+- Tool Trace 요약
+- 다음 다섯 가지 처리 Action
+  - 환불 승인
+  - 환불 거절
+  - 재배달 승인
+  - 추가 정보 요청
+  - 추가 확인 요청
+- 처리 계정·시각·의견 저장 후 Case를 `CLOSED`로 전환
+- 새 이관 알림, 3분 미처리 표시, 상담 진행 표시
+
+모든 환불과 재배달은 가상 기록입니다. 현재 계약에서는 다섯 Action 모두 최종 처리이며, 추가 요청 뒤 Customer 채팅을 다시 여는 흐름은 포함하지 않습니다. Agent Loop가 아직 없으므로 이관 Queue도 샘플 버튼으로 확인합니다.
+
+## 공통 모듈
+
+공통 구현은 [`src/features/cs`](./src/features/cs)에 있습니다.
+
+| 파일 | 역할 |
+| --- | --- |
+| `types.ts` | Case, 상태, Tool, Policy, Risk와 Agent 인터페이스 |
+| `demoData.ts` | Customer, Order, Delivery, CS 이력, Merchant, 증빙 Mock Data |
+| `caseStore.ts` | Case 저장·조회·변경·구독, 역할별 조회, 각종 처리 결과 저장 |
+| `tools.ts` | Mock Tool 구현. Case를 직접 변경하지 않고 결과만 반환 |
+| `policy.ts` | Policy와 Risk 계산 |
+| `README.md` | 공통 모듈 사용 방법과 계약 요약 |
+
+주요 Tool:
+
+- `get_order`
+- `get_delivery`
+- `get_cs_history`
+- `get_policy`
+- `check_risk`
+- `analyze_evidence`
+- `request_merchant_confirmation`
+- `refund`
+- `redelivery`
+- `escalate_to_human`
+
+## 저장 방식
+
+- Case와 처리 이력: 브라우저 `localStorage`
+- 언어 선택: 브라우저 `localStorage`
+- 선택한 Merchant 매장: 브라우저 `sessionStorage`
+- 같은 브라우저의 다른 탭: `storage` 이벤트와 주기적 화면 갱신으로 변경 반영
+
+서버 데이터베이스나 실제 인증은 사용하지 않습니다. 브라우저 저장소를 지우면 PoC 데이터도 사라질 수 있습니다.
+
+## 프로젝트 구조
+
+```text
+.
+├── README.md                       # 프로젝트 대표 문서
+├── README/                         # 계약·정책·구현 현황 문서
+├── public/fonts/                   # 배민 폰트와 라이선스
+└── src/
+    ├── app/                        # 전역 Router
+    ├── components/
+    │   ├── common/                 # 공통 UI
+    │   ├── main/                   # 메인 화면
+    │   ├── customer/               # Customer 화면
+    │   ├── merchant/               # Merchant 화면
+    │   └── cs/                     # Human CS 화면
+    ├── features/
+    │   ├── cs/                     # 공통 계약, Store, Tool, Policy, Risk
+    │   ├── merchant/               # Merchant Queue와 임시 샘플
+    │   ├── csDesk/                 # Human CS Queue와 임시 샘플
+    │   └── roles/                  # 역할 정의와 진입 경로
+    ├── i18n/                       # i18next 설정
+    ├── locales/ko, locales/en/     # 역할별 다국어 문구
+    ├── pages/                      # 각 Route의 페이지
+    ├── styles/                     # 공통·역할별 스타일
+    └── types/                      # Customer UI 전용 타입
+```
+
+## 문서
+
+대표 `README.md`를 제외한 최상위 프로젝트 문서는 [`README/`](./README) 폴더에 모았습니다.
+
+| 문서 | 내용 |
+| --- | --- |
+| [`COMMON_AGENT_CONTRACT ver4.3.md`](./README/COMMON_AGENT_CONTRACT%20ver4.3.md) | 모든 구현 판단의 기준이 되는 공통 계약 |
+| [`POLICY.md`](./README/POLICY.md) | 현재 `policy.ts`에 구현된 Policy·Risk 규칙 |
+| [`구현현황과_역할분담.md`](./README/구현현황과_역할분담.md) | 현재 구현 상태, 역할 경계, 남은 작업의 상세 범위 |
+
+공통 모듈 자체의 사용 예시는 [`src/features/cs/README.md`](./src/features/cs/README.md)에 있습니다.
+
+## i18n과 디자인
+
+- 기본 언어: 한국어
+- 추가 언어: 영어
+- 번역 namespace: `common`, `main`, `customer`, `merchant`, `cs`
+- 언어 변경은 새로고침 없이 반영되며 선택을 저장
+- 메인 UI 글꼴은 우아한형제들의 배민 한나체 Pro 사용
+- 공식 TTF와 라이선스 전문은 `public/fonts`에 포함
+
+배달의민족의 민트 계열 친근한 UX 톤을 참고했으며 실제 로고나 운영 화면을 복제하지 않았습니다.
+
+## 남은 핵심 작업
+
+1. Dynamic Agent Loop 구현
+2. Customer 화면의 주문 선택·Case 구독·최종 결과·문의 이력 연결
+3. 실제 Merchant 확인 요청과 응답 후 Agent 재개
+4. 실제 Human CS 이관과 Customer 결과 반영
+5. Human CS 화면의 전체 Risk Flag 표시
+6. Demo A~E 회귀 테스트와 공통 계약 완료 기준 자동화
+7. 실제 흐름 검증 후 Merchant·Human CS 샘플 기능 제거
+
+세부 범위와 완료 기준은 [`구현현황과_역할분담.md의 남은 작업 상세`](./README/구현현황과_역할분담.md#남은-작업-상세)를 따릅니다.
+
+## PoC 제한 사항
+
+- 외부 LLM API와 Dynamic Agent Loop 미연결
+- 실제 로그인·권한 관리 미구현
+- 실제 주문·배달·CS·결제 시스템 미연동
+- 실제 이미지 분석 대신 URL별 Mock 증빙 분석 사용
+- 환불과 재배달은 Mock 결과만 생성
+- 음성 입력·STT는 현재 범위에서 제외
+- `/demo`는 아직 Placeholder
