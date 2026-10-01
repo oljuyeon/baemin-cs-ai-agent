@@ -26,7 +26,11 @@ export type AgentDecision =
   | 'WAITING_MERCHANT'
   | 'ESCALATE'
 
-export type MerchantResponse = 'PACKED' | 'POSSIBLE_MISSING' | 'UNKNOWN'
+export type MerchantResponse =
+  | 'ADMITTED_MISSING'
+  | 'CLAIMS_PACKED'
+  | 'POSSIBLE_MISSING'
+  | 'UNKNOWN'
 
 export type RiskFlag =
   | 'duplicate_refund'
@@ -44,6 +48,12 @@ export type FinalAction =
 
 export interface ConversationMessage {
   role: 'customer' | 'agent'
+  content: string
+  createdAt: string
+}
+
+export interface MerchantConversationMessage {
+  role: 'merchant' | 'agent'
   content: string
   createdAt: string
 }
@@ -128,6 +138,7 @@ export interface MerchantConfirmationData {
   itemName?: string
   customerClaim: string
   evidenceUrl?: string
+  conversation: MerchantConversationMessage[]
   response?: MerchantResponse
   comment?: string
   status: 'waiting' | 'completed'
@@ -220,14 +231,15 @@ export interface CsCase {
 
 export interface PolicyResult {
   policyId: string
-  requiresMerchantConfirmation: boolean
   allowedActions: FinalAction[]
+  constraints: string[]
   reason: string
 }
 
 export interface RiskResult {
   flags: RiskFlag[]
-  autoActionAllowed: boolean
+  blockedActions: FinalAction[]
+  reason: string
 }
 
 export interface MockActionResult {
@@ -282,6 +294,10 @@ export interface AgentTools {
 export type AgentAction =
   | {
       type: 'ASK_CUSTOMER'
+      question: string
+    }
+  | {
+      type: 'ASK_MERCHANT'
       question: string
     }
   | {
@@ -350,11 +366,17 @@ export interface CaseStore {
     content: string,
   ): CsCase
   recordEvidenceAnalysis(caseId: string, analysis: EvidenceAnalysis): CsCase
+  appendMerchantConversation(
+    caseId: string,
+    role: MerchantConversationMessage['role'],
+    content: string,
+  ): CsCase
   recordMerchantResponse(
     caseId: string,
     response: MerchantResponse,
     comment?: string,
   ): CsCase
+  completeMerchantConfirmation(caseId: string): CsCase
   recordHumanCsResolution(
     caseId: string,
     action: HumanCsAction,
