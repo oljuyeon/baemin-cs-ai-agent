@@ -26,14 +26,25 @@
 .cs-panel__title h2, .cs-detail h3 { font-size: 1.05rem; letter-spacing: -0.02em; }
 .cs-panel__title div { display: flex; align-items: baseline; gap: 8px; }
 .cs-panel__title .cs-sample { width: auto; min-height: 36px; margin-top: 0; padding: 0 14px; font-size: 0.78rem; }
-.cs-panel__title span, .cs-detail__heading span { padding: 5px 10px; border-radius: var(--radius-pill); background: #eef0ff; color: #3c348f; font-size: 0.72rem; font-weight: 800; }
+.cs-panel__title span, .cs-detail__heading span, .cs-customer-name { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill); background: #eef0ff; color: #3c348f; font-size: 0.72rem; font-weight: 800; }
+.cs-red-flag { display: inline-grid; width: 14px; height: 14px; color: #d63b30; }
+.cs-red-flag svg { width: 14px; height: 14px; }
 .cs-detail__heading { align-items: flex-start; margin-bottom: 16px; }
 .cs-detail__heading h2 { font-size: 1.7rem; letter-spacing: -0.04em; }
 .cs-list { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
 .cs-list button { display: grid; gap: 6px; width: 100%; padding: 14px; border: 1px solid var(--color-line); border-radius: 16px; background: #fff; text-align: left; cursor: pointer; }
 .cs-list button.is-selected { border-color: #b7b3ef; background: #f7f7ff; }
 .cs-list button > span { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cs-list button.cs-queue-item { display: flex; align-items: stretch; justify-content: space-between; gap: 16px; }
+.cs-list button.cs-queue-item > .cs-list__main { display: grid; flex: 1; align-content: start; justify-content: start; gap: 6px; }
+.cs-list button.cs-queue-item > .cs-list__side { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 18px; }
 .cs-list strong { font-size: 0.95rem; }
+.cs-list button.cs-queue-item.is-overdue { border-color: #d63b30; background: #fff1ee; }
+.cs-list button.cs-queue-item.is-overdue.is-selected { border-color: #d63b30; background: #ffe8e4; }
+.cs-queue-tag { background: none; color: #d63b30; font-size: 1rem; font-style: normal; font-weight: 800; line-height: 1.2; }
+.cs-queue-state { font-style: normal; font-weight: 800; }
+.cs-queue-state--overdue { color: #d63b30; }
+.cs-queue-state--progress { color: #4f46c6; }
 .cs-list small, .cs-muted, .cs-facts dt { color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: 0.72rem; }
 .cs-list em { color: var(--color-text); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: 0.82rem; font-style: normal; line-height: 1.45; }
 .cs-empty { display: grid; gap: 6px; margin-top: 14px; padding: 18px; border-radius: 16px; background: #f7f7fb; }
@@ -47,6 +58,12 @@
 .cs-sample:disabled, .cs-submit:disabled { cursor: default; opacity: 0.55; }
 .cs-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 16px; }
 .cs-facts div { padding: 12px; border-radius: 14px; background: #f7f7fb; }
+.cs-facts__customer { grid-column: 1 / -1; }
+.cs-facts__customer dd { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; align-items: baseline; }
+.cs-customer-refund { display: flex; align-items: baseline; gap: 8px; }
+.cs-customer-refund strong { color: #4f46c6; font-weight: 800; }
+.cs-customer-orders { padding-left: 12px; color: inherit; }
+.cs-risk--inline { margin-top: 8px; padding: 0; background: transparent; border: 0; }
 .cs-facts dd { margin: 4px 0 0; font-size: 0.92rem; }
 .cs-detail h3 { margin: 16px 0 8px; }
 .cs-items { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
@@ -79,6 +96,28 @@
 .cs-trace ul { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
 .cs-trace li { color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: 0.78rem; }
 .cs-bottom-nav { display: none; }
+.cs-summary, .cs-risk, .cs-policy-card { display: grid; gap: 8px; margin-top: 14px; padding: 16px; border-radius: 18px; }
+.cs-summary { background: #eef0ff; }
+.cs-summary p, .cs-risk p, .cs-policy-card p, .cs-policy-page__eyebrow { margin: 0; color: #4f46c6; font-size: 0.75rem; font-weight: 800; }
+.cs-summary strong { font-size: 1.15rem; letter-spacing: -0.03em; line-height: 1.45; }
+.cs-risk { background: #fff1ee; border: 1px solid #f0c7c0; }
+.cs-risk--clear { background: #f7f7fb; border: 1px solid var(--color-line); }
+.cs-risk--clear p, .cs-risk--clear strong { color: var(--color-muted); }
+.cs-risk ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.cs-risk li { display: grid; gap: 2px; }
+.cs-risk strong { color: #8d2f24; font-size: 1rem; }
+.cs-risk span, .cs-policy-card span { color: var(--color-text); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: 0.86rem; line-height: 1.5; }
+.cs-facts__customer .cs-risk--inline { gap: 8px; margin: 8px 0 0; padding: 10px 12px; list-style: none; border-radius: 12px; }
+.cs-policy-card { background: #fff; border: 1px solid #d9d6f5; }
+.cs-policy-card strong { font-size: 1.05rem; }
+.cs-policy-card a, .cs-policy-page__back, .cs-policy-link { color: #4f46c6; font-size: 0.86rem; font-weight: 800; }
+.cs-policy-link { display: inline-block; margin-top: 14px; }
+.cs-policy-page { display: grid; gap: 12px; margin-top: 18px; padding: 24px; border: 1px solid var(--color-line); border-radius: 24px; background: #fff; }
+.cs-policy-page h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); letter-spacing: -0.04em; }
+.cs-policy-page h2 { margin-top: 8px; font-size: 1.05rem; }
+.cs-policy-page blockquote { margin: 0; padding: 16px; border-radius: 16px; background: #eef0ff; font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: 1rem; line-height: 1.55; }
+.cs-policy-page__back { display: inline-flex; align-items: center; gap: 6px; }
+.cs-policy-page__back svg { width: 16px; height: 16px; }
 
 @media (max-width: 820px) {
   .cs-shell { width: min(calc(100% - 28px), 680px); }
@@ -98,4 +137,6 @@
   .cs-header__inner { height: 62px; }
   .cs-header__title > span { display: none; }
   .cs-facts { grid-template-columns: 1fr; }
+  .cs-facts__customer dd { grid-template-columns: 1fr; }
+  .cs-customer-orders { padding-left: 0; }
 }

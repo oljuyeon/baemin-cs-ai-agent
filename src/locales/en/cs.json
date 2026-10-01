@@ -26,10 +26,18 @@
     "count": "{{count}}",
     "emptyTitle": "No escalated cases",
     "emptyBody": "Cases appear here when a customer issue is escalated. Samples can fill the queue for now.",
-    "overdue": "Waiting",
+    "overdue": "Not started",
+    "inProgress": "In consultation",
     "sampleAll": "Add remaining samples",
     "sampleWaiting": "Queued",
     "sampleHint": "Temporary samples until the agent exists. Each one enters the queue when pressed."
+  },
+  "queueTag": {
+    "claim_conflict": "Claim conflict",
+    "unknown": "Unknown",
+    "frequent_refund": "Repeat refund",
+    "evidence_mismatch": "Evidence mismatch",
+    "order_claim_mismatch": "Not on order"
   },
   "samples": {
     "packed-rice": "Claim conflict · rice",
@@ -45,8 +53,11 @@
     "store": "Store",
     "total": "Total",
     "customer": "Customer",
-    "customerMeta": "{{orders}} recent orders · {{refunds}} refunds in 30 days",
+    "recentOrders": "{{count}} recent orders",
+    "refunds30d": "Refunds within the last 30 days",
+    "refundCount": "{{count}}",
     "delivery": "Delivery",
+    "orderStatus": "Order status",
     "delay": "{{minutes}} min vs ETA",
     "noDelivery": "No delivery record",
     "loading": "Loading",
@@ -59,8 +70,13 @@
     "merchant": "Store reply",
     "handoff": "Escalation reason",
     "noReason": "No escalation reason was stored.",
-    "policy": "Policy",
+    "summaryLabel": "Agent Summary",
+    "noSummary": "The agent did not leave a summary.",
+    "riskLabel": "Risk Flag",
+    "policy": "Applied policy",
     "none": "None",
+    "noPolicyReason": "The policy sentence for this case is not ready.",
+    "openPolicy": "View the policy for this case",
     "noRisk": "No risk flags",
     "trace": "Lookup trace {{count}}",
     "traceOk": "ok",
@@ -85,6 +101,11 @@
     "emptyBody": "Saved decisions show up here.",
     "closed": "Closed",
     "noComment": "No comment"
+  },
+  "orderStatus": {
+    "delivering": "Delivering",
+    "delivered": "Delivered",
+    "picked_up": "Picked up"
   },
   "nav": {
     "queue": "Queue",
@@ -120,12 +141,37 @@
     "order_claim_mismatch": "Not on the order",
     "evidence_mismatch": "Evidence mismatch"
   },
+  "riskDetail": {
+    "duplicate_refund": "This order and item already have a completed refund.",
+    "frequent_refund": "Five or more refunds within the last 30 days block automatic handling.",
+    "order_claim_mismatch": "The claimed item is not on this order.",
+    "evidence_mismatch": "The photo does not match the customer's description."
+  },
   "policy": {
     "MERCHANT_CLAIM_CONFLICT": "Claim conflict",
     "MERCHANT_UNKNOWN": "Store could not confirm",
     "MISSING_ITEM_AFTER_MERCHANT_CONFIRMATION": "Missing after store check",
     "WRONG_DELIVERY_NEEDS_REVIEW": "Wrong delivery needs review",
-    "MISSING_ITEM_NEEDS_MORE_INFO": "Order needs review"
+    "WRONG_DELIVERY_NEEDS_MERCHANT": "Wrong delivery needs the store",
+    "WRONG_DELIVERY_REDELIVERY_AFTER_MERCHANT": "Redelivery after store check",
+    "MISSING_ITEM_NEEDS_MORE_INFO": "Order needs review",
+    "HIGH_PRICE_MERCHANT_CONFIRMATION": "High-price item needs the store",
+    "LOW_PRICE_MISSING_REFUND": "Low-price missing refund",
+    "DELIVERY_DELAY_NEEDS_DATA": "Delivery data needed",
+    "DELIVERY_DELAYED": "Delivery delay",
+    "DELIVERY_ON_TIME": "On time",
+    "OUT_OF_SCOPE": "Outside MVP scope"
+  },
+  "policyPage": {
+    "back": "Back to the case",
+    "eyebrow": "Policy for this situation",
+    "allowed": "Allowed actions",
+    "merchant": "Store confirmation",
+    "merchantYes": "Required",
+    "merchantNo": "Not required",
+    "situation": "Current situation",
+    "missingTitle": "No case for this policy",
+    "missingBody": "Open a case from the queue, then view its policy."
   },
   "finalAction": {
     "guide_customer": "Guide customer",

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { findMerchant, type CsCase } from '../../features/cs'
-import { isOverdueEscalation } from '../../features/csDesk/desk'
-import type { EscalationSample } from '../../features/csDesk/sampleEscalation'
+import { isCsInProgress, isOverdueEscalation } from '../../features/csDesk/desk'
+import { queueTagForCase, type EscalationSample } from '../../features/csDesk/sampleEscalation'
 
 interface Props {
   cases: CsCase[]
@@ -31,6 +31,7 @@ export function EscalationQueue({
 }: Props) {
   const { t, i18n } = useTranslation('cs')
   const waiting = new Set(waitingSampleIds)
+  const pendingSamples = samples.filter((sample) => !waiting.has(sample.id))
   return (
     <section className="cs-panel">
       <div className="cs-panel__title">
@@ -38,32 +39,32 @@ export function EscalationQueue({
           <h2>{t('queue.title')}</h2>
           <span>{t('queue.count', { count: cases.length })}</span>
         </div>
-        <button
-          className="cs-sample"
-          type="button"
-          disabled={creating || samples.every((sample) => waiting.has(sample.id))}
-          onClick={onCreateAll}
-        >
-          {t('queue.sampleAll')}
-        </button>
+        {pendingSamples.length > 0 && (
+          <button
+            className="cs-sample"
+            type="button"
+            disabled={creating}
+            onClick={onCreateAll}
+          >
+            {t('queue.sampleAll')}
+          </button>
+        )}
       </div>
-      <div className="cs-samples">
-        <span>{t('queue.sampleHint')}</span>
-        {samples.map((sample) => {
-          const isWaiting = waiting.has(sample.id)
-          return (
+      {pendingSamples.length > 0 && (
+        <div className="cs-samples">
+          <span>{t('queue.sampleHint')}</span>
+          {pendingSamples.map((sample) => (
             <button
               key={sample.id}
               type="button"
-              disabled={creating || isWaiting}
+              disabled={creating}
               onClick={() => onCreateSample(sample.id)}
             >
               {t(`samples.${sample.id}`)}
-              {isWaiting ? ` · ${t('queue.sampleWaiting')}` : ''}
             </button>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      )}
       {cases.length === 0 ? (
         <div className="cs-empty">
           <strong>{t('queue.emptyTitle')}</strong>
@@ -72,25 +73,31 @@ export function EscalationQueue({
       ) : (
         <ul className="cs-list">
           {cases.map((caseData) => {
-            const overdue = isOverdueEscalation(caseData, now)
+            const inProgress = isCsInProgress(caseData.caseId)
+            const overdue = !inProgress && isOverdueEscalation(caseData, now)
             const store = findMerchant(caseData.storeId)
+            const tag = queueTagForCase(caseData)
             return (
               <li key={caseData.caseId}>
                 <button
                   type="button"
-                  className={caseData.caseId === selectedId ? 'is-selected' : undefined}
+                  className={['cs-queue-item', caseData.caseId === selectedId && 'is-selected', overdue && 'is-overdue'].filter(Boolean).join(' ')}
                   onClick={() => onSelect(caseData.caseId)}
                 >
-                  <span>
+                  <span className="cs-list__main">
                     <strong>#{caseData.orderId}</strong>
-                    <small>{formatWhen(caseData.updatedAt, i18n.language)}</small>
+                    <em>
+                      {t(`issue.${caseData.issueType}`)}
+                      {store ? ` · ${store.storeName}` : ''}
+                      {inProgress && <> · <b className="cs-queue-state cs-queue-state--progress">{t('queue.inProgress')}</b></>}
+                      {overdue && <> · <b className="cs-queue-state cs-queue-state--overdue">{t('queue.overdue')}</b></>}
+                    </em>
+                    <em>{caseData.customerClaim}</em>
                   </span>
-                  <em>
-                    {t(`issue.${caseData.issueType}`)}
-                    {store ? ` · ${store.storeName}` : ''}
-                    {overdue ? ` · ${t('queue.overdue')}` : ''}
-                  </em>
-                  <em>{caseData.customerClaim}</em>
+                  <span className="cs-list__side">
+                    <small>{formatWhen(caseData.updatedAt, i18n.language)}</small>
+                    {tag && <b className="cs-queue-tag">{t(`queueTag.${tag}`)}</b>}
+                  </span>
                 </button>
               </li>
             )

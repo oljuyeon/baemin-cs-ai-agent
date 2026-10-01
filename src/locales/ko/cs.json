@@ -27,9 +27,17 @@
     "emptyTitle": "대기 중인 이관 건이 없어요",
     "emptyBody": "고객 문의에서 이관되면 여기에 나타납니다. 지금은 샘플로 화면을 볼 수 있어요.",
     "overdue": "미처리",
+    "inProgress": "상담 진행중",
     "sampleAll": "남은 샘플 모두 넣기",
     "sampleWaiting": "이관됨",
     "sampleHint": "에이전트 전의 임시 샘플입니다. 누르면 대기 목록에 들어옵니다."
+  },
+  "queueTag": {
+    "claim_conflict": "주장 충돌",
+    "unknown": "확인 불가",
+    "frequent_refund": "반복 환불",
+    "evidence_mismatch": "증빙 불일치",
+    "order_claim_mismatch": "주문 불일치"
   },
   "samples": {
     "packed-rice": "주장 충돌 · 공깃밥",
@@ -45,8 +53,11 @@
     "store": "매장",
     "total": "결제 금액",
     "customer": "고객",
-    "customerMeta": "최근 주문 {{orders}} · 30일 환불 {{refunds}}",
+    "recentOrders": "최근 주문 {{count}}건",
+    "refunds30d": "최근 30일 이내 환불",
+    "refundCount": "{{count}}건",
     "delivery": "배달",
+    "orderStatus": "주문 상태",
     "delay": "예상 시각 대비 {{minutes}}분",
     "noDelivery": "배달 정보 없음",
     "loading": "불러오는 중",
@@ -59,8 +70,13 @@
     "merchant": "매장 응답",
     "handoff": "이관 사유",
     "noReason": "저장된 이관 사유가 없습니다.",
-    "policy": "정책",
+    "summaryLabel": "Agent Summary",
+    "noSummary": "에이전트가 남긴 요약이 없습니다.",
+    "riskLabel": "Risk Flag",
+    "policy": "적용 정책",
     "none": "없음",
+    "noPolicyReason": "이 상황에 대한 정책 문장을 아직 계산하지 못했습니다.",
+    "openPolicy": "이 상황의 정책 보기",
     "noRisk": "리스크 플래그 없음",
     "trace": "확인 기록 {{count}}",
     "traceOk": "성공",
@@ -85,6 +101,11 @@
     "emptyBody": "최종 처리를 저장하면 여기에 남습니다.",
     "closed": "종료",
     "noComment": "추가 의견 없음"
+  },
+  "orderStatus": {
+    "delivering": "배달 중",
+    "delivered": "배달 완료",
+    "picked_up": "픽업 완료"
   },
   "nav": {
     "queue": "이관",
@@ -120,12 +141,37 @@
     "order_claim_mismatch": "주문과 주장 불일치",
     "evidence_mismatch": "증빙 불일치"
   },
+  "riskDetail": {
+    "duplicate_refund": "같은 주문, 같은 메뉴에 이미 환불 기록이 있습니다.",
+    "frequent_refund": "최근 30일 이내 환불이 5회 이상이라 자동 처리를 멈추는 고객입니다.",
+    "order_claim_mismatch": "고객이 말한 메뉴가 이 주문에 없습니다.",
+    "evidence_mismatch": "첨부 사진이 고객 설명과 맞지 않습니다."
+  },
   "policy": {
     "MERCHANT_CLAIM_CONFLICT": "주장 충돌",
     "MERCHANT_UNKNOWN": "매장 확인 불가",
     "MISSING_ITEM_AFTER_MERCHANT_CONFIRMATION": "매장 확인 후 누락",
     "WRONG_DELIVERY_NEEDS_REVIEW": "오배달 추가 검토",
-    "MISSING_ITEM_NEEDS_MORE_INFO": "주문 정보 확인"
+    "WRONG_DELIVERY_NEEDS_MERCHANT": "오배달 매장 확인",
+    "WRONG_DELIVERY_REDELIVERY_AFTER_MERCHANT": "매장 확인 후 재배달",
+    "MISSING_ITEM_NEEDS_MORE_INFO": "주문 정보 확인",
+    "HIGH_PRICE_MERCHANT_CONFIRMATION": "고가 메뉴 매장 확인",
+    "LOW_PRICE_MISSING_REFUND": "저가 누락 환불",
+    "DELIVERY_DELAY_NEEDS_DATA": "배달 정보 필요",
+    "DELIVERY_DELAYED": "배달 지연",
+    "DELIVERY_ON_TIME": "정상 진행",
+    "OUT_OF_SCOPE": "범위 밖 문의"
+  },
+  "policyPage": {
+    "back": "이관 건으로",
+    "eyebrow": "이 상황에 적용된 정책",
+    "allowed": "허용 처리",
+    "merchant": "매장 확인",
+    "merchantYes": "필요합니다",
+    "merchantNo": "필요하지 않습니다",
+    "situation": "현재 상황",
+    "missingTitle": "정책을 볼 건이 없어요",
+    "missingBody": "이관 목록에서 건을 다시 선택한 뒤 정책을 열어 주세요."
   },
   "finalAction": {
     "guide_customer": "고객 안내",

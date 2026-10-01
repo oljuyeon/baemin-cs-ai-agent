@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { caseStore, type CsCase } from '../features/cs'
-import { CS_AGENT_ID, historyForCs, isOverdueEscalation, queueForCs } from '../features/csDesk/desk'
+import { CS_AGENT_ID, historyForCs, isCsInProgress, isOverdueEscalation, markCsInProgress, queueForCs } from '../features/csDesk/desk'
 import {
   createRemainingEscalations,
   createSampleEscalation,
@@ -41,6 +42,9 @@ export function CsPage() {
   const [now, setNow] = useState(() => Date.now())
   const narrow = useNarrowLayout()
   const seenCount = useRef<number | null>(null)
+  const appliedLink = useRef<string | null>(null)
+  const [searchParams] = useSearchParams()
+  const linkedCaseId = searchParams.get('case')
 
   const refresh = useCallback(() => {
     const nextQueue = queueForCs()
@@ -54,6 +58,17 @@ export function CsPage() {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  useEffect(() => {
+    if (!linkedCaseId || appliedLink.current === linkedCaseId) return
+    const inQueue = queue.some((caseData) => caseData.caseId === linkedCaseId)
+    const inHistory = history.some((caseData) => caseData.caseId === linkedCaseId)
+    if (!inQueue && !inHistory) return
+    appliedLink.current = linkedCaseId
+    setSelectedId(linkedCaseId)
+    setPanel(inQueue ? 'queue' : 'history')
+    setMobileDetail(true)
+  }, [linkedCaseId, queue, history])
 
   useEffect(() => {
     const clock = window.setInterval(() => setNow(Date.now()), 15_000)
@@ -83,6 +98,7 @@ export function CsPage() {
   }, [caseIds, refresh])
 
   const selectCase = (caseId: string, nextPanel: 'queue' | 'history') => {
+    if (nextPanel === 'queue') markCsInProgress(caseId)
     setSelectedId(caseId)
     setPanel(nextPanel)
     setMobileDetail(true)
@@ -137,7 +153,7 @@ export function CsPage() {
   const selected = queue.find((caseData) => caseData.caseId === selectedId)
     ?? history.find((caseData) => caseData.caseId === selectedId)
     ?? null
-  const overdue = queue.some((caseData) => isOverdueEscalation(caseData, now))
+  const overdue = queue.some((caseData) => isOverdueEscalation(caseData, now) && !isCsInProgress(caseData.caseId))
   const showQueue = !narrow || (panel === 'queue' && !mobileDetail)
   const showHistory = !narrow || (panel === 'history' && !mobileDetail)
   const showDetail = !narrow || mobileDetail

@@ -101,6 +101,25 @@ export function waitingSampleIds() {
   return samples.filter((sample) => waiting.some((caseData) => matchesSample(caseData, sample))).map((sample) => sample.id)
 }
 
+const tagBySample: Record<string, string> = {
+  'packed-rice': 'claim_conflict',
+  'unknown-chicken': 'unknown',
+  'frequent-stew': 'frequent_refund',
+  'evidence-tteok': 'evidence_mismatch',
+  'mismatch-cider': 'order_claim_mismatch',
+}
+
+export function queueTagForCase(caseData: CsCase) {
+  const sample = samples.find((item) => matchesSample(caseData, item))
+  if (sample) return tagBySample[sample.id]
+  if (caseData.riskFlags.includes('frequent_refund')) return 'frequent_refund'
+  if (caseData.riskFlags.includes('evidence_mismatch')) return 'evidence_mismatch'
+  if (caseData.riskFlags.includes('order_claim_mismatch')) return 'order_claim_mismatch'
+  if (caseData.merchantConfirmation?.response === 'PACKED') return 'claim_conflict'
+  if (caseData.merchantConfirmation?.response === 'UNKNOWN') return 'unknown'
+  return null
+}
+
 const toolLog = (
   toolName: ToolCallLogDraft['toolName'],
   input: unknown,

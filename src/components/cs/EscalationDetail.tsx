@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   agentTools,
@@ -8,7 +9,6 @@ import {
   type CsCase,
   type HumanCsAction,
   type OrderData,
-  type PolicyResult,
 } from '../../features/cs'
 import { CS_AGENT_ID } from '../../features/csDesk/desk'
 import { BackIcon } from '../customer/CustomerIcons'
@@ -30,7 +30,7 @@ interface Props {
 }
 
 const formatMoney = (amount: number, language: string) =>
-  new Intl.NumberFormat(language, { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount)
+  new Intl.NumberFormat(language, { maximumFractionDigits: 0 }).format(amount)
 
 const formatWhen = (value: string, language: string) =>
   new Intl.DateTimeFormat(language, {
@@ -60,7 +60,6 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
   const [comment, setComment] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [order, setOrder] = useState<OrderData | null>(null)
-  const [policy, setPolicy] = useState<PolicyResult | null>(null)
   const caseId = caseData?.caseId
   const updatedAt = caseData?.updatedAt
 
@@ -73,7 +72,6 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
   useEffect(() => {
     if (!caseData) {
       setOrder(null)
-      setPolicy(null)
       return
     }
     let cancelled = false
@@ -84,8 +82,6 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
         const result = await agentTools.getOrder({ orderId: current.orderId })
         if (!cancelled && result.status === 'success') setOrder(result.data)
       }
-      const policyResult = await agentTools.getPolicy({ caseData: current })
-      if (!cancelled && policyResult.status === 'success') setPolicy(policyResult.data)
     })()
     return () => {
       cancelled = true
@@ -132,7 +128,17 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
           <h2>#{caseData.orderId}</h2>
           <p className="cs-muted">{t(`issue.${caseData.issueType}`)} · {t(`status.${caseData.status}`)}</p>
         </div>
-        <span>{customer?.name ?? caseData.customerId}</span>
+        <span className="cs-customer-name">
+          {customer?.name ?? caseData.customerId}
+          {caseData.riskFlags.includes('frequent_refund') && (
+            <i className="cs-red-flag" title={t('risk.frequent_refund')} aria-label={t('risk.frequent_refund')}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 3v18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M6 4h12l-3.2 4L18 12H6" fill="currentColor" />
+              </svg>
+            </i>
+          )}
+        </span>
       </div>
 
       <dl className="cs-facts">
@@ -145,19 +151,35 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
           <dd>{order ? formatMoney(order.totalAmount, i18n.language) : t('detail.loading')}</dd>
         </div>
         <div>
-          <dt>{t('detail.customer')}</dt>
-          <dd>
-            {customer
-              ? t('detail.customerMeta', { orders: customer.recentOrderCount, refunds: customer.refundCount30d })
-              : caseData.customerId}
-          </dd>
-        </div>
-        <div>
           <dt>{t('detail.delivery')}</dt>
           <dd>
             {caseData.delivery
               ? t('detail.delay', { minutes: caseData.delivery.delayMinutes })
               : t('detail.noDelivery')}
+          </dd>
+        </div>
+        <div>
+          <dt>{t('detail.orderStatus')}</dt>
+          <dd>
+            {order
+              ? t(`orderStatus.${order.orderStatus}`, { defaultValue: order.orderStatus })
+              : t('detail.loading')}
+          </dd>
+        </div>
+        <div className="cs-facts__customer">
+          <dt>{t('detail.customer')}</dt>
+          <dd>
+            {customer ? (
+              <>
+                <span className="cs-customer-refund">
+                  {t('detail.refunds30d')}
+                  <strong>{t('detail.refundCount', { count: customer.refundCount30d })}</strong>
+                </span>
+                <span className="cs-customer-orders">
+                  {t('detail.recentOrders', { count: customer.recentOrderCount })}
+                </span>
+              </>
+            ) : caseData.customerId}
           </dd>
         </div>
       </dl>
@@ -206,16 +228,13 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
 
       <h3>{t('detail.handoff')}</h3>
       <blockquote>{caseData.escalationReason || t('detail.noReason')}</blockquote>
-      {caseData.agentSummary && <p className="cs-muted">{caseData.agentSummary}</p>}
-      <p className="cs-muted">
-        {t('detail.policy')} {caseData.appliedPolicy ? t(`policy.${caseData.appliedPolicy}`, { defaultValue: caseData.appliedPolicy }) : t('detail.none')}
-        {policy?.reason ? ` — ${policy.reason}` : ''}
-      </p>
-      <div className="cs-samples">
-        {caseData.riskFlags.length === 0
-          ? <span>{t('detail.noRisk')}</span>
-          : caseData.riskFlags.map((flag) => <button key={flag} type="button" disabled>{t(`risk.${flag}`)}</button>)}
-      </div>
+
+      <section className="cs-summary">
+        <p>{t('detail.summaryLabel')}</p>
+        <strong>{caseData.agentSummary || t('detail.noSummary')}</strong>
+      </section>
+
+      <Link className="cs-policy-link" to={`/cs/cases/${caseData.caseId}/policy`}>{t('detail.openPolicy')}</Link>
 
       {caseData.toolHistory.length > 0 && (
         <details className="cs-trace">
