@@ -1,0 +1,120 @@
+{
+  "header": {
+    "back": "Home",
+    "title": "Merchant check",
+    "owner": "Owner account"
+  },
+  "stores": {
+    "label": "Your stores",
+    "hint": "This account runs three stores. Choose the one you want to review.",
+    "id": "Store {{storeId}}"
+  },
+  "alerts": {
+    "newRequest": "A new confirmation request arrived.",
+    "overdue": "A request has been waiting for more than 3 minutes.",
+    "dismiss": "Dismiss alert",
+    "sampleCreated": "A sample request was added to this store's queue.",
+    "sampleCreatedMany": "{{count}} sample requests were added to this store's queue.",
+    "sampleExists": "This sample is already waiting.",
+    "sampleNoneLeft": "Every sample for this store is already waiting.",
+    "sampleFailed": "The sample request could not be created."
+  },
+  "queue": {
+    "title": "Confirmation queue",
+    "empty": "No requests are waiting.",
+    "emptyHint": "Add a sample below to see a confirmation request without the agent.",
+    "sample": "Add remaining samples",
+    "sampleLegend": "Sample requests",
+    "sampleWaiting": "Waiting",
+    "count": "{{count}}",
+    "overdue": "Waiting"
+  },
+  "samples": {
+    "s001-missing-bulgogi": "High-price missing · bulgogi set",
+    "s001-missing-doenjang": "High-price missing · doenjang stew",
+    "s001-wrong-kimchi": "Wrong delivery · kimchi stew",
+    "s001-missing-jeyuk": "High-price missing · spicy pork set",
+    "s001-wrong-bibim": "Wrong delivery · bibimbap",
+    "s001-missing-galbi": "High-price missing · galbitang",
+    "s001-wrong-naengmyeon": "Wrong delivery · cold noodles",
+    "s002-wrong-yangnyeom": "Wrong delivery · yangnyeom chicken",
+    "s002-missing-cola": "Missing side · cola",
+    "s002-missing-ganjang": "High-price missing · soy chicken",
+    "s002-missing-beer": "Missing side · beer",
+    "s002-wrong-sunsall": "Wrong delivery · boneless yangnyeom",
+    "s002-missing-honey": "Missing side · honey combo cola",
+    "s002-missing-half": "Missing item · half yangnyeom",
+    "s003-missing-tteok": "Missing item · tteokbokki",
+    "s003-missing-twigim": "Missing item · fried set",
+    "s003-wrong-modum": "Wrong delivery · assorted fries",
+    "s003-missing-gimbap": "Missing item · tuna gimbap",
+    "s003-missing-sundae": "Missing item · sundae",
+    "s003-missing-gimbap-rabokki": "Missing item · gimbap",
+    "s003-wrong-jjolmyeon": "Wrong delivery · spicy chewy noodles"
+  },
+  "detail": {
+    "emptyTitle": "Choose an order to review",
+    "emptyBody": "Pick a request to see the menu, the customer's claim, and attached photos.",
+    "orderId": "Order",
+    "orderedAt": "Ordered at",
+    "items": "Menu",
+    "claim": "Customer claim",
+    "item": "Item to confirm",
+    "photos": "Customer photos",
+    "photoCaption": "Attached photo",
+    "noPhoto": "No photo was attached.",
+    "question": "How do you confirm this order?",
+    "commentLabel": "Comment",
+    "commentPlaceholder": "Example: CCTV from that time is hard to check.",
+    "submit": "Send response",
+    "needResponse": "Choose a response first.",
+    "saved": "Your response is saved. The agent will continue from here.",
+    "error": "The response could not be saved.",
+    "back": "Back to list"
+  },
+  "responses": {
+    "PACKED": "I packed it",
+    "POSSIBLE_MISSING": "It may be missing",
+    "UNKNOWN": "I can't confirm"
+  },
+  "history": {
+    "title": "Request history",
+    "empty": "No responses yet.",
+    "responded": "Response",
+    "status": "Current status",
+    "finalAction": "Final action",
+    "comment": "Comment",
+    "noFinal": "Waiting for the agent",
+    "noComment": "No comment"
+  },
+  "nav": {
+    "queue": "Queue",
+    "history": "History"
+  },
+  "issue": {
+    "delivery_delay": "Delivery delay",
+    "missing_item": "Missing item",
+    "wrong_delivery": "Wrong delivery",
+    "other": "Other"
+  },
+  "status": {
+    "NEW": "Received",
+    "COLLECTING_INFO": "Collecting info",
+    "WAITING_EVIDENCE": "Waiting for evidence",
+    "CHECKING_DATA": "Checking data",
+    "WAITING_MERCHANT": "Waiting for merchant",
+    "POLICY_CHECK": "Policy check",
+    "RISK_CHECK": "Risk check",
+    "AUTO_RESOLVED": "Auto resolved",
+    "ESCALATED": "With human CS",
+    "CLOSED": "Closed"
+  },
+  "finalAction": {
+    "guide_customer": "Guidance",
+    "mock_coupon": "Mock coupon",
+    "mock_refund": "Mock partial refund",
+    "mock_redelivery": "Mock redelivery",
+    "human_review": "Human review",
+    "no_action": "No further action"
+  }
+}

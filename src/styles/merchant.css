@@ -1,0 +1,101 @@
+.merchant-page { min-height: 100vh; padding-bottom: 40px; background: #f5f8f7; }
+.merchant-shell { width: min(calc(100% - 40px), 1120px); margin-inline: auto; }
+.merchant-header { position: sticky; z-index: 30; top: 0; border-bottom: 1px solid rgba(230,236,235,.8); background: rgba(255,255,255,.92); backdrop-filter: blur(16px); }
+.merchant-header__inner { display: grid; height: 70px; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.merchant-header__back { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 50%; background: #fff4e8; color: #9a6230; }
+.merchant-header__back svg { width: 21px; height: 21px; }
+.merchant-header__title { display: flex; align-items: center; gap: 9px; }
+.merchant-header__title > span { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 10px; background: #fff4e8; color: #c56a22; }
+.merchant-header__title svg { width: 20px; height: 20px; }
+.merchant-header .language-switcher { justify-self: end; }
+.merchant-main { padding-top: 28px; }
+.store-switcher { display: grid; gap: 16px; }
+.store-switcher__copy span { color: #c56a22; font-size: .82rem; font-weight: 800; }
+.store-switcher__copy h1 { margin-top: 6px; font-size: clamp(1.8rem, 4vw, 2.6rem); letter-spacing: -.04em; }
+.store-switcher__copy p { margin-top: 8px; color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .92rem; line-height: 1.55; }
+.store-switcher__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.store-switcher__grid button { display: grid; gap: 4px; min-height: 84px; padding: 16px 18px; border: 1px solid var(--color-line); border-radius: 20px; background: #fff; text-align: left; cursor: pointer; }
+.store-switcher__grid button.is-selected { border-color: #e2a15a; background: #fff8ee; box-shadow: 0 10px 28px rgba(197,106,34,.08); }
+.store-switcher__grid strong { font-size: 1.05rem; }
+.store-switcher__grid small { color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .75rem; }
+.merchant-alerts { display: grid; gap: 8px; margin-top: 16px; }
+.merchant-alerts__item { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 12px 16px; border-radius: 16px; background: #fff; color: var(--color-text); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .84rem; }
+.merchant-alerts__item--new { background: #fff8ee; color: #8a4e16; }
+.merchant-alerts__item--overdue { background: #fff1ee; color: #a14b3c; }
+.merchant-alerts__item button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: .75rem; text-decoration: underline; }
+.merchant-layout { display: grid; grid-template-columns: minmax(280px, .9fr) minmax(360px, 1.1fr); gap: 18px; margin-top: 18px; align-items: start; }
+.merchant-layout__lists { display: grid; gap: 18px; }
+.merchant-panel, .merchant-detail { padding: 20px; border: 1px solid var(--color-line); border-radius: 24px; background: #fff; box-shadow: 0 10px 35px rgba(38,79,77,.05); }
+.merchant-detail { position: sticky; top: 88px; }
+.merchant-panel__title, .merchant-detail__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.merchant-panel__title h2, .merchant-detail h3 { font-size: 1.05rem; letter-spacing: -.02em; }
+.merchant-panel__title div { display: flex; align-items: baseline; gap: 8px; }
+.merchant-panel__title .merchant-sample { width: auto; min-height: 36px; margin-top: 0; padding: 0 14px; font-size: .78rem; }
+.merchant-panel__title span, .merchant-detail__heading span { padding: 5px 10px; border-radius: var(--radius-pill); background: #fff4e8; color: #9a6230; font-size: .72rem; font-weight: 800; }
+.merchant-detail__heading { align-items: flex-start; margin-bottom: 16px; }
+.merchant-detail__heading h2 { font-size: 1.7rem; letter-spacing: -.04em; }
+.merchant-list { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+.merchant-list button { display: grid; gap: 6px; width: 100%; padding: 14px; border: 1px solid var(--color-line); border-radius: 16px; background: #fff; text-align: left; cursor: pointer; }
+.merchant-list button.is-selected { border-color: #e2a15a; background: #fffaf4; }
+.merchant-list button > span { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.merchant-list strong { font-size: .95rem; }
+.merchant-list small, .merchant-muted, .merchant-facts dt { color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .72rem; }
+.merchant-list em { color: var(--color-text); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .82rem; font-style: normal; line-height: 1.45; }
+.merchant-empty { display: grid; gap: 6px; margin-top: 14px; padding: 18px; border-radius: 16px; background: #f7fbfa; }
+.merchant-empty strong { font-size: .95rem; }
+.merchant-empty p, .merchant-detail--empty p, .merchant-response--saved p { color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .84rem; line-height: 1.55; }
+.merchant-samples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.merchant-samples > span { flex: 1 0 100%; color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .72rem; }
+.merchant-samples button { min-height: 36px; padding: 0 12px; border: 1px solid var(--color-line); border-radius: var(--radius-pill); background: #fff; cursor: pointer; font-size: .78rem; font-weight: 800; }
+.merchant-samples button:disabled { cursor: default; background: #f7fbfa; color: var(--color-muted); }
+.merchant-sample, .merchant-submit { width: 100%; min-height: 46px; margin-top: 14px; border: 0; border-radius: var(--radius-pill); background: var(--color-primary); color: #fff; cursor: pointer; font-weight: 800; }
+.merchant-sample:disabled, .merchant-submit:disabled { cursor: default; opacity: .55; }
+.merchant-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 16px; }
+.merchant-facts div { padding: 12px; border-radius: 14px; background: #f7fbfa; }
+.merchant-facts dd { margin: 4px 0 0; font-size: .92rem; }
+.merchant-detail h3 { margin: 16px 0 8px; }
+.merchant-items { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.merchant-items li { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--color-line); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .86rem; }
+.merchant-claim-item { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #fff8ee; font-size: .86rem; }
+.merchant-claim-item span { color: #9a6230; font-size: .72rem; font-weight: 800; }
+.merchant-detail blockquote { margin: 0; padding: 14px 16px; border-radius: 16px; background: #f4fbfa; color: var(--color-text); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .9rem; line-height: 1.55; }
+.merchant-evidence-row { display: flex; gap: 10px; }
+.merchant-evidence { width: 140px; margin: 0; overflow: hidden; border-radius: 16px; background: #fff8ee; }
+.merchant-evidence img { display: block; width: 100%; height: 110px; object-fit: cover; }
+.merchant-evidence--mock { display: grid; min-height: 110px; place-items: end start; padding: 12px; background: linear-gradient(160deg, #ffe7c7, #fff8ee 55%, #e7f7f4); }
+.merchant-evidence--mock span { width: 36px; height: 28px; margin-bottom: 8px; border: 2px solid #c56a22; border-radius: 6px; }
+.merchant-evidence figcaption { display: grid; gap: 2px; }
+.merchant-evidence strong, .merchant-evidence small { font-family: Pretendard, "Noto Sans KR", sans-serif; }
+.merchant-evidence strong { font-size: .75rem; }
+.merchant-evidence small { color: var(--color-muted); font-size: .62rem; word-break: break-all; }
+.merchant-response__choices { display: grid; gap: 8px; }
+.merchant-response__choices button { min-height: 46px; padding: 0 14px; border: 1px solid var(--color-line); border-radius: 14px; background: #fff; text-align: left; cursor: pointer; font-weight: 800; }
+.merchant-response__choices button.is-selected { border-color: var(--color-primary); background: var(--color-primary-pale); color: var(--color-primary-dark); }
+.merchant-response label { display: grid; gap: 8px; margin-top: 14px; font-size: .82rem; font-weight: 800; }
+.merchant-response textarea { min-height: 84px; padding: 12px; border: 1px solid var(--color-line); border-radius: 14px; resize: vertical; font: inherit; font-weight: 500; font-family: Pretendard, "Noto Sans KR", sans-serif; }
+.merchant-form-error { margin: 8px 0 0; color: #a14b3c; font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .78rem; }
+.merchant-detail__back { display: none; align-items: center; gap: 6px; margin-bottom: 12px; padding: 0; border: 0; background: none; color: var(--color-muted); cursor: pointer; font-size: .8rem; }
+.merchant-detail__back svg { width: 16px; height: 16px; }
+.merchant-detail--empty { display: grid; min-height: 280px; align-content: center; }
+.merchant-detail--empty h2 { font-size: 1.4rem; letter-spacing: -.03em; }
+.merchant-bottom-nav { display: none; }
+
+@media (max-width: 820px) {
+  .merchant-shell { width: min(calc(100% - 28px), 680px); }
+  .merchant-page { padding-bottom: 96px; }
+  .store-switcher__grid, .merchant-layout { grid-template-columns: 1fr; }
+  .merchant-detail { position: static; }
+  .merchant-page.is-detail-open .store-switcher,
+  .merchant-page.is-detail-open .merchant-alerts,
+  .merchant-page.is-detail-open .merchant-layout__lists { display: none; }
+  .merchant-page.is-detail-open .merchant-detail__back { display: inline-flex; }
+  .merchant-bottom-nav { position: fixed; z-index: 40; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: 1fr 1fr; height: calc(64px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); border-top: 1px solid var(--color-line); background: rgba(255,255,255,.96); }
+  .merchant-bottom-nav button { border: 0; background: none; color: #9aa3a2; cursor: pointer; font-weight: 800; }
+  .merchant-bottom-nav button.is-active { color: #c56a22; }
+}
+
+@media (max-width: 520px) {
+  .merchant-header__inner { height: 62px; }
+  .merchant-header__title > span { display: none; }
+  .merchant-facts { grid-template-columns: 1fr; }
+}

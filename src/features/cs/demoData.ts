@@ -22,6 +22,18 @@ export const mockCustomers: CustomerData[] = [
   { customerId: 'C006', name: '한소율', recentOrderCount: 4, refundCount30d: 0 },
   { customerId: 'C007', name: '오세진', recentOrderCount: 6, refundCount30d: 1 },
   { customerId: 'C008', name: '김진상', recentOrderCount: 14, refundCount30d: 5 },
+  { customerId: 'C009', name: '이수민', recentOrderCount: 4, refundCount30d: 0 },
+  { customerId: 'C010', name: '박도윤', recentOrderCount: 7, refundCount30d: 2 },
+  { customerId: 'C011', name: '최하늘', recentOrderCount: 3, refundCount30d: 0 },
+  { customerId: 'C012', name: '정다은', recentOrderCount: 9, refundCount30d: 1 },
+  { customerId: 'C013', name: '한지우', recentOrderCount: 2, refundCount30d: 0 },
+  { customerId: 'C014', name: '윤서준', recentOrderCount: 5, refundCount30d: 1 },
+  { customerId: 'C015', name: '강민재', recentOrderCount: 6, refundCount30d: 0 },
+  { customerId: 'C016', name: '서지우', recentOrderCount: 3, refundCount30d: 1 },
+  { customerId: 'C017', name: '문하린', recentOrderCount: 4, refundCount30d: 0 },
+  { customerId: 'C018', name: '배성호', recentOrderCount: 8, refundCount30d: 2 },
+  { customerId: 'C019', name: '노은채', recentOrderCount: 2, refundCount30d: 0 },
+  { customerId: 'C020', name: '임재원', recentOrderCount: 5, refundCount30d: 1 },
 ]
 
 export const mockMerchants: MerchantData[] = [
@@ -88,6 +100,102 @@ export const mockOrders: OrderData[] = [
     items: [{ itemId: 'I011', name: '된장찌개', price: 11000 }],
     totalAmount: 11000, orderStatus: 'delivered',
   },
+  {
+    orderId: 'A1009', customerId: 'C009', storeId: 'S001',
+    orderedAt: '2026-09-30T19:20:00+09:00',
+    items: [
+      { itemId: 'I012', name: '제육정식', price: 16000 },
+      { itemId: 'I013', name: '된장국', price: 2000 },
+    ],
+    totalAmount: 18000, orderStatus: 'delivered',
+  },
+  {
+    orderId: 'A1012', customerId: 'C010', storeId: 'S001',
+    orderedAt: '2026-09-30T18:50:00+09:00',
+    items: [
+      { itemId: 'I014', name: '비빔밥', price: 9000 },
+      { itemId: 'I015', name: '계란찜', price: 3000 },
+    ],
+    totalAmount: 12000, orderStatus: 'delivered',
+  },
+  {
+    orderId: 'A1010', customerId: 'C011', storeId: 'S002',
+    orderedAt: '2026-09-30T19:40:00+09:00',
+    items: [
+      { itemId: 'I016', name: '반반치킨', price: 23000 },
+      { itemId: 'I017', name: '맥주', price: 4000 },
+    ],
+    totalAmount: 27000, orderStatus: 'delivered',
+  },
+  {
+    orderId: 'A1014', customerId: 'C014', storeId: 'S002',
+    orderedAt: '2026-09-30T17:20:00+09:00',
+    items: [{ itemId: 'I018', name: '순살양념', price: 19000 }],
+    totalAmount: 19000, orderStatus: 'delivered',
+  },
+  {
+    orderId: 'A1011', customerId: 'C012', storeId: 'S003',
+    orderedAt: '2026-09-30T19:10:00+09:00',
+    items: [
+      { itemId: 'I019', name: '참치김밥', price: 4500 },
+      { itemId: 'I020', name: '라면', price: 5000 },
+    ],
+    totalAmount: 9500, orderStatus: 'delivered',
+  },
+  {
+    orderId: 'A1013', customerId: 'C013', storeId: 'S003',
+    orderedAt: '2026-09-30T16:40:00+09:00',
+    items: [
+      { itemId: 'I021', name: '치즈떡볶이', price: 8000 },
+      { itemId: 'I022', name: '순대', price: 5000 },
+    ],
+    totalAmount: 13000, orderStatus: 'delivered',
+  },
+  {
+    orderId: 'A1015', customerId: 'C015', storeId: 'S001',
+    orderedAt: '2026-09-30T19:05:00+09:00',
+    items: [
+      { itemId: 'I023', name: '갈비탕', price: 14000 },
+      { itemId: 'I024', name: '공기밥', price: 1000 },
+    ],
+    totalAmount: 15000, orderStatus: 'delivered',
+  },
+  {
+    orderId: 'A1016', customerId: 'C016', storeId: 'S001',
+    orderedAt: '2026-09-30T17:50:00+09:00',
+    items: [{ itemId: 'I025', name: '물냉면', price: 11000 }],
+    totalAmount: 11000, orderStatus: 'delivered',
+  },
+  {
+    orderId: 'A1017', customerId: 'C017', storeId: 'S002',
+    orderedAt: '2026-09-30T18:20:00+09:00',
+    items: [
+      { itemId: 'I026', name: '허니콤보', price: 22000 },
+      { itemId: 'I027', name: '콜라', price: 2000 },
+    ],
+    totalAmount: 24000, orderStatus: 'delivered',
+  },
+  {
+    orderId: 'A1018', customerId: 'C018', storeId: 'S002',
+    orderedAt: '2026-09-30T16:10:00+09:00',
+    items: [{ itemId: 'I028', name: '양념반마리', price: 13000 }],
+    totalAmount: 13000, orderStatus: 'delivered',
+  },
+  {
+    orderId: 'A1019', customerId: 'C019', storeId: 'S003',
+    orderedAt: '2026-09-30T18:05:00+09:00',
+    items: [
+      { itemId: 'I029', name: '라볶이', price: 7000 },
+      { itemId: 'I030', name: '김밥', price: 4000 },
+    ],
+    totalAmount: 11000, orderStatus: 'delivered',
+  },
+  {
+    orderId: 'A1020', customerId: 'C020', storeId: 'S003',
+    orderedAt: '2026-09-30T15:40:00+09:00',
+    items: [{ itemId: 'I031', name: '쫄면', price: 6500 }],
+    totalAmount: 6500, orderStatus: 'delivered',
+  },
 ]
 
 type StoredDelivery = Omit<DeliveryData, 'delayMinutes'>
@@ -133,6 +241,66 @@ export const mockDeliveries: StoredDelivery[] = [
     pickedUpAt: '2026-09-30T17:35:00+09:00', expectedAt: '2026-09-30T18:00:00+09:00',
     deliveredAt: '2026-09-30T18:04:00+09:00', deliveryStatus: 'delivered',
   },
+  {
+    orderId: 'A1009', riderAssignedAt: '2026-09-30T19:35:00+09:00',
+    pickedUpAt: '2026-09-30T19:48:00+09:00', expectedAt: '2026-09-30T20:10:00+09:00',
+    deliveredAt: '2026-09-30T20:08:00+09:00', deliveryStatus: 'delivered',
+  },
+  {
+    orderId: 'A1012', riderAssignedAt: '2026-09-30T19:05:00+09:00',
+    pickedUpAt: '2026-09-30T19:18:00+09:00', expectedAt: '2026-09-30T19:40:00+09:00',
+    deliveredAt: '2026-09-30T19:44:00+09:00', deliveryStatus: 'delivered',
+  },
+  {
+    orderId: 'A1010', riderAssignedAt: '2026-09-30T19:55:00+09:00',
+    pickedUpAt: '2026-09-30T20:12:00+09:00', expectedAt: '2026-09-30T20:35:00+09:00',
+    deliveredAt: '2026-09-30T20:33:00+09:00', deliveryStatus: 'delivered',
+  },
+  {
+    orderId: 'A1014', riderAssignedAt: '2026-09-30T17:35:00+09:00',
+    pickedUpAt: '2026-09-30T17:50:00+09:00', expectedAt: '2026-09-30T18:15:00+09:00',
+    deliveredAt: '2026-09-30T18:20:00+09:00', deliveryStatus: 'delivered',
+  },
+  {
+    orderId: 'A1011', riderAssignedAt: '2026-09-30T19:22:00+09:00',
+    pickedUpAt: '2026-09-30T19:34:00+09:00', expectedAt: '2026-09-30T19:55:00+09:00',
+    deliveredAt: '2026-09-30T19:52:00+09:00', deliveryStatus: 'delivered',
+  },
+  {
+    orderId: 'A1013', riderAssignedAt: '2026-09-30T16:55:00+09:00',
+    pickedUpAt: '2026-09-30T17:08:00+09:00', expectedAt: '2026-09-30T17:25:00+09:00',
+    deliveredAt: '2026-09-30T17:29:00+09:00', deliveryStatus: 'delivered',
+  },
+  {
+    orderId: 'A1015', riderAssignedAt: '2026-09-30T19:18:00+09:00',
+    pickedUpAt: '2026-09-30T19:32:00+09:00', expectedAt: '2026-09-30T19:55:00+09:00',
+    deliveredAt: '2026-09-30T19:58:00+09:00', deliveryStatus: 'delivered',
+  },
+  {
+    orderId: 'A1016', riderAssignedAt: '2026-09-30T18:02:00+09:00',
+    pickedUpAt: '2026-09-30T18:15:00+09:00', expectedAt: '2026-09-30T18:35:00+09:00',
+    deliveredAt: '2026-09-30T18:33:00+09:00', deliveryStatus: 'delivered',
+  },
+  {
+    orderId: 'A1017', riderAssignedAt: '2026-09-30T18:35:00+09:00',
+    pickedUpAt: '2026-09-30T18:50:00+09:00', expectedAt: '2026-09-30T19:15:00+09:00',
+    deliveredAt: '2026-09-30T19:12:00+09:00', deliveryStatus: 'delivered',
+  },
+  {
+    orderId: 'A1018', riderAssignedAt: '2026-09-30T16:25:00+09:00',
+    pickedUpAt: '2026-09-30T16:40:00+09:00', expectedAt: '2026-09-30T17:05:00+09:00',
+    deliveredAt: '2026-09-30T17:08:00+09:00', deliveryStatus: 'delivered',
+  },
+  {
+    orderId: 'A1019', riderAssignedAt: '2026-09-30T18:18:00+09:00',
+    pickedUpAt: '2026-09-30T18:30:00+09:00', expectedAt: '2026-09-30T18:50:00+09:00',
+    deliveredAt: '2026-09-30T18:47:00+09:00', deliveryStatus: 'delivered',
+  },
+  {
+    orderId: 'A1020', riderAssignedAt: '2026-09-30T15:52:00+09:00',
+    pickedUpAt: '2026-09-30T16:05:00+09:00', expectedAt: '2026-09-30T16:25:00+09:00',
+    deliveredAt: '2026-09-30T16:28:00+09:00', deliveryStatus: 'delivered',
+  },
 ]
 
 /** 배달 완료 시각이 있으면 그 시각, 없으면 앱을 연 시각을 고정된 예상 도착 시각과 비교한다. */
@@ -152,6 +320,30 @@ export const mockCsHistory: CsHistoryData[] = [
   {
     customerId: 'C004', orderId: 'OLD-C004', issueType: 'missing_item',
     itemName: '콜라', action: 'mock_refund', amount: 2000, status: 'completed',
+  },
+  {
+    customerId: 'C010', orderId: 'OLD-C010', issueType: 'missing_item',
+    itemName: '계란찜', action: 'mock_refund', amount: 3000, status: 'completed',
+  },
+  {
+    customerId: 'C012', orderId: 'OLD-C012', issueType: 'wrong_delivery',
+    itemName: '라면', action: 'mock_redelivery', status: 'rejected',
+  },
+  {
+    customerId: 'C014', orderId: 'OLD-C014', issueType: 'missing_item',
+    itemName: '콜라', action: 'mock_refund', amount: 2000, status: 'completed',
+  },
+  {
+    customerId: 'C016', orderId: 'OLD-C016', issueType: 'delivery_delay',
+    action: 'guide_customer', status: 'completed',
+  },
+  {
+    customerId: 'C018', orderId: 'OLD-C018', issueType: 'missing_item',
+    itemName: '콜라', action: 'mock_refund', amount: 2000, status: 'completed',
+  },
+  {
+    customerId: 'C020', orderId: 'OLD-C020', issueType: 'wrong_delivery',
+    itemName: '쫄면', action: 'mock_redelivery', status: 'rejected',
   },
 ]
 
