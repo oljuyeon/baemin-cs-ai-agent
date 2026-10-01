@@ -47,12 +47,10 @@ caseStore.getCasesForRole('cs')
 
 ## Merchant 응답 저장
 
-```ts
-caseStore.recordMerchantResponse(
-  caseId,
-  'POSSIBLE_MISSING',
-  '누락 가능성이 있습니다.',
-)
-```
+선택지는 `recordMerchantResponse`로 저장한다. 이 호출은 확인을 끝내지 않고 `WAITING_MERCHANT`를 유지한다. 설명과 후속 답변은 `appendMerchantConversation`에 쌓인다. 후속 질문이 끝난 뒤에만 `completeMerchantConfirmation`이 확인 상태를 `completed`로 바꾼다. 그 다음 행동 선택은 Agent Loop가 한다.
 
-응답 저장 후 어떤 Tool을 호출할지는 Agent Loop가 결정한다.
+```ts
+caseStore.recordMerchantResponse(caseId, 'POSSIBLE_MISSING')
+caseStore.appendMerchantConversation(caseId, 'merchant', '해당 시간대는 다시 확인해 보겠습니다.')
+caseStore.completeMerchantConfirmation(caseId)
+```
