@@ -3,6 +3,7 @@ import { LoginPage } from '../pages/LoginPage'
 import { MainPage } from '../pages/MainPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { CustomerPage } from '../pages/CustomerPage'
+import { CsPage } from '../pages/CsPage'
 
 export function AppRouter() {
   return (
@@ -11,7 +12,7 @@ export function AppRouter() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/customer" element={<CustomerPage />} />
       <Route path="/merchant" element={<PlaceholderPage role="merchant" />} />
-      <Route path="/cs" element={<PlaceholderPage role="cs" />} />
+      <Route path="/cs" element={<CsPage />} />
       <Route path="/demo" element={<PlaceholderPage role="demo" />} />
       <Route path="*" element={<PlaceholderPage role="notFound" />} />
     </Routes>

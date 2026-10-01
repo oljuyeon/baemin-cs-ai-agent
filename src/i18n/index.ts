@@ -6,13 +6,15 @@ import commonKo from '../locales/ko/common.json'
 import mainKo from '../locales/ko/main.json'
 import customerKo from '../locales/ko/customer.json'
 import customerEn from '../locales/en/customer.json'
+import csKo from '../locales/ko/cs.json'
+import csEn from '../locales/en/cs.json'
 
 const storedLanguage = window.localStorage.getItem('app-language')
 
 i18n.use(initReactI18next).init({
   resources: {
-    ko: { common: commonKo, main: mainKo, customer: customerKo },
-    en: { common: commonEn, main: mainEn, customer: customerEn },
+    ko: { common: commonKo, main: mainKo, customer: customerKo, cs: csKo },
+    en: { common: commonEn, main: mainEn, customer: customerEn, cs: csEn },
   },
   lng: storedLanguage === 'en' ? 'en' : 'ko',
   fallbackLng: 'ko',
