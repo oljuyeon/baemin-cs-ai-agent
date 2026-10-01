@@ -68,6 +68,8 @@
     "photo": "Photo",
     "photoMock": "Sample photo",
     "merchant": "Store reply",
+    "agentName": "CS agent",
+    "merchantName": "Store",
     "handoff": "Escalation reason",
     "noReason": "No escalation reason was stored.",
     "summaryLabel": "Agent Summary",
@@ -130,7 +132,8 @@
     "CLOSED": "Closed"
   },
   "merchantResponse": {
-    "PACKED": "Packed",
+    "ADMITTED_MISSING": "Admitted missing",
+    "CLAIMS_PACKED": "Claims it was packed",
     "POSSIBLE_MISSING": "Possibly missing",
     "UNKNOWN": "Unknown",
     "none": "No store reply"
@@ -143,14 +146,16 @@
   },
   "riskDetail": {
     "duplicate_refund": "This order and item already have a completed refund.",
-    "frequent_refund": "Five or more refunds within the last 30 days block automatic handling.",
+    "frequent_refund": "Five or more refunds in 30 days are a review signal. This flag alone does not block an action.",
     "order_claim_mismatch": "The claimed item is not on this order.",
     "evidence_mismatch": "The photo does not match the customer's description."
   },
   "policy": {
     "MERCHANT_CLAIM_CONFLICT": "Claim conflict",
     "MERCHANT_UNKNOWN": "Store could not confirm",
+    "MISSING_ITEM_ADMITTED": "Refund after admission",
     "MISSING_ITEM_AFTER_MERCHANT_CONFIRMATION": "Missing after store check",
+    "WRONG_DELIVERY_AFTER_ADMISSION": "Redelivery after admission",
     "WRONG_DELIVERY_NEEDS_REVIEW": "Wrong delivery needs review",
     "WRONG_DELIVERY_NEEDS_MERCHANT": "Wrong delivery needs the store",
     "WRONG_DELIVERY_REDELIVERY_AFTER_MERCHANT": "Redelivery after store check",
@@ -166,9 +171,8 @@
     "back": "Back to the case",
     "eyebrow": "Policy for this situation",
     "allowed": "Allowed actions",
-    "merchant": "Store confirmation",
-    "merchantYes": "Required",
-    "merchantNo": "Not required",
+    "constraints": "Constraints",
+    "noConstraint": "No extra constraint.",
     "situation": "Current situation",
     "missingTitle": "No case for this policy",
     "missingBody": "Open a case from the queue, then view its policy."

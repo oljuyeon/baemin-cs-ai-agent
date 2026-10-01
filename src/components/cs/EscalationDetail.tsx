@@ -225,6 +225,16 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
       ) : (
         <p className="cs-muted">{t('merchantResponse.none')}</p>
       )}
+      {merchant?.conversation && merchant.conversation.length > 0 && (
+        <div className="cs-merchant-thread">
+          {merchant.conversation.map((message) => (
+            <p key={`${message.createdAt}-${message.role}-${message.content}`} className={message.role === 'agent' ? 'is-agent' : 'is-merchant'}>
+              <small>{t(message.role === 'agent' ? 'detail.agentName' : 'detail.merchantName')}</small>
+              {message.content}
+            </p>
+          ))}
+        </div>
+      )}
 
       <h3>{t('detail.handoff')}</h3>
       <blockquote>{caseData.escalationReason || t('detail.noReason')}</blockquote>

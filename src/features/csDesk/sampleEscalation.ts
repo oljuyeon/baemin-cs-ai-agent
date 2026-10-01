@@ -31,11 +31,11 @@ const samples: EscalationSample[] = [
     customerClaim: '불고기정식은 왔는데 공깃밥이 없어요.',
     evidenceUrl: 'mock://evidence/merchant-check-inconclusive.jpg',
     merchant: {
-      response: 'PACKED',
+      response: 'CLAIMS_PACKED',
       comment: '공깃밥까지 넣어서 포장했습니다.',
     },
-    reason: '고객은 공깃밥 누락을 주장하고, 매장은 정상 포장이라고 답해 주장이 충돌합니다.',
-    summary: '주문 A1003, 공깃밥 누락 주장. 증빙은 일부만 확인되고 매장 응답은 PACKED입니다.',
+    reason: '고객은 공깃밥 누락을 주장하고, 매장은 포장했다고 진술해 주장이 충돌합니다.',
+    summary: '주문 A1003, 공깃밥 누락 주장. 증빙은 일부만 확인되고 매장 응답은 포장 진술입니다.',
   },
   {
     id: 'unknown-chicken',
@@ -115,7 +115,7 @@ export function queueTagForCase(caseData: CsCase) {
   if (caseData.riskFlags.includes('frequent_refund')) return 'frequent_refund'
   if (caseData.riskFlags.includes('evidence_mismatch')) return 'evidence_mismatch'
   if (caseData.riskFlags.includes('order_claim_mismatch')) return 'order_claim_mismatch'
-  if (caseData.merchantConfirmation?.response === 'PACKED') return 'claim_conflict'
+  if (caseData.merchantConfirmation?.response === 'CLAIMS_PACKED') return 'claim_conflict'
   if (caseData.merchantConfirmation?.response === 'UNKNOWN') return 'unknown'
   return null
 }

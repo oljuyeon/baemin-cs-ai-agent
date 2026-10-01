@@ -69,11 +69,15 @@ export function PolicyPage() {
                     : t('detail.loading')}
                 </dd>
               </div>
-              <div>
-                <dt>{t('policyPage.merchant')}</dt>
-                <dd>{policy ? t(policy.requiresMerchantConfirmation ? 'policyPage.merchantYes' : 'policyPage.merchantNo') : t('detail.loading')}</dd>
-              </div>
             </dl>
+            <h2>{t('policyPage.constraints')}</h2>
+            {policy && policy.constraints.length > 0 ? (
+              <ul className="cs-policy-constraints">
+                {policy.constraints.map((constraint) => <li key={constraint}>{constraint}</li>)}
+              </ul>
+            ) : (
+              <p className="cs-muted">{policy ? t('policyPage.noConstraint') : t('detail.loading')}</p>
+            )}
             <h2>{t('policyPage.situation')}</h2>
             <p>{caseData.customerClaim}</p>
             <p className="cs-muted">

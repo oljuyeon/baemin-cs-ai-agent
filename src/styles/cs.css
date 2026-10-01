@@ -116,6 +116,12 @@
 .cs-policy-page h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); letter-spacing: -0.04em; }
 .cs-policy-page h2 { margin-top: 8px; font-size: 1.05rem; }
 .cs-policy-page blockquote { margin: 0; padding: 16px; border-radius: 16px; background: #eef0ff; font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: 1rem; line-height: 1.55; }
+.cs-policy-constraints { margin: 0; padding-left: 18px; font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .92rem; line-height: 1.55; }
+.cs-merchant-thread { display: grid; gap: 8px; }
+.cs-merchant-thread p { margin: 0; padding: 10px 12px; border-radius: 14px; font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .86rem; line-height: 1.5; }
+.cs-merchant-thread small { display: block; margin-bottom: 4px; font-size: .68rem; font-weight: 800; }
+.cs-merchant-thread .is-agent { background: #eef0ff; }
+.cs-merchant-thread .is-merchant { background: #f7fbfa; }
 .cs-policy-page__back { display: inline-flex; align-items: center; gap: 6px; }
 .cs-policy-page__back svg { width: 16px; height: 16px; }
 
