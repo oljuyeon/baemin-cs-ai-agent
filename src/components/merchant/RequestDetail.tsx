@@ -9,7 +9,12 @@ import {
 } from '../../features/cs'
 import { BackIcon } from '../customer/CustomerIcons'
 
-const responses: MerchantResponse[] = ['PACKED', 'POSSIBLE_MISSING', 'UNKNOWN']
+const responses: MerchantResponse[] = [
+  'ADMITTED_MISSING',
+  'CLAIMS_PACKED',
+  'POSSIBLE_MISSING',
+  'UNKNOWN',
+]
 
 const formatWhen = (value: string | undefined, language: string) => {
   if (!value) return ''
@@ -61,8 +66,7 @@ export function RequestDetail({
 }) {
   const { t, i18n } = useTranslation('merchant')
   const [order, setOrder] = useState<OrderData | null>(caseData?.order ?? null)
-  const [response, setResponse] = useState<MerchantResponse | null>(null)
-  const [comment, setComment] = useState('')
+  const [draft, setDraft] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
 
   const caseId = caseData?.caseId
@@ -70,8 +74,7 @@ export function RequestDetail({
   const storedOrder = caseData?.order
 
   useEffect(() => {
-    setResponse(null)
-    setComment('')
+    setDraft('')
     setFormError(null)
     if (!caseId || !orderId) {
       setOrder(null)
@@ -108,15 +111,30 @@ export function RequestDetail({
       ? [confirmation.evidenceUrl]
       : []
 
-  const submit = () => {
-    if (!response) {
-      setFormError(t('detail.needResponse'))
-      return
-    }
+  const messages = confirmation?.conversation ?? []
+  const selectedResponse = confirmation?.response
+
+  const choose = (choice: MerchantResponse) => {
+    if (choice === selectedResponse) return
     try {
-      caseStore.recordMerchantResponse(caseData.caseId, response, comment.trim() || undefined)
+      caseStore.recordMerchantResponse(caseData.caseId, choice)
       setFormError(null)
-      onSaved(t('detail.saved'))
+      onSaved(t('detail.choiceSaved'))
+    } catch {
+      const message = t('detail.error')
+      setFormError(message)
+      onError(message)
+    }
+  }
+
+  const sendMessage = () => {
+    const content = draft.trim()
+    if (!content) return
+    try {
+      caseStore.appendMerchantConversation(caseData.caseId, 'merchant', content)
+      setDraft('')
+      setFormError(null)
+      onSaved(t('detail.messageSaved'))
     } catch {
       const message = t('detail.error')
       setFormError(message)
@@ -168,48 +186,61 @@ export function RequestDetail({
           {photos.map((url) => <EvidenceCard key={url} url={url} />)}
         </div>
       )}
-      {waiting ? (
+      <h3>{t('detail.question')}</h3>
+      <div className="merchant-chat">
+        <p className="merchant-chat__message merchant-chat__message--agent">
+          <small>{t('detail.agentName')}</small>
+          {t('detail.opening')}
+        </p>
+        {messages.map((message) => (
+          <p
+            key={`${message.createdAt}-${message.role}-${message.content}`}
+            className={`merchant-chat__message merchant-chat__message--${message.role}`}
+          >
+            <small>{t(message.role === 'agent' ? 'detail.agentName' : 'detail.merchantName')}</small>
+            {message.content}
+          </p>
+        ))}
+      </div>
+      {waiting && confirmation?.status !== 'completed' ? (
         <form
           className="merchant-response"
           onSubmit={(event) => {
             event.preventDefault()
-            submit()
+            sendMessage()
           }}
         >
-          <h3>{t('detail.question')}</h3>
           <div className="merchant-response__choices">
             {responses.map((choice) => (
               <button
                 key={choice}
                 type="button"
-                className={response === choice ? 'is-selected' : undefined}
-                aria-pressed={response === choice}
-                onClick={() => {
-                  setResponse(choice)
-                  setFormError(null)
-                }}
+                className={selectedResponse === choice ? 'is-selected' : undefined}
+                aria-pressed={selectedResponse === choice}
+                onClick={() => choose(choice)}
               >
                 {t(`responses.${choice}`)}
               </button>
             ))}
           </div>
-          <label>
-            {t('detail.commentLabel')}
-            <textarea
-              value={comment}
-              onChange={(event) => setComment(event.target.value)}
-              placeholder={t('detail.commentPlaceholder')}
-            />
+          <label className="merchant-chat__composer">
+            {t('detail.messageLabel')}
+            <span className="merchant-chat__send">
+              <textarea
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder={t('detail.messagePlaceholder')}
+              />
+              <button type="submit" className="merchant-submit">{t('detail.send')}</button>
+            </span>
           </label>
           {formError && <p className="merchant-form-error">{formError}</p>}
-          <button type="submit" className="merchant-submit">{t('detail.submit')}</button>
+          <p className="merchant-follow-up">{t('detail.followUpNote')}</p>
         </form>
       ) : (
         <div className="merchant-response merchant-response--saved">
           <h3>{t('history.responded')}</h3>
-          <p>{confirmation?.response ? t(`responses.${confirmation.response}`) : ''}</p>
-          <h3>{t('history.comment')}</h3>
-          <p>{confirmation?.comment || t('history.noComment')}</p>
+          <p>{selectedResponse ? t(`responses.${selectedResponse}`) : ''}</p>
           <h3>{t('history.status')}</h3>
           <p>{t(`status.${caseData.status}`)}</p>
           <h3>{t('history.finalAction')}</h3>

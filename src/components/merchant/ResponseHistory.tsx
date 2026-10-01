@@ -47,7 +47,11 @@ export function ResponseHistory({
                       {confirmation?.response ? t(`responses.${confirmation.response}`) : ''}
                     </small>
                   </span>
-                  <em>{confirmation?.comment || t('history.noComment')}</em>
+                  <em>
+                    {confirmation?.conversation?.at(-1)?.content
+                      || confirmation?.comment
+                      || t('history.noComment')}
+                  </em>
                   <small>
                     {formatWhen(confirmation?.respondedAt, i18n.language)}
                     {' · '}
