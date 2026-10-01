@@ -11,6 +11,7 @@ import type {
   EvidenceAnalysis,
   FinalAction,
   HumanCsAction,
+  MerchantConversationMessage,
   MerchantResponse,
   ToolCallLog,
   ToolCallLogDraft,
@@ -36,8 +37,30 @@ const isStoredCaseArray = (value: unknown): value is CsCase[] =>
     && Array.isArray((item as CsCase).toolHistory),
   )
 
+const merchantResponses: MerchantResponse[] = [
+  'ADMITTED_MISSING',
+  'CLAIMS_PACKED',
+  'POSSIBLE_MISSING',
+  'UNKNOWN',
+]
+
+const normalizeMerchantResponse = (response: MerchantResponse | 'PACKED' | undefined) => {
+  if (response === 'PACKED') return 'CLAIMS_PACKED' as MerchantResponse
+  if (response && merchantResponses.includes(response)) return response
+  return undefined
+}
+
 const normalizeCase = (caseData: CsCase): CsCase => ({
   ...caseData,
+  merchantConfirmation: caseData.merchantConfirmation
+    ? {
+        ...caseData.merchantConfirmation,
+        response: normalizeMerchantResponse(caseData.merchantConfirmation.response as MerchantResponse | 'PACKED' | undefined),
+        conversation: Array.isArray(caseData.merchantConfirmation.conversation)
+          ? caseData.merchantConfirmation.conversation
+          : [],
+      }
+    : undefined,
   conversation: Array.isArray(caseData.conversation)
     ? caseData.conversation
     : [{
@@ -239,38 +262,96 @@ export class LocalCaseStore implements CaseStore {
     })
   }
 
+  appendMerchantConversation(
+    caseId: string,
+    role: MerchantConversationMessage['role'],
+    content: string,
+  ): CsCase {
+    const current = this.requireCase(caseId)
+    const confirmation = current.merchantConfirmation
+    if (!confirmation) {
+      throw new Error(`Case ${caseId} has no Merchant confirmation request.`)
+    }
+    if (confirmation.status === 'completed') {
+      throw new Error(`Case ${caseId} merchant confirmation is already completed.`)
+    }
+
+    const message = { role, content, createdAt: nowIso() }
+    return this.commitCase(caseId, {
+      changes: {
+        status: 'WAITING_MERCHANT',
+        merchantConfirmation: {
+          ...confirmation,
+          status: 'waiting',
+          conversation: [...(confirmation.conversation ?? []), message],
+        },
+      },
+    })
+  }
+
   recordMerchantResponse(
     caseId: string,
     response: MerchantResponse,
     comment?: string,
   ): CsCase {
     const current = this.requireCase(caseId)
-    if (!current.merchantConfirmation) {
+    const confirmation = current.merchantConfirmation
+    if (!confirmation) {
       throw new Error(`Case ${caseId} has no Merchant confirmation request.`)
     }
+    if (confirmation.status === 'completed') {
+      throw new Error(`Case ${caseId} merchant confirmation is already completed.`)
+    }
 
-    const respondedAt = nowIso()
+    const respondedAt = confirmation.respondedAt ?? nowIso()
     return this.commitCase(caseId, {
       changes: {
-        status: 'CHECKING_DATA',
-        decision: undefined,
-        appliedPolicy: undefined,
-        riskFlags: [],
+        status: 'WAITING_MERCHANT',
         merchantConfirmation: {
-          ...current.merchantConfirmation,
+          ...confirmation,
           response,
-          comment,
-          status: 'completed',
+          comment: comment === undefined ? confirmation.comment : comment,
+          status: 'waiting',
           respondedAt,
+          conversation: confirmation.conversation ?? [],
         },
       },
       history: [{
         actor: 'merchant',
         event: 'MERCHANT_RESPONDED',
         fromStatus: current.status,
-        toStatus: 'CHECKING_DATA',
+        toStatus: 'WAITING_MERCHANT',
         detail: `Merchant 응답 저장: ${response}`,
-        createdAt: respondedAt,
+        createdAt: nowIso(),
+      }],
+    })
+  }
+
+  completeMerchantConfirmation(caseId: string): CsCase {
+    const current = this.requireCase(caseId)
+    const confirmation = current.merchantConfirmation
+    if (!confirmation) {
+      throw new Error(`Case ${caseId} has no Merchant confirmation request.`)
+    }
+    if (confirmation.status === 'completed') return current
+
+    const completedAt = nowIso()
+    return this.commitCase(caseId, {
+      changes: {
+        merchantConfirmation: {
+          ...confirmation,
+          status: 'completed',
+          respondedAt: confirmation.respondedAt ?? completedAt,
+          conversation: confirmation.conversation ?? [],
+        },
+      },
+      history: [{
+        actor: 'agent',
+        event: 'MERCHANT_RESPONDED',
+        fromStatus: current.status,
+        toStatus: current.status,
+        detail: 'Merchant 확인 종료',
+        createdAt: completedAt,
       }],
     })
   }

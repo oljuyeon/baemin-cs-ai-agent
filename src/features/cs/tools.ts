@@ -5,7 +5,7 @@ import {
   findEvidenceAnalysis,
   findOrder,
 } from './demoData'
-import { evaluatePolicy, evaluateRisk } from './policy'
+import { assessRisk, evaluatePolicy } from './policy'
 import type {
   AgentTools,
   CsCase,
@@ -57,8 +57,7 @@ class MockAgentTools implements AgentTools {
 
   async checkRisk(input: { caseData: CsCase }) {
     return this.run<RiskResult>(() => {
-      const flags = evaluateRisk(input.caseData)
-      return { flags, autoActionAllowed: flags.length === 0 }
+      return assessRisk(input.caseData)
     })
   }
 
@@ -90,6 +89,7 @@ class MockAgentTools implements AgentTools {
       itemName: input.itemName,
       customerClaim: input.customerClaim,
       evidenceUrl: input.evidenceUrl,
+      conversation: [],
       status: 'waiting',
       requestedAt: nowIso(),
     }))
