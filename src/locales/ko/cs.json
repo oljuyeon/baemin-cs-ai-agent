@@ -1,0 +1,188 @@
+{
+  "header": {
+    "back": "메인으로",
+    "title": "CS 담당자"
+  },
+  "intro": {
+    "eyebrow": "플랫폼 CS",
+    "title": "이관된 건을 검토해요",
+    "description": "AI가 넘긴 주문, 증빙, 정책, 리스크를 확인하고 최종 처리합니다.",
+    "agent": "처리 계정 {{id}}"
+  },
+  "alerts": {
+    "newEscalation": "새로 이관된 건이 있어요.",
+    "dismiss": "닫기",
+    "overdue": "3분 넘게 처리하지 않은 이관 건이 있어요.",
+    "sampleCreated": "샘플 이관 건을 대기 목록에 넣었습니다.",
+    "sampleCreatedMany": "샘플 이관 건 {{count}}건을 넣었습니다.",
+    "sampleExists": "이미 대기 중인 샘플입니다.",
+    "sampleNoneLeft": "넣을 샘플이 없습니다.",
+    "sampleFailed": "샘플을 만들지 못했습니다.",
+    "saved": "처리를 저장했습니다. Agent가 이어서 판단하지 않고, 이 건은 종료됩니다.",
+    "saveFailed": "처리를 저장하지 못했습니다."
+  },
+  "queue": {
+    "title": "이관 대기",
+    "count": "{{count}}건",
+    "emptyTitle": "대기 중인 이관 건이 없어요",
+    "emptyBody": "고객 문의에서 이관되면 여기에 나타납니다. 지금은 샘플로 화면을 볼 수 있어요.",
+    "overdue": "미처리",
+    "inProgress": "상담 진행중",
+    "sampleAll": "남은 샘플 모두 넣기",
+    "sampleWaiting": "이관됨",
+    "sampleHint": "에이전트 전의 임시 샘플입니다. 누르면 대기 목록에 들어옵니다."
+  },
+  "queueTag": {
+    "claim_conflict": "주장 충돌",
+    "unknown": "확인 불가",
+    "frequent_refund": "반복 환불",
+    "evidence_mismatch": "증빙 불일치",
+    "order_claim_mismatch": "주문 불일치"
+  },
+  "samples": {
+    "packed-rice": "주장 충돌 · 공깃밥",
+    "unknown-chicken": "확인 불가 · 양념치킨",
+    "frequent-stew": "반복 환불 · 된장찌개",
+    "evidence-tteok": "증빙 불일치 · 떡볶이",
+    "mismatch-cider": "주문 불일치 · 사이다"
+  },
+  "detail": {
+    "emptyTitle": "건을 선택하세요",
+    "emptyBody": "이관 사유, 주문, 매장 응답을 한 화면에서 확인한 뒤 처리합니다.",
+    "back": "목록",
+    "store": "매장",
+    "total": "결제 금액",
+    "customer": "고객",
+    "recentOrders": "최근 주문 {{count}}건",
+    "refunds30d": "최근 30일 이내 환불",
+    "refundCount": "{{count}}건",
+    "delivery": "배달",
+    "orderStatus": "주문 상태",
+    "delay": "예상 시각 대비 {{minutes}}분",
+    "noDelivery": "배달 정보 없음",
+    "loading": "불러오는 중",
+    "claim": "고객 주장",
+    "item": "주장 메뉴",
+    "order": "주문 메뉴",
+    "evidence": "증빙",
+    "photo": "첨부 사진",
+    "photoMock": "샘플 사진",
+    "merchant": "매장 응답",
+    "agentName": "상담 에이전트",
+    "merchantName": "사장님",
+    "handoff": "이관 사유",
+    "noReason": "저장된 이관 사유가 없습니다.",
+    "summaryLabel": "Agent Summary",
+    "noSummary": "에이전트가 남긴 요약이 없습니다.",
+    "riskLabel": "Risk Flag",
+    "policy": "적용 정책",
+    "none": "없음",
+    "noPolicyReason": "이 상황에 대한 정책 문장을 아직 계산하지 못했습니다.",
+    "openPolicy": "이 상황의 정책 보기",
+    "noRisk": "리스크 플래그 없음",
+    "trace": "확인 기록 {{count}}",
+    "traceOk": "성공",
+    "traceError": "실패",
+    "resolution": "처리 결과",
+    "decide": "최종 처리",
+    "mockNote": "환불과 재배달은 실제 결제나 배달이 아니라 가상 처리로 기록됩니다.",
+    "comment": "의견",
+    "needAction": "처리 방법을 선택하세요.",
+    "submit": "처리 저장"
+  },
+  "actions": {
+    "approve_refund": "환불 승인",
+    "reject_refund": "환불 거절",
+    "approve_redelivery": "재배달 승인",
+    "request_more_info": "추가 정보 요청",
+    "request_additional_confirmation": "추가 확인 요청"
+  },
+  "history": {
+    "title": "처리 이력",
+    "emptyTitle": "처리한 건이 없어요",
+    "emptyBody": "최종 처리를 저장하면 여기에 남습니다.",
+    "closed": "종료",
+    "noComment": "추가 의견 없음"
+  },
+  "orderStatus": {
+    "delivering": "배달 중",
+    "delivered": "배달 완료",
+    "picked_up": "픽업 완료"
+  },
+  "nav": {
+    "queue": "이관",
+    "history": "이력"
+  },
+  "issue": {
+    "delivery_delay": "배달 지연",
+    "missing_item": "메뉴 누락",
+    "wrong_delivery": "오배달",
+    "other": "기타"
+  },
+  "status": {
+    "NEW": "접수",
+    "COLLECTING_INFO": "정보 수집",
+    "WAITING_EVIDENCE": "증빙 대기",
+    "CHECKING_DATA": "정보 확인",
+    "WAITING_MERCHANT": "매장 확인",
+    "POLICY_CHECK": "정책 확인",
+    "RISK_CHECK": "리스크 확인",
+    "AUTO_RESOLVED": "자동 처리",
+    "ESCALATED": "상담원 검토",
+    "CLOSED": "종료"
+  },
+  "merchantResponse": {
+    "ADMITTED_MISSING": "누락 인정",
+    "CLAIMS_PACKED": "포장했다고 진술",
+    "POSSIBLE_MISSING": "누락 가능",
+    "UNKNOWN": "확인 불가",
+    "none": "매장 응답 없음"
+  },
+  "risk": {
+    "duplicate_refund": "동일 환불",
+    "frequent_refund": "반복 환불",
+    "order_claim_mismatch": "주문과 주장 불일치",
+    "evidence_mismatch": "증빙 불일치"
+  },
+  "riskDetail": {
+    "duplicate_refund": "같은 주문, 같은 메뉴에 이미 환불 기록이 있습니다.",
+    "frequent_refund": "최근 30일 이내 환불이 5회 이상인 검토 신호입니다. 이 사실만으로 행동을 막지는 않습니다.",
+    "order_claim_mismatch": "고객이 말한 메뉴가 이 주문에 없습니다.",
+    "evidence_mismatch": "첨부 사진이 고객 설명과 맞지 않습니다."
+  },
+  "policy": {
+    "MERCHANT_CLAIM_CONFLICT": "주장 충돌",
+    "MERCHANT_UNKNOWN": "매장 확인 불가",
+    "MISSING_ITEM_ADMITTED": "누락 인정 후 처리",
+    "MISSING_ITEM_AFTER_MERCHANT_CONFIRMATION": "매장 확인 후 누락",
+    "WRONG_DELIVERY_AFTER_ADMISSION": "누락 인정 후 재배달",
+    "WRONG_DELIVERY_NEEDS_REVIEW": "오배달 추가 검토",
+    "WRONG_DELIVERY_NEEDS_MERCHANT": "오배달 매장 확인",
+    "WRONG_DELIVERY_REDELIVERY_AFTER_MERCHANT": "매장 확인 후 재배달",
+    "MISSING_ITEM_NEEDS_MORE_INFO": "주문 정보 확인",
+    "HIGH_PRICE_MERCHANT_CONFIRMATION": "고가 메뉴 매장 확인",
+    "LOW_PRICE_MISSING_REFUND": "저가 누락 환불",
+    "DELIVERY_DELAY_NEEDS_DATA": "배달 정보 필요",
+    "DELIVERY_DELAYED": "배달 지연",
+    "DELIVERY_ON_TIME": "정상 진행",
+    "OUT_OF_SCOPE": "범위 밖 문의"
+  },
+  "policyPage": {
+    "back": "이관 건으로",
+    "eyebrow": "이 상황에 적용된 정책",
+    "allowed": "허용 처리",
+    "constraints": "제약",
+    "noConstraint": "추가 제약이 없습니다.",
+    "situation": "현재 상황",
+    "missingTitle": "정책을 볼 건이 없어요",
+    "missingBody": "이관 목록에서 건을 다시 선택한 뒤 정책을 열어 주세요."
+  },
+  "finalAction": {
+    "guide_customer": "고객 안내",
+    "mock_coupon": "가상 쿠폰",
+    "mock_refund": "가상 환불",
+    "mock_redelivery": "가상 재배달",
+    "human_review": "상담원 검토",
+    "no_action": "조치 없음"
+  }
+}
