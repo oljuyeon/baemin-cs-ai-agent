@@ -6,16 +6,19 @@
 
 데이터 형식, 상태, Tool 입출력, Policy, Risk, Guardrail의 최종 기준은 [`COMMON_AGENT_CONTRACT ver4.3`](./README/COMMON_AGENT_CONTRACT%20ver4.3.md)입니다.
 
+앞으로 구현할 기능 범위는 `배달 플랫폼 CS AI Agent PoC 기획서 틀`을 따릅니다. 기획서와 공통 계약이 충돌하면 공통 계약을 우선하고, 기획서의 요구사항은 그 경계 안에서 구현합니다.
+
 ## 현재 구현 상태
 
 | 영역 | 상태 | 설명 |
 | --- | --- | --- |
 | 공통 계약·타입 | 구현됨 | `CsCase`, 상태, 결정값, Merchant 응답, 엄격한 `ToolResult<T>` |
-| Mock Data·Tool | 구현됨 | Customer, Order, Delivery, CS 이력, Merchant, 증빙 분석, Mock Action |
+| Mock Data·Tool | 부분 구현 | 데이터·Tool은 구현. 고정 날짜·시각 때문에 Demo 시간 판정 보완 필요 |
 | Case Store | 구현됨 | 생성·조회·변경·구독, 역할별 조회, `localStorage` 복원, 이력 저장 |
 | Policy·Risk | 구현됨 | 허용 Action·제약과 Risk Flag·차단 Action을 분리해 반환 |
+| 가상 로그인·역할 권한 | 부분 구현 | 역할별 진입 화면은 있으나 계정 세션, Route 보호, 역할별 접근 제한은 미구현 |
 | Customer 화면 | 부분 구현 | Case 생성과 후속 대화 저장. Agent 실행·결과·이전 문의 연결은 남음 |
-| Merchant 화면 | 구현됨 | 매장별 Queue, 구조화 응답, 자연어 대화, 응답 이력·알림 |
+| Merchant 화면 | 부분 구현 | Queue·응답·이력은 구현. 실제 Agent 요청과 로그인한 사장님의 매장 제한은 남음 |
 | Human CS 화면 | 부분 구현 | 이관 Queue, 상세, Policy, 최종 처리·이력. 전체 Risk 표시 보완 필요 |
 | Dynamic Agent Loop | 미구현 | 다음 행동 선택, Tool 실행·재판단, 자동 처리·이관 판단 필요 |
 | 전체 화면 연결 | 미완료 | 세 화면은 통합됨. 실제 Agent 요청 대신 일부 Queue를 샘플로 생성 |
@@ -55,7 +58,7 @@ npm run lint
 | 화면 | 구현 파일 | 연결된 URL | 현재 용도 |
 | --- | --- | --- | --- |
 | 메인 | [`src/pages/MainPage.tsx`](./src/pages/MainPage.tsx) | `/` | 서비스 소개와 역할별 진입 |
-| 가상 로그인 | [`src/pages/LoginPage.tsx`](./src/pages/LoginPage.tsx) | `/login` | Customer, Merchant, Human CS 역할 선택 |
+| 역할 선택 | [`src/pages/LoginPage.tsx`](./src/pages/LoginPage.tsx) | `/login` | 가상 로그인 전 단계인 Customer, Merchant, Human CS 진입 선택 |
 | Customer | [`src/pages/CustomerPage.tsx`](./src/pages/CustomerPage.tsx) | `/customer` | 문의 유형 선택, 고객 문장·첨부 입력, Case 생성 |
 | Merchant | [`src/pages/MerchantPage.tsx`](./src/pages/MerchantPage.tsx) | `/merchant` | 매장별 확인 요청 Queue와 응답 이력 |
 | Human CS | [`src/pages/CsPage.tsx`](./src/pages/CsPage.tsx) | `/cs` | 이관 Queue, 상세 검토, 최종 처리 이력 |
@@ -112,7 +115,9 @@ Risk Flag만으로 즉시 Human CS에 이관하지 않습니다. 허용된 추�
 현재 제한:
 
 - 문의 유형에 따라 샘플 주문이 고정되어 있으며 주문 변경 버튼은 아직 연결되지 않음
+- 빠른 선택은 세 가지 문의 유형만 제공하며 `other` 진입과 자연어 Intent Classification은 아직 없음
 - 파일 내용이나 미리보기가 아니라 파일 이름만 저장
+- 모바일 카메라 직접 호출, 이미지 미리보기, 복수 첨부는 아직 연결되지 않음
 - Case를 저장한 뒤 Agent Tool을 실행하지 않음
 - Case 구독, 최종 결과, 처리 시각, 이전 문의 내역은 아직 화면에 연결되지 않음
 
@@ -138,7 +143,7 @@ Risk Flag만으로 즉시 Human CS에 이관하지 않습니다. 허용된 추�
 - 선택을 저장해도 확인을 닫지 않고 `waiting` 유지
 - 응답 이력, 새 요청 알림, 요청 후 3분 미응답 표시
 
-Agent Loop가 아직 없으므로 현재는 샘플 버튼으로 임시 확인 요청을 만듭니다. 실제 연결 후 샘플 버튼과 fixture를 제거합니다.
+Agent Loop가 아직 없으므로 현재는 샘플 버튼으로 임시 확인 요청을 만듭니다. 한 화면에서 세 매장을 바꿀 수 있는 Store Switcher도 데모 편의 기능이며 역할 기반 접근 제어가 아닙니다. 실제 연결과 가상 계정 권한 적용 후 샘플 버튼과 fixture를 제거합니다.
 
 ### Human CS
 
@@ -250,22 +255,26 @@ Agent Loop가 아직 없으므로 현재는 샘플 버튼으로 임시 확인 �
 
 ## 남은 핵심 작업
 
-1. Dynamic Agent Loop 구현
-2. Customer 화면의 주문 선택·Case 구독·최종 결과·문의 이력 연결
-3. 실제 Merchant 확인 요청과 응답 후 Agent 재개
-4. 실제 Human CS 이관과 Customer 결과 반영
-5. Human CS 화면의 전체 Risk Flag 표시
-6. Demo A~E 회귀 테스트와 공통 계약 완료 기준 자동화
-7. 실제 흐름 검증 후 Merchant·Human CS 샘플 기능 제거
+1. 자연어 Intent Classification과 Dynamic Agent Loop 구현
+2. 가상 계정 로그인, 세션 유지, 역할별 Route·데이터 접근 제한
+3. Customer의 `other` 문의 진입, 최근 주문 선택·가장 최근 주문 자동 제안
+4. Customer의 Case 구독, 진행 상태, 최종 결과, 처리 시각, 문의 이력 연결
+5. 모바일 카메라 직접 호출, 이미지 미리보기, 복수 첨부 범위 확정과 증빙 분석 연결
+6. 실제 Merchant 확인 요청과 응답 후 같은 Case의 Agent Loop 재개
+7. 실제 Human CS 이관과 Customer 결과 반영, 전체 Risk Flag 표시
+8. 고정된 샘플 날짜·시각을 실행 시점과 무관하게 Demo A~E가 재현되도록 수정
+9. Demo A~E 회귀 테스트와 공통 계약 완료 기준 자동화
+10. 실제 흐름 검증 후 Merchant·Human CS 샘플 기능 제거
 
 세부 범위와 완료 기준은 [`구현현황과_역할분담.md의 남은 작업 상세`](./README/구현현황과_역할분담.md#남은-작업-상세)를 따릅니다.
 
 ## PoC 제한 사항
 
 - 외부 LLM API와 Dynamic Agent Loop 미연결
-- 실제 로그인·권한 관리 미구현
+- 가상 로그인 세션과 역할 기반 Route·데이터 접근 제한 미구현
 - 실제 주문·배달·CS·결제 시스템 미연동
 - 실제 이미지 분석 대신 URL별 Mock 증빙 분석 사용
+- 샘플 주문·배달 시각이 `2026-09-30`으로 고정되어 실행 날짜에 따라 Demo A 판정이 달라질 수 있음
 - 환불과 재배달은 Mock 결과만 생성
 - 음성 입력·STT는 현재 범위에서 제외
 - `/demo`는 아직 Placeholder
