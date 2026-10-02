@@ -4,7 +4,7 @@
 
 현재 공통 데이터·Tool·Policy·Risk·저장 기능과 세 역할 화면은 `main`에 통합되어 있습니다. Customer 문의도 공통 Case로 저장됩니다. 다만 현재 Case와 Observation을 보고 다음 행동을 고르는 **Dynamic Agent Loop는 아직 연결되지 않았습니다.** Merchant 확인 요청과 Human CS 이관은 임시 샘플 버튼으로 화면 흐름을 확인합니다.
 
-데이터 형식, 상태, Tool 입출력, Policy, Risk, Guardrail의 최종 기준은 [`COMMON_AGENT_CONTRACT ver4.3`](./README/COMMON_AGENT_CONTRACT%20ver4.3.md)입니다.
+데이터 형식, 상태, Tool 입출력, Policy, Risk, Guardrail의 최종 기준은 [`COMMON_AGENT_CONTRACT`](./README/COMMON_AGENT_CONTRACT.md) `ver4.3`입니다.
 
 앞으로 구현할 기능 범위는 `배달 플랫폼 CS AI Agent PoC 기획서 틀`을 따릅니다. 기획서와 공통 계약이 충돌하면 공통 계약을 우선하고, 기획서의 요구사항은 그 경계 안에서 구현합니다.
 
@@ -236,7 +236,7 @@ Agent Loop가 아직 없으므로 현재는 샘플 버튼으로 임시 확인 �
 
 | 문서 | 내용 |
 | --- | --- |
-| [`COMMON_AGENT_CONTRACT ver4.3.md`](./README/COMMON_AGENT_CONTRACT%20ver4.3.md) | 모든 구현 판단의 기준이 되는 공통 계약 |
+| [`COMMON_AGENT_CONTRACT.md`](./README/COMMON_AGENT_CONTRACT.md) | 모든 구현 판단의 기준이 되는 공통 계약. 현재 문서 버전은 `ver4.3` |
 | [`POLICY.md`](./README/POLICY.md) | 현재 `policy.ts`에 구현된 Policy·Risk 규칙 |
 | [`구현현황과_역할분담.md`](./README/구현현황과_역할분담.md) | 현재 구현 상태, 역할 경계, 남은 작업의 상세 범위 |
 
