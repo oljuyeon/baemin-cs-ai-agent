@@ -8,8 +8,10 @@ import { OrderSummaryCard } from '../components/customer/OrderSummaryCard'
 import { TrustPanel } from '../components/customer/TrustPanel'
 import {
   caseStore,
+  type CsCase,
   type CreateCaseInput,
 } from '../features/cs'
+import { agentController } from '../features/agent'
 import type { ChatMessage, CustomerIssue } from '../types/customer'
 import '../styles/customer.css'
 
@@ -53,6 +55,26 @@ const mockCaseInput = (
   }
 }
 
+const toCustomerUiState = (caseData: CsCase) => {
+  if (caseData.status === 'AUTO_RESOLVED' || caseData.status === 'CLOSED') return 'resolved' as const
+  if (
+    caseData.status === 'COLLECTING_INFO'
+    || caseData.status === 'WAITING_EVIDENCE'
+    || caseData.status === 'WAITING_MERCHANT'
+    || caseData.status === 'ESCALATED'
+  ) return 'waiting' as const
+  return 'working' as const
+}
+
+const conversationToMessages = (caseData: CsCase): ChatMessage[] => [
+  ...initialMessages,
+  ...caseData.conversation.map((message, index) => ({
+    id: `${message.role}-${message.createdAt}-${index}`,
+    role: message.role === 'customer' ? 'user' as const : 'agent' as const,
+    content: message.content,
+  })),
+]
+
 export function CustomerPage() {
   const { t } = useTranslation('customer')
   const [issue, setIssue] = useState<CustomerIssue | null>(null)
@@ -85,7 +107,7 @@ export function CustomerPage() {
     setFocusRequest((request) => request + 1)
   }
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     const message = draft.trim()
     if (!message || isThinking || !issue) return
     if (issue === 'wrong' && !attachedFile && !hasStarted) return
@@ -101,11 +123,13 @@ export function CustomerPage() {
     setAttachedFile(null)
 
     try {
+      let currentCase: CsCase
       if (!activeCaseId.current) {
         const caseData = caseStore.createCase(
           mockCaseInput(issue, message, attachment ? [attachment] : []),
         )
         activeCaseId.current = caseData.caseId
+        currentCase = caseData
       } else {
         const current = caseStore.appendConversation(
           activeCaseId.current,
@@ -117,18 +141,29 @@ export function CustomerPage() {
             evidenceUrls: [...current.evidenceUrls, attachment],
           })
         }
+        currentCase = caseStore.getCase(activeCaseId.current) ?? current
       }
 
-      appendMessages({
-        id: `notice-${Date.now()}`,
-        role: 'agent',
-        content: 'chat.savedWithoutAgent',
-        translate: true,
-      })
-      if (mounted.current) {
-        setHasStarted(true)
-        setCaseState('waiting')
+      if (currentCase.issueType === 'missing_item') {
+        if (mounted.current) {
+          setIsThinking(true)
+          setCaseState('working')
+        }
+        const completed = await agentController.runNextStep(currentCase.caseId)
+        if (mounted.current) {
+          setMessages(conversationToMessages(completed))
+          setCaseState(toCustomerUiState(completed))
+        }
+      } else {
+        appendMessages({
+          id: `notice-${Date.now()}`,
+          role: 'agent',
+          content: 'chat.savedWithoutAgent',
+          translate: true,
+        })
+        if (mounted.current) setCaseState('waiting')
       }
+      if (mounted.current) setHasStarted(true)
     } catch (error) {
       appendMessages({
         id: `agent-error-${Date.now()}`,
@@ -138,6 +173,8 @@ export function CustomerPage() {
           : 'Case 저장 중 알 수 없는 오류가 발생했습니다.',
       })
       if (mounted.current) setCaseState('waiting')
+    } finally {
+      if (mounted.current) setIsThinking(false)
     }
   }
 
