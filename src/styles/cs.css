@@ -91,15 +91,39 @@
 .cs-detail__back svg { width: 16px; height: 16px; }
 .cs-detail--empty { display: grid; min-height: 280px; align-content: center; }
 .cs-detail--empty h2 { font-size: 1.4rem; letter-spacing: -0.03em; }
-.cs-trace { margin-top: 16px; }
-.cs-trace summary { cursor: pointer; font-size: 0.86rem; font-weight: 800; }
-.cs-trace ul { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
-.cs-trace li { color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: 0.78rem; }
+.cs-trace { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--color-line); border-radius: 16px; background: #fff; font-family: Pretendard, "Noto Sans KR", sans-serif; }
+.cs-trace > summary { cursor: pointer; font-size: 0.86rem; font-weight: 800; }
+.cs-trace__overview { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.cs-trace__overview span, .cs-trace__status { padding: 4px 8px; border-radius: var(--radius-pill); background: #f1f2f6; color: var(--color-muted); font-size: 0.7rem; font-weight: 800; }
+.cs-trace__overview .is-success, .cs-trace__status.is-success { background: #eaf7f2; color: #24715d; }
+.cs-trace__overview .is-error, .cs-trace__status.is-error { background: #fff1ee; color: #a14b3c; }
+.cs-trace__warning { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: #fff1ee; color: #8d2f24; font-size: 0.76rem; line-height: 1.5; }
+.cs-trace__list { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+.cs-trace__item { overflow: hidden; border: 1px solid var(--color-line); border-radius: 14px; background: #fafafc; }
+.cs-trace__item.is-error { border-color: #f0c7c0; background: #fffafa; }
+.cs-trace__item > summary { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 11px 12px; cursor: pointer; list-style: none; }
+.cs-trace__item > summary::-webkit-details-marker { display: none; }
+.cs-trace__step { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: #eef0ff; color: #4f46c6; font-size: .68rem; font-weight: 800; }
+.cs-trace__name { color: var(--color-text); font-size: .8rem; font-weight: 800; line-height: 1.4; }
+.cs-trace__body { display: grid; gap: 12px; padding: 0 12px 12px; border-top: 1px solid var(--color-line); }
+.cs-trace__time { margin: 10px 0 -2px; color: var(--color-muted); font-size: .7rem; }
+.cs-trace__body section { display: grid; gap: 6px; }
+.cs-trace__body h4 { margin: 0; color: #4f46c6; font-size: .72rem; }
+.cs-trace__body dl { display: grid; gap: 6px; margin: 0; }
+.cs-trace__body dl div { display: grid; grid-template-columns: minmax(90px, .45fr) minmax(0, 1fr); gap: 10px; }
+.cs-trace__body dt { color: var(--color-muted); font-size: .72rem; }
+.cs-trace__body dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--color-text); font-size: .76rem; line-height: 1.5; }
+.cs-trace__raw { padding-top: 2px; }
+.cs-trace__raw > summary { cursor: pointer; color: var(--color-muted); font-size: .72rem; font-weight: 800; }
+.cs-trace__raw h5 { margin: 10px 0 5px; font-size: .68rem; }
+.cs-trace__raw pre { max-height: 220px; margin: 0; padding: 10px; overflow: auto; border-radius: 10px; background: #24262d; color: #f4f5f8; font-size: .66rem; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
 .cs-bottom-nav { display: none; }
 .cs-summary, .cs-risk, .cs-policy-card { display: grid; gap: 8px; margin-top: 14px; padding: 16px; border-radius: 18px; }
 .cs-summary { background: #eef0ff; }
 .cs-summary p, .cs-risk p, .cs-policy-card p, .cs-policy-page__eyebrow { margin: 0; color: #4f46c6; font-size: 0.75rem; font-weight: 800; }
 .cs-summary strong { font-size: 1.15rem; letter-spacing: -0.03em; line-height: 1.45; }
+.cs-summary ul { display: grid; gap: 6px; margin: 2px 0 0; padding-left: 18px; }
+.cs-summary li, .cs-summary > span { color: var(--color-text); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .82rem; line-height: 1.55; }
 .cs-risk { background: #fff1ee; border: 1px solid #f0c7c0; }
 .cs-risk--clear { background: #f7f7fb; border: 1px solid var(--color-line); }
 .cs-risk--clear p, .cs-risk--clear strong { color: var(--color-muted); }

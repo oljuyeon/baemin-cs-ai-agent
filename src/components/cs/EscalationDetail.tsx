@@ -12,6 +12,7 @@ import {
 } from '../../features/cs'
 import { CS_AGENT_ID } from '../../features/csDesk/desk'
 import { BackIcon } from '../customer/CustomerIcons'
+import { AgentDecisionSummary, AgentReviewTrace } from './AgentReviewTrace'
 
 const actions: HumanCsAction[] = [
   'approve_refund',
@@ -239,23 +240,11 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
       <h3>{t('detail.handoff')}</h3>
       <blockquote>{caseData.escalationReason || t('detail.noReason')}</blockquote>
 
-      <section className="cs-summary">
-        <p>{t('detail.summaryLabel')}</p>
-        <strong>{caseData.agentSummary || t('detail.noSummary')}</strong>
-      </section>
+      <AgentDecisionSummary caseData={caseData} />
 
       <Link className="cs-policy-link" to={`/cs/cases/${caseData.caseId}/policy`}>{t('detail.openPolicy')}</Link>
 
-      {caseData.toolHistory.length > 0 && (
-        <details className="cs-trace">
-          <summary>{t('detail.trace', { count: caseData.toolHistory.length })}</summary>
-          <ul>
-            {caseData.toolHistory.map((log) => (
-              <li key={log.id}>{log.toolName} · {log.result.status === 'success' ? t('detail.traceOk') : t('detail.traceError')}</li>
-            ))}
-          </ul>
-        </details>
-      )}
+      <AgentReviewTrace caseData={caseData} />
 
       {resolution ? (
         <div className="cs-response cs-response--saved">
