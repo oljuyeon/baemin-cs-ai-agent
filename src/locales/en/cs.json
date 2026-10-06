@@ -25,7 +25,7 @@
     "title": "Escalations",
     "count": "{{count}}",
     "emptyTitle": "No escalated cases",
-    "emptyBody": "Cases appear here when a customer issue is escalated. Samples can fill the queue for now.",
+    "emptyBody": "Cases appear here when the Agent escalates them for human review.",
     "overdue": "Not started",
     "inProgress": "In consultation",
     "sampleAll": "Add remaining samples",
