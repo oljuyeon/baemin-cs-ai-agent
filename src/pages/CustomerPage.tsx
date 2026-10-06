@@ -4,7 +4,7 @@ import { AgentWorkspace } from '../components/customer/AgentWorkspace'
 import { CustomerBottomNav } from '../components/customer/CustomerBottomNav'
 import { CustomerHeader } from '../components/customer/CustomerHeader'
 import { IssueSelector } from '../components/customer/IssueSelector'
-import { OrderSummaryCard } from '../components/customer/OrderSummaryCard'
+import { firstSelectableOrderId, OrderSummaryCard } from '../components/customer/OrderSummaryCard'
 import { TrustPanel } from '../components/customer/TrustPanel'
 import {
   assessRisk,
@@ -37,36 +37,22 @@ const initialMessages: ChatMessage[] = [
 
 const mockCaseInput = (
   issue: CustomerIssue,
+  orderId: string,
   customerClaim: string,
   evidenceUrls: string[],
 ): CreateCaseInput => {
+  const order = findOrder(orderId)
+  if (!order) throw new Error(`Order ${orderId} was not found.`)
   const shared = { customerClaim, evidenceUrls }
-
-  if (issue === 'delay') {
-    return {
-      customerId: 'C001',
-      orderId: 'A1001',
-      storeId: 'S001',
-      issueType: 'delivery_delay',
-      ...shared,
-    }
-  }
-
-  if (issue === 'missing') {
-    return {
-      customerId: 'C002',
-      orderId: 'A1002',
-      storeId: 'S002',
-      issueType: 'missing_item',
-      ...shared,
-    }
-  }
-
   return {
-    customerId: 'C005',
-    orderId: 'A1005',
-    storeId: 'S002',
-    issueType: 'wrong_delivery',
+    customerId: order.customerId,
+    orderId: order.orderId,
+    storeId: order.storeId,
+    issueType: issue === 'delay'
+      ? 'delivery_delay'
+      : issue === 'missing'
+        ? 'missing_item'
+        : 'wrong_delivery',
     ...shared,
   }
 }
@@ -218,6 +204,7 @@ const canRecoverMissingItem = (caseData: CsCase) => {
 
 export function CustomerPage() {
   const { t } = useTranslation('customer')
+  const [selectedOrderId, setSelectedOrderId] = useState(firstSelectableOrderId)
   const [issue, setIssue] = useState<CustomerIssue | null>(null)
   const [draft, setDraft] = useState('')
   const [attachedFile, setAttachedFile] = useState<string | null>(null)
@@ -289,6 +276,7 @@ export function CustomerPage() {
 
         const baseInput = mockCaseInput(
           inferredIssue,
+          selectedOrderId,
           message,
           attachment ? [attachment] : [],
         )
@@ -543,7 +531,7 @@ export function CustomerPage() {
       <main className="customer-shell customer-main">
         <section className="customer-welcome"><span>{t('welcome.eyebrow')}</span><h1>{t('welcome.title')}</h1><p>{t('welcome.description')}</p></section>
         <div className="customer-layout">
-          <div className="customer-layout__left"><OrderSummaryCard issue={issue} /><IssueSelector selected={issue} onSelect={selectIssue} /><TrustPanel /></div>
+          <div className="customer-layout__left"><OrderSummaryCard orderId={selectedOrderId} locked={hasStarted || isThinking} onOrderChange={setSelectedOrderId} /><IssueSelector selected={issue} onSelect={selectIssue} /><TrustPanel /></div>
           <div className="customer-layout__right">
             <AgentWorkspace
               issue={issue}
