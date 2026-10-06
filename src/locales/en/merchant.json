@@ -23,7 +23,7 @@
   "queue": {
     "title": "Confirmation queue",
     "empty": "No requests are waiting.",
-    "emptyHint": "Add a sample below to see a confirmation request without the agent.",
+    "emptyHint": "Requests appear here when the Agent asks the store for confirmation.",
     "sample": "Add remaining samples",
     "resetSamples": "Reset samples",
     "resetConfirm": "Delete all demo samples from the Merchant and Human CS screens? Customer-created requests will be kept.",
