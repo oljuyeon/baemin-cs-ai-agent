@@ -44,7 +44,12 @@ export function ResponseHistory({
                   <span>
                     <strong>#{caseData.orderId}</strong>
                     <small>
-                      {confirmation?.response ? t(`responses.${confirmation.response}`) : ''}
+                      {confirmation?.response
+                        ? t(
+                            `issueResponses.${caseData.issueType}.${confirmation.response}`,
+                            { defaultValue: t(`responses.${confirmation.response}`) },
+                          )
+                        : ''}
                     </small>
                   </span>
                   <em>

@@ -203,8 +203,6 @@ export function MerchantPage() {
               onBack={() => setMobileDetail(false)}
               onSaved={(message) => {
                 setFlash(message)
-                setPanel('history')
-                setMobileDetail(false)
                 refresh()
               }}
               onError={(message) => setFlash(message)}
