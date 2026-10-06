@@ -26,7 +26,8 @@ export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, 
   const fileRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
-  const canSubmit = Boolean(draft.trim() && !isThinking && (issue !== 'wrong' || attachedFile || hasStarted))
+  const isComposingRef = useRef(false)
+  const canSubmit = Boolean(draft.trim() && !isThinking)
 
   useEffect(() => {
     if (focusRequest > 0) textareaRef.current?.focus()
@@ -38,6 +39,7 @@ export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, 
 
   const submitOnEnter = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
+      if (isComposingRef.current || event.nativeEvent.isComposing || event.keyCode === 229) return
       event.preventDefault()
       if (canSubmit) onSend()
     }
@@ -70,7 +72,7 @@ export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, 
         {actions.length > 0 && !isThinking && (
           <div className="agent-actions">
             <span>{t('agent.nextAction')}</span>
-            {actions.map((action) => <button className={action.primary ? 'is-primary' : ''} type="button" onClick={() => onAction(action)} key={action.id}>{t(action.labelKey)}</button>)}
+            {actions.map((action) => <button className={action.primary ? 'is-primary' : ''} type="button" onClick={() => onAction(action)} key={action.id}>{action.label ?? t(action.labelKey)}</button>)}
           </div>
         )}
         <div ref={chatEndRef} />
@@ -78,7 +80,15 @@ export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, 
 
       <div className="chat-composer chat-composer--persistent">
         {issue && !hasStarted && <span className="chat-composer__draft-label">{t('chat.draftReady')}</span>}
-        <textarea ref={textareaRef} value={draft} onChange={(event) => onDraftChange(event.target.value)} onKeyDown={submitOnEnter} placeholder={t('chat.placeholder')} />
+        <textarea
+          ref={textareaRef}
+          value={draft}
+          onChange={(event) => onDraftChange(event.target.value)}
+          onCompositionStart={() => { isComposingRef.current = true }}
+          onCompositionEnd={() => { isComposingRef.current = false }}
+          onKeyDown={submitOnEnter}
+          placeholder={t('chat.placeholder')}
+        />
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(event) => event.target.files?.[0] && onAttach(event.target.files[0].name)} />
         <div className="chat-composer__tools">
           <button className={attachedFile ? 'is-attached' : ''} type="button" onClick={() => fileRef.current?.click()}><CameraIcon />{attachedFile ? t('chat.attached') : t('chat.attach')}</button>

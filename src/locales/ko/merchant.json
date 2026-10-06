@@ -17,16 +17,20 @@
     "sampleCreatedMany": "샘플 {{count}}건을 이 매장 Queue에 넣었어요.",
     "sampleExists": "이 샘플은 이미 대기 중이에요.",
     "sampleNoneLeft": "넣을 수 있는 샘플이 더 없어요.",
-    "sampleFailed": "샘플 요청을 만들지 못했어요."
+    "sampleFailed": "샘플 요청을 만들지 못했어요.",
+    "samplesReset": "전체 데모 샘플을 초기화했어요."
   },
   "queue": {
     "title": "확인 요청",
     "empty": "대기 중인 확인 요청이 없어요.",
-    "emptyHint": "아래 샘플을 넣으면, 에이전트 없이 확인 요청이 들어온 모습을 볼 수 있어요.",
+    "emptyHint": "고객 문의를 확인한 Agent가 매장 확인을 요청하면 여기에 표시됩니다.",
     "sample": "남은 샘플 모두 넣기",
+    "resetSamples": "샘플 초기화",
+    "resetConfirm": "점주와 Human CS 화면의 데모 샘플을 모두 삭제할까요? 고객이 직접 만든 문의는 유지됩니다.",
     "sampleLegend": "샘플 요청",
     "sampleWaiting": "대기 중",
     "count": "{{count}}건",
+    "responseReceived": "답변 접수 · 에이전트 확인 중",
     "overdue": "미응답"
   },
   "samples": {
@@ -63,16 +67,47 @@
     "photos": "고객 첨부 사진",
     "photoCaption": "첨부 사진",
     "noPhoto": "첨부된 사진이 없어요.",
-    "opening": "이 주문을 확인해 주세요. 아래에서 선택하거나, 선택 없이 문장으로 답할 수 있습니다.",
+    "opening": "이 주문에서 확인한 내용을 알려 주세요. 빠른 답변을 선택하거나 직접 입력할 수 있습니다.",
     "agentName": "상담 에이전트",
     "merchantName": "사장님",
     "question": "확인 결과를 선택해 주세요",
-    "messageLabel": "메시지",
-    "messagePlaceholder": "선택에 대한 설명이나, 선택 없이 답할 내용을 적어 주세요.",
+    "choiceLabel": "확인 결과 빠른 답변",
+    "choiceMessageLabel": "사장님 · 선택 답변",
+    "choiceHint": "선택만으로 답변을 작성할 수 있어요. 필요하면 설명을 덧붙인 뒤 아래 제출 버튼을 눌러 주세요.",
+    "choiceReceived": "선택 답변이 저장되었습니다. 추가 내용이나 정정이 있으면 입력한 뒤 아래 제출 버튼을 눌러 주세요.",
+    "messageLabel": "추가 설명 또는 직접 답변 (선택)",
+    "messagePlaceholder": "필요할 때만 설명을 덧붙이거나 직접 답변해 주세요.",
+    "correctionLabel": "추가 설명 또는 선택 정정",
+    "responsePlaceholder": {
+      "default": {
+        "ADMITTED_MISSING": "예: 매장 확인 결과와 당시 상황을 자세히 적어 주세요.",
+        "CLAIMS_PACKED": "예: 주문서와 포장 기록을 확인한 내용을 적어 주세요.",
+        "POSSIBLE_MISSING": "예: 문제가 발생했을 가능성이 있는 상황을 적어 주세요.",
+        "UNKNOWN": "예: 현재 확인하기 어려운 이유를 적어 주세요."
+      },
+      "missing_item": {
+        "ADMITTED_MISSING": "예: 포장 담당자에게 확인해 보니 해당 메뉴를 넣지 못했습니다.",
+        "CLAIMS_PACKED": "예: 포장 체크리스트에는 해당 메뉴를 넣은 것으로 기록되어 있습니다.",
+        "POSSIBLE_MISSING": "예: 주문이 몰린 시간대라 포장 과정에서 누락됐을 가능성이 있습니다.",
+        "UNKNOWN": "예: 당시 담당 직원과 바로 연락되지 않아 현재는 확인하기 어렵습니다."
+      },
+      "wrong_delivery": {
+        "ADMITTED_MISSING": "예: 포장 확인 결과 다른 주문의 메뉴가 전달된 것을 확인했습니다.",
+        "CLAIMS_PACKED": "예: 주문서와 포장 기록에는 고객 주문대로 준비한 것으로 남아 있습니다.",
+        "POSSIBLE_MISSING": "예: 비슷한 주문이 동시에 들어와 주문이 바뀌었을 가능성이 있습니다.",
+        "UNKNOWN": "예: 당시 담당 직원과 바로 연락되지 않아 현재는 확인하기 어렵습니다."
+      }
+    },
     "send": "보내기",
-    "choiceSaved": "선택이 저장되었어요. 확인은 아직 끝나지 않았고, 추가 질문은 이 대화에 표시됩니다.",
-    "messageSaved": "메시지가 대화에 저장되었어요.",
-    "followUpNote": "에이전트가 더 물어보면 이 대화에 이어서 표시됩니다.",
+    "submitHint": "선택과 추가 설명을 모두 작성한 뒤 에이전트에게 답변을 제출해 주세요.",
+    "submitToAgent": "에이전트에게 답변 제출",
+    "submittingToAgent": "에이전트가 답변 확인 중...",
+    "agentCompleted": "답변이 전달되어 에이전트가 다음 처리를 진행했습니다.",
+    "agentFollowUp": "추가 확인 질문이 도착했습니다. 대화창에서 답변해 주세요.",
+    "agentSubmitError": "에이전트에게 답변을 전달하지 못했어요.",
+    "choiceSaved": "선택 답변이 저장되었습니다. 작성이 끝나면 에이전트에게 답변을 제출해 주세요.",
+    "messageSaved": "메시지가 저장되었습니다. 작성이 끝나면 에이전트에게 답변을 제출해 주세요.",
+    "followUpNote": "추가 확인이 필요한 경우에만 이 대화에 새 질문이 표시됩니다.",
     "error": "응답을 저장하지 못했어요.",
     "back": "목록으로"
   },
@@ -82,14 +117,32 @@
     "POSSIBLE_MISSING": "누락 가능성이 있습니다",
     "UNKNOWN": "확인이 어렵습니다"
   },
+  "issueResponses": {
+    "wrong_delivery": {
+      "ADMITTED_MISSING": "오배달을 인정합니다",
+      "CLAIMS_PACKED": "고객 주문대로 포장했습니다",
+      "POSSIBLE_MISSING": "주문이 바뀌었을 가능성이 있습니다",
+      "UNKNOWN": "확인이 어렵습니다"
+    }
+  },
   "history": {
     "title": "처리 요청 이력",
     "empty": "아직 응답한 요청이 없어요.",
     "responded": "응답",
+    "agentReply": "Agent 답변",
     "status": "현재 상태",
     "finalAction": "최종 조치",
     "comment": "의견",
-    "noFinal": "Agent 판단 대기",
+    "noFinal": "다음 조치 결정 전",
+    "noAgentReply": "새 Agent 답변이 아직 없습니다.",
+    "waitingCustomer": "고객 답변 대기",
+    "waitingEvidence": "고객 증빙 대기",
+    "waitingMerchant": "점주 추가 답변 대기",
+    "agentProcessing": "Agent 처리 중",
+    "afterCustomerReply": "고객 답변 후 결정",
+    "afterEvidence": "증빙 확인 후 결정",
+    "afterMerchantReply": "점주 답변 후 결정",
+    "agentReviewing": "Agent가 다음 조치 확인 중",
     "noComment": "추가 의견 없음"
   },
   "nav": {

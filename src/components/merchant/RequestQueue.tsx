@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { CsCase } from '../../features/cs'
-import { isOverdueRequest } from '../../features/merchant/desk'
-import type { SampleSpec } from '../../features/merchant/sampleRequest'
+import { isAwaitingMerchantReply, isOverdueRequest } from '../../features/merchant/desk'
 
 const formatWhen = (value: string | undefined, language: string) => {
   if (!value) return ''
@@ -15,24 +14,14 @@ const formatWhen = (value: string | undefined, language: string) => {
 
 export function RequestQueue({
   cases,
-  samples,
-  waitingSampleIds,
   selectedId,
   now,
-  creating,
   onSelect,
-  onCreateSample,
-  onCreateAll,
 }: {
   cases: CsCase[]
-  samples: SampleSpec[]
-  waitingSampleIds: Set<string>
   selectedId: string | null
   now: number
-  creating: boolean
   onSelect: (caseId: string) => void
-  onCreateSample: (sampleId: string) => void
-  onCreateAll: () => void
 }) {
   const { t, i18n } = useTranslation('merchant')
   return (
@@ -42,31 +31,6 @@ export function RequestQueue({
           <h2>{t('queue.title')}</h2>
           <span>{t('queue.count', { count: cases.length })}</span>
         </div>
-        <button
-          type="button"
-          className="merchant-sample"
-          onClick={onCreateAll}
-          disabled={creating || samples.every((sample) => waitingSampleIds.has(sample.id))}
-        >
-          {t('queue.sample')}
-        </button>
-      </div>
-      <div className="merchant-samples">
-        <span>{t('queue.sampleLegend')}</span>
-        {samples.map((sample) => {
-          const waiting = waitingSampleIds.has(sample.id)
-          return (
-            <button
-              key={sample.id}
-              type="button"
-              disabled={creating || waiting}
-              onClick={() => onCreateSample(sample.id)}
-            >
-              {t(`samples.${sample.id}`)}
-              {waiting ? ` · ${t('queue.sampleWaiting')}` : ''}
-            </button>
-          )
-        })}
       </div>
       {cases.length === 0 ? (
         <div className="merchant-empty">
@@ -77,11 +41,15 @@ export function RequestQueue({
         <ul className="merchant-list">
           {cases.map((caseData) => {
             const overdue = isOverdueRequest(caseData, now)
+            const answered = !isAwaitingMerchantReply(caseData)
             return (
               <li key={caseData.caseId}>
                 <button
                   type="button"
-                  className={caseData.caseId === selectedId ? 'is-selected' : undefined}
+                  className={[
+                    caseData.caseId === selectedId && 'is-selected',
+                    overdue && 'is-overdue',
+                  ].filter(Boolean).join(' ') || undefined}
                   onClick={() => onSelect(caseData.caseId)}
                 >
                   <span>
@@ -91,7 +59,13 @@ export function RequestQueue({
                   <em>{caseData.customerClaim}</em>
                   <small>
                     {formatWhen(caseData.merchantConfirmation?.requestedAt, i18n.language)}
-                    {overdue ? ` · ${t('queue.overdue')}` : ''}
+                    {answered ? ` · ${t('queue.responseReceived')}` : ''}
+                    {overdue && (
+                      <>
+                        {' · '}
+                        <b className="merchant-list__overdue">{t('queue.overdue')}</b>
+                      </>
+                    )}
                   </small>
                 </button>
               </li>

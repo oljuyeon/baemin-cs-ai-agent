@@ -40,8 +40,43 @@ export const historyForStore = (storeId: string): CsCase[] =>
       ),
     )
 
+const latestTimestamp = (values: Array<string | undefined>) =>
+  values.reduce((latest, value) => {
+    const timestamp = value ? new Date(value).getTime() : 0
+    return Number.isFinite(timestamp) ? Math.max(latest, timestamp) : latest
+  }, 0)
+
+export const isAwaitingMerchantReply = (caseData: CsCase) => {
+  const confirmation = caseData.merchantConfirmation
+  if (!confirmation || caseData.status !== 'WAITING_MERCHANT') return false
+
+  const latestAgentRequest = latestTimestamp([
+    confirmation.requestedAt,
+    ...confirmation.conversation
+      .filter((message) => message.role === 'agent')
+      .map((message) => message.createdAt),
+  ])
+  const latestMerchantAnswer = latestTimestamp([
+    confirmation.response ? confirmation.respondedAt : undefined,
+    ...confirmation.conversation
+      .filter((message) => message.role === 'merchant')
+      .map((message) => message.createdAt),
+    ...caseData.history
+      .filter((entry) => entry.actor === 'merchant' && entry.event === 'MERCHANT_RESPONDED')
+      .map((entry) => entry.createdAt),
+  ])
+
+  return latestAgentRequest > latestMerchantAnswer
+}
+
 export const isOverdueRequest = (caseData: CsCase, now = Date.now()) => {
-  const requestedAt = caseData.merchantConfirmation?.requestedAt
-  if (!requestedAt || caseData.status !== 'WAITING_MERCHANT') return false
-  return now - new Date(requestedAt).getTime() >= REMINDER_AFTER_MS
+  const confirmation = caseData.merchantConfirmation
+  if (!confirmation || !isAwaitingMerchantReply(caseData)) return false
+  const waitingSince = latestTimestamp([
+    confirmation.requestedAt,
+    ...confirmation.conversation
+      .filter((message) => message.role === 'agent')
+      .map((message) => message.createdAt),
+  ])
+  return waitingSince > 0 && now - waitingSince >= REMINDER_AFTER_MS
 }

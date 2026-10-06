@@ -10,7 +10,7 @@ export function FinalCta() {
         <span className="final-cta__spark"><SparkIcon /></span>
         <h2>{t('finalCta.title')}</h2>
         <p>{t('finalCta.description')}</p>
-        <Button to="/demo" variant="secondary">{t('finalCta.button')}<ArrowIcon /></Button>
+        <Button to="/login" variant="secondary">{t('finalCta.button')}<ArrowIcon /></Button>
       </div>
     </section>
   )

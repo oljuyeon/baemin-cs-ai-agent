@@ -17,16 +17,20 @@
     "sampleCreatedMany": "{{count}} sample requests were added to this store's queue.",
     "sampleExists": "This sample is already waiting.",
     "sampleNoneLeft": "Every sample for this store is already waiting.",
-    "sampleFailed": "The sample request could not be created."
+    "sampleFailed": "The sample request could not be created.",
+    "samplesReset": "All demo samples were reset."
   },
   "queue": {
     "title": "Confirmation queue",
     "empty": "No requests are waiting.",
-    "emptyHint": "Add a sample below to see a confirmation request without the agent.",
+    "emptyHint": "Requests appear here when the Agent asks the store for confirmation.",
     "sample": "Add remaining samples",
+    "resetSamples": "Reset samples",
+    "resetConfirm": "Delete all demo samples from the Merchant and Human CS screens? Customer-created requests will be kept.",
     "sampleLegend": "Sample requests",
     "sampleWaiting": "Waiting",
     "count": "{{count}}",
+    "responseReceived": "Response received · Agent reviewing",
     "overdue": "Waiting"
   },
   "samples": {
@@ -63,16 +67,47 @@
     "photos": "Customer photos",
     "photoCaption": "Attached photo",
     "noPhoto": "No photo was attached.",
-    "opening": "Please check this order. Choose a response below, or answer in a sentence without choosing.",
+    "opening": "Tell us what you confirmed for this order. Choose a quick reply or type your own answer.",
     "agentName": "CS agent",
     "merchantName": "Store",
     "question": "Choose what you can confirm",
-    "messageLabel": "Message",
-    "messagePlaceholder": "Add an explanation, or answer in a sentence without a choice.",
+    "choiceLabel": "Quick confirmation replies",
+    "choiceMessageLabel": "Store · Selected reply",
+    "choiceHint": "A choice is enough to compose your response. Add details if needed, then use the submit button below.",
+    "choiceReceived": "Your choice was saved. Add details or a correction if needed, then use the submit button below.",
+    "messageLabel": "Optional explanation or direct answer",
+    "messagePlaceholder": "Add details only when needed, or type your own answer.",
+    "correctionLabel": "Add details or correct your choice",
+    "responsePlaceholder": {
+      "default": {
+        "ADMITTED_MISSING": "Example: Describe what the store confirmed and what happened at the time.",
+        "CLAIMS_PACKED": "Example: Describe what you found in the order and packing records.",
+        "POSSIBLE_MISSING": "Example: Describe why this problem may have happened.",
+        "UNKNOWN": "Example: Explain why the store cannot confirm this yet."
+      },
+      "missing_item": {
+        "ADMITTED_MISSING": "Example: The staff member confirmed that the item was left out of the package.",
+        "CLAIMS_PACKED": "Example: Our packing checklist shows that the item was included.",
+        "POSSIBLE_MISSING": "Example: We were handling many orders, so the item may have been missed during packing.",
+        "UNKNOWN": "Example: We cannot confirm it yet because the staff member on duty is unavailable."
+      },
+      "wrong_delivery": {
+        "ADMITTED_MISSING": "Example: Our packing review confirmed that another customer's order was delivered.",
+        "CLAIMS_PACKED": "Example: The order slip and packing record show that the customer's order was prepared correctly.",
+        "POSSIBLE_MISSING": "Example: Similar orders arrived together, so the orders may have been switched.",
+        "UNKNOWN": "Example: We cannot confirm it yet because the staff member on duty is unavailable."
+      }
+    },
     "send": "Send",
-    "choiceSaved": "Your choice is saved. This check stays open, and any follow-up question appears in this chat.",
-    "messageSaved": "Your message was added to the chat.",
-    "followUpNote": "If the agent needs another answer, the question appears in this chat.",
+    "submitHint": "Finish your selection and optional explanation, then submit the response to the agent.",
+    "submitToAgent": "Submit response to agent",
+    "submittingToAgent": "Agent is reviewing...",
+    "agentCompleted": "The response was sent and the agent continued processing the case.",
+    "agentFollowUp": "The agent sent a follow-up question. Reply in the conversation.",
+    "agentSubmitError": "The response could not be sent to the agent.",
+    "choiceSaved": "Your choice was saved. Submit the response to the agent when you are finished.",
+    "messageSaved": "Your message was saved. Submit the response to the agent when you are finished.",
+    "followUpNote": "A new question appears here only when the agent needs more information.",
     "error": "The response could not be saved.",
     "back": "Back to list"
   },
@@ -82,14 +117,32 @@
     "POSSIBLE_MISSING": "It may be missing",
     "UNKNOWN": "I can't confirm"
   },
+  "issueResponses": {
+    "wrong_delivery": {
+      "ADMITTED_MISSING": "I acknowledge the wrong delivery",
+      "CLAIMS_PACKED": "We packed the customer's order correctly",
+      "POSSIBLE_MISSING": "The orders may have been switched",
+      "UNKNOWN": "I can't confirm"
+    }
+  },
   "history": {
     "title": "Request history",
     "empty": "No responses yet.",
     "responded": "Response",
+    "agentReply": "Agent reply",
     "status": "Current status",
     "finalAction": "Final action",
     "comment": "Comment",
-    "noFinal": "Waiting for the agent",
+    "noFinal": "Next action not decided",
+    "noAgentReply": "No new agent reply yet.",
+    "waitingCustomer": "Waiting for customer",
+    "waitingEvidence": "Waiting for customer evidence",
+    "waitingMerchant": "Waiting for more merchant details",
+    "agentProcessing": "Agent processing",
+    "afterCustomerReply": "Decide after customer reply",
+    "afterEvidence": "Decide after evidence review",
+    "afterMerchantReply": "Decide after merchant reply",
+    "agentReviewing": "Agent reviewing the next action",
     "noComment": "No comment"
   },
   "nav": {

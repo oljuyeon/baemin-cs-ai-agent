@@ -3,12 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { caseStore, type CsCase } from '../features/cs'
 import { CS_AGENT_ID, historyForCs, isCsInProgress, isOverdueEscalation, markCsInProgress, queueForCs } from '../features/csDesk/desk'
-import {
-  createRemainingEscalations,
-  createSampleEscalation,
-  samplesForCs,
-  waitingSampleIds,
-} from '../features/csDesk/sampleEscalation'
 import { CsAlerts } from '../components/cs/CsAlerts'
 import { CsHeader } from '../components/cs/CsHeader'
 import { EscalationDetail } from '../components/cs/EscalationDetail'
@@ -38,7 +32,6 @@ export function CsPage() {
   const [mobileDetail, setMobileDetail] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const narrow = useNarrowLayout()
   const seenCount = useRef<number | null>(null)
@@ -110,46 +103,6 @@ export function CsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const createSample = async (sampleId: string) => {
-    setCreating(true)
-    setFlash(null)
-    try {
-      const result = await createSampleEscalation(sampleId)
-      if (result.status === 'created') {
-        setFlash(t('alerts.sampleCreated'))
-        setSelectedId(result.caseId)
-        setPanel('queue')
-        setMobileDetail(false)
-      } else if (result.status === 'already_waiting') {
-        setFlash(t('alerts.sampleExists'))
-        setSelectedId(result.caseId)
-        setPanel('queue')
-        setMobileDetail(false)
-      } else {
-        setFlash(t('alerts.sampleFailed'))
-      }
-      refresh()
-    } finally {
-      setCreating(false)
-    }
-  }
-
-  const createAllSamples = async () => {
-    setCreating(true)
-    setFlash(null)
-    try {
-      const created = await createRemainingEscalations()
-      if (created.length === 0) setFlash(t('alerts.sampleNoneLeft'))
-      else setFlash(t('alerts.sampleCreatedMany', { count: created.length }))
-      setPanel('queue')
-      setMobileDetail(false)
-      if (created[0]) setSelectedId(created[0])
-      refresh()
-    } finally {
-      setCreating(false)
-    }
-  }
-
   const selected = queue.find((caseData) => caseData.caseId === selectedId)
     ?? history.find((caseData) => caseData.caseId === selectedId)
     ?? null
@@ -179,14 +132,9 @@ export function CsPage() {
             {showQueue && (
               <EscalationQueue
                 cases={queue}
-                samples={samplesForCs()}
-                waitingSampleIds={waitingSampleIds()}
                 selectedId={selectedId}
                 now={now}
-                creating={creating}
                 onSelect={(caseId) => selectCase(caseId, 'queue')}
-                onCreateSample={(sampleId) => { void createSample(sampleId) }}
-                onCreateAll={() => { void createAllSamples() }}
               />
             )}
             {showHistory && (

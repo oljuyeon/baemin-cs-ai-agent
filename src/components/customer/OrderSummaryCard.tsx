@@ -3,19 +3,25 @@ import {
   findDelivery,
   findMerchant,
   findOrder,
+  mockOrders,
 } from '../../features/cs'
-import type { CustomerIssue } from '../../types/customer'
-import { ChevronIcon } from './CustomerIcons'
 
-const orderIdForIssue: Record<CustomerIssue, string> = {
-  delay: 'A1001',
-  missing: 'A1002',
-  wrong: 'A1005',
-}
+const selectableOrderIds = new Set(['A1001', 'A1002', 'A1004'])
+const selectableOrders = mockOrders.filter((order) => selectableOrderIds.has(order.orderId))
 
-export function OrderSummaryCard({ issue }: { issue: CustomerIssue | null }) {
+export const firstSelectableOrderId = selectableOrders[0]?.orderId ?? ''
+
+export function OrderSummaryCard({
+  orderId,
+  locked,
+  onOrderChange,
+}: {
+  orderId: string
+  locked: boolean
+  onOrderChange: (orderId: string) => void
+}) {
   const { t, i18n } = useTranslation('customer')
-  const order = findOrder(orderIdForIssue[issue ?? 'missing'])
+  const order = findOrder(orderId)
   const delivery = order ? findDelivery(order.orderId) : undefined
   const merchant = order ? findMerchant(order.storeId) : undefined
   const locale = i18n.language === 'en' ? 'en-US' : 'ko-KR'
@@ -24,7 +30,25 @@ export function OrderSummaryCard({ issue }: { issue: CustomerIssue | null }) {
 
   return (
     <section className="customer-order-block">
-      <div className="customer-section-title"><h2>{t('order.sectionTitle')}</h2><button type="button">{t('order.change')}<ChevronIcon /></button></div>
+      <div className="customer-section-title">
+        <h2>{t('order.sectionTitle')}</h2>
+        <select
+          className="customer-order-select"
+          aria-label={t('order.change')}
+          value={orderId}
+          disabled={locked}
+          onChange={(event) => onOrderChange(event.target.value)}
+        >
+          {selectableOrders.map((candidate) => {
+            const candidateMerchant = findMerchant(candidate.storeId)
+            return (
+              <option key={candidate.orderId} value={candidate.orderId}>
+                {candidate.orderId} · {candidateMerchant?.storeName ?? candidate.storeId}
+              </option>
+            )
+          })}
+        </select>
+      </div>
       <article className="order-summary-card">
         <div className="order-summary-card__meta">
           <span>{t('order.recent')}</span>

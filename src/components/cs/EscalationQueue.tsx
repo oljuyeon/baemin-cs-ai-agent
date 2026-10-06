@@ -1,37 +1,33 @@
 import { useTranslation } from 'react-i18next'
 import { findMerchant, type CsCase } from '../../features/cs'
 import { isCsInProgress, isOverdueEscalation } from '../../features/csDesk/desk'
-import { queueTagForCase, type EscalationSample } from '../../features/csDesk/sampleEscalation'
 
 interface Props {
   cases: CsCase[]
-  samples: EscalationSample[]
-  waitingSampleIds: string[]
   selectedId: string | null
   now: number
-  creating: boolean
   onSelect: (caseId: string) => void
-  onCreateSample: (sampleId: string) => void
-  onCreateAll: () => void
 }
 
 const formatWhen = (value: string, language: string) =>
   new Intl.DateTimeFormat(language, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(value))
 
+const queueTagForCase = (caseData: CsCase) => {
+  if (caseData.riskFlags.includes('frequent_refund')) return 'frequent_refund'
+  if (caseData.riskFlags.includes('evidence_mismatch')) return 'evidence_mismatch'
+  if (caseData.riskFlags.includes('order_claim_mismatch')) return 'order_claim_mismatch'
+  if (caseData.merchantConfirmation?.response === 'CLAIMS_PACKED') return 'claim_conflict'
+  if (caseData.merchantConfirmation?.response === 'UNKNOWN') return 'unknown'
+  return null
+}
+
 export function EscalationQueue({
   cases,
-  samples,
-  waitingSampleIds,
   selectedId,
   now,
-  creating,
   onSelect,
-  onCreateSample,
-  onCreateAll,
 }: Props) {
   const { t, i18n } = useTranslation('cs')
-  const waiting = new Set(waitingSampleIds)
-  const pendingSamples = samples.filter((sample) => !waiting.has(sample.id))
   return (
     <section className="cs-panel">
       <div className="cs-panel__title">
@@ -39,32 +35,7 @@ export function EscalationQueue({
           <h2>{t('queue.title')}</h2>
           <span>{t('queue.count', { count: cases.length })}</span>
         </div>
-        {pendingSamples.length > 0 && (
-          <button
-            className="cs-sample"
-            type="button"
-            disabled={creating}
-            onClick={onCreateAll}
-          >
-            {t('queue.sampleAll')}
-          </button>
-        )}
       </div>
-      {pendingSamples.length > 0 && (
-        <div className="cs-samples">
-          <span>{t('queue.sampleHint')}</span>
-          {pendingSamples.map((sample) => (
-            <button
-              key={sample.id}
-              type="button"
-              disabled={creating}
-              onClick={() => onCreateSample(sample.id)}
-            >
-              {t(`samples.${sample.id}`)}
-            </button>
-          ))}
-        </div>
-      )}
       {cases.length === 0 ? (
         <div className="cs-empty">
           <strong>{t('queue.emptyTitle')}</strong>
