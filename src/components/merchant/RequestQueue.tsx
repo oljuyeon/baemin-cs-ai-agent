@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { CsCase } from '../../features/cs'
-import { isOverdueRequest } from '../../features/merchant/desk'
+import { isAwaitingMerchantReply, isOverdueRequest } from '../../features/merchant/desk'
 import type { SampleSpec } from '../../features/merchant/sampleRequest'
 
 const formatWhen = (value: string | undefined, language: string) => {
@@ -77,11 +77,15 @@ export function RequestQueue({
         <ul className="merchant-list">
           {cases.map((caseData) => {
             const overdue = isOverdueRequest(caseData, now)
+            const answered = !isAwaitingMerchantReply(caseData)
             return (
               <li key={caseData.caseId}>
                 <button
                   type="button"
-                  className={caseData.caseId === selectedId ? 'is-selected' : undefined}
+                  className={[
+                    caseData.caseId === selectedId && 'is-selected',
+                    overdue && 'is-overdue',
+                  ].filter(Boolean).join(' ') || undefined}
                   onClick={() => onSelect(caseData.caseId)}
                 >
                   <span>
@@ -91,7 +95,13 @@ export function RequestQueue({
                   <em>{caseData.customerClaim}</em>
                   <small>
                     {formatWhen(caseData.merchantConfirmation?.requestedAt, i18n.language)}
-                    {overdue ? ` · ${t('queue.overdue')}` : ''}
+                    {answered ? ` · ${t('queue.responseReceived')}` : ''}
+                    {overdue && (
+                      <>
+                        {' · '}
+                        <b className="merchant-list__overdue">{t('queue.overdue')}</b>
+                      </>
+                    )}
                   </small>
                 </button>
               </li>

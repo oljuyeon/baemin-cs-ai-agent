@@ -27,6 +27,7 @@
     "sampleLegend": "Sample requests",
     "sampleWaiting": "Waiting",
     "count": "{{count}}",
+    "responseReceived": "Response received · Agent reviewing",
     "overdue": "Waiting"
   },
   "samples": {
@@ -63,16 +64,41 @@
     "photos": "Customer photos",
     "photoCaption": "Attached photo",
     "noPhoto": "No photo was attached.",
-    "opening": "Please check this order. Choose a response below, or answer in a sentence without choosing.",
+    "opening": "Tell us what you confirmed for this order. Choose a quick reply or type your own answer.",
     "agentName": "CS agent",
     "merchantName": "Store",
     "question": "Choose what you can confirm",
-    "messageLabel": "Message",
-    "messagePlaceholder": "Add an explanation, or answer in a sentence without a choice.",
+    "choiceLabel": "Quick confirmation replies",
+    "choiceMessageLabel": "Store · Selected reply",
+    "choiceHint": "A choice is enough to submit your answer. If none fits, type your own answer below.",
+    "choiceReceived": "Your choice was submitted. Add any extra details below, or describe a correction if the choice was wrong.",
+    "messageLabel": "Optional explanation or direct answer",
+    "messagePlaceholder": "Add details only when needed, or type your own answer.",
+    "correctionLabel": "Add details or correct your choice",
+    "responsePlaceholder": {
+      "default": {
+        "ADMITTED_MISSING": "Example: Describe what the store confirmed and what happened at the time.",
+        "CLAIMS_PACKED": "Example: Describe what you found in the order and packing records.",
+        "POSSIBLE_MISSING": "Example: Describe why this problem may have happened.",
+        "UNKNOWN": "Example: Explain why the store cannot confirm this yet."
+      },
+      "missing_item": {
+        "ADMITTED_MISSING": "Example: The staff member confirmed that the item was left out of the package.",
+        "CLAIMS_PACKED": "Example: Our packing checklist shows that the item was included.",
+        "POSSIBLE_MISSING": "Example: We were handling many orders, so the item may have been missed during packing.",
+        "UNKNOWN": "Example: We cannot confirm it yet because the staff member on duty is unavailable."
+      },
+      "wrong_delivery": {
+        "ADMITTED_MISSING": "Example: Our packing review confirmed that another customer's order was delivered.",
+        "CLAIMS_PACKED": "Example: The order slip and packing record show that the customer's order was prepared correctly.",
+        "POSSIBLE_MISSING": "Example: Similar orders arrived together, so the orders may have been switched.",
+        "UNKNOWN": "Example: We cannot confirm it yet because the staff member on duty is unavailable."
+      }
+    },
     "send": "Send",
-    "choiceSaved": "Your choice is saved. This check stays open, and any follow-up question appears in this chat.",
-    "messageSaved": "Your message was added to the chat.",
-    "followUpNote": "If the agent needs another answer, the question appears in this chat.",
+    "choiceSaved": "Your choice was submitted. Use the message box for extra details or a correction.",
+    "messageSaved": "Your message was sent. The agent will ask here if more information is needed.",
+    "followUpNote": "A new question appears here only when the agent needs more information.",
     "error": "The response could not be saved.",
     "back": "Back to list"
   },
@@ -81,6 +107,14 @@
     "CLAIMS_PACKED": "I claim it was packed",
     "POSSIBLE_MISSING": "It may be missing",
     "UNKNOWN": "I can't confirm"
+  },
+  "issueResponses": {
+    "wrong_delivery": {
+      "ADMITTED_MISSING": "I acknowledge the wrong delivery",
+      "CLAIMS_PACKED": "We packed the customer's order correctly",
+      "POSSIBLE_MISSING": "The orders may have been switched",
+      "UNKNOWN": "I can't confirm"
+    }
   },
   "history": {
     "title": "Request history",
