@@ -30,7 +30,10 @@
 .merchant-panel__title, .merchant-detail__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .merchant-panel__title h2, .merchant-detail h3 { font-size: 1.05rem; letter-spacing: -.02em; }
 .merchant-panel__title div { display: flex; align-items: baseline; gap: 8px; }
+.merchant-panel__title .merchant-panel__actions { flex-wrap: wrap; justify-content: flex-end; }
 .merchant-panel__title .merchant-sample { width: auto; min-height: 36px; margin-top: 0; padding: 0 14px; font-size: .78rem; }
+.merchant-panel__title .merchant-sample-reset { min-height: 36px; padding: 0 14px; border: 1px solid #e1a39a; border-radius: var(--radius-pill); background: #fff; color: #a14b3c; cursor: pointer; font-size: .78rem; font-weight: 800; }
+.merchant-panel__title .merchant-sample-reset:disabled { cursor: default; opacity: .5; }
 .merchant-panel__title span, .merchant-detail__heading span { padding: 5px 10px; border-radius: var(--radius-pill); background: #fff4e8; color: #9a6230; font-size: .72rem; font-weight: 800; }
 .merchant-detail__heading { align-items: flex-start; margin-bottom: 16px; }
 .merchant-detail__heading h2 { font-size: 1.7rem; letter-spacing: -.04em; }

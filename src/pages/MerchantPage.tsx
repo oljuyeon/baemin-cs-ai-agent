@@ -46,6 +46,7 @@ export function MerchantPage() {
   const [showNew, setShowNew] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [hasDemoCases, setHasDemoCases] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const narrow = useNarrowLayout()
   const seenCount = useRef<number | null>(null)
@@ -57,6 +58,7 @@ export function MerchantPage() {
     seenCount.current = nextQueue.length
     setQueue(nextQueue)
     setHistory(nextHistory)
+    setHasDemoCases(caseStore.getAllCases().some((caseData) => Boolean(caseData.demoCaseId)))
   }, [storeId])
 
   useEffect(() => {
@@ -154,6 +156,21 @@ export function MerchantPage() {
     }
   }
 
+  const resetSamples = () => {
+    if (!window.confirm(t('queue.resetConfirm'))) return
+
+    const selectedWasDemo = selectedId
+      ? Boolean(caseStore.getCase(selectedId)?.demoCaseId)
+      : false
+    caseStore.resetAllDemoCases()
+    if (selectedWasDemo) setSelectedId(null)
+    setPanel('queue')
+    setMobileDetail(false)
+    setShowNew(false)
+    setFlash(t('alerts.samplesReset'))
+    refresh()
+  }
+
   const selected = queue.find((caseData) => caseData.caseId === selectedId)
     ?? history.find((caseData) => caseData.caseId === selectedId)
     ?? null
@@ -183,9 +200,11 @@ export function MerchantPage() {
                 selectedId={selectedId}
                 now={now}
                 creating={creating}
+                hasDemoCases={hasDemoCases}
                 onSelect={(caseId) => selectCase(caseId, 'queue')}
                 onCreateSample={(sampleId) => { void createSample(sampleId) }}
                 onCreateAll={() => { void createAllSamples() }}
+                onResetSamples={resetSamples}
               />
             )}
             {showHistory && (

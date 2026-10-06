@@ -20,9 +20,11 @@ export function RequestQueue({
   selectedId,
   now,
   creating,
+  hasDemoCases,
   onSelect,
   onCreateSample,
   onCreateAll,
+  onResetSamples,
 }: {
   cases: CsCase[]
   samples: SampleSpec[]
@@ -30,9 +32,11 @@ export function RequestQueue({
   selectedId: string | null
   now: number
   creating: boolean
+  hasDemoCases: boolean
   onSelect: (caseId: string) => void
   onCreateSample: (sampleId: string) => void
   onCreateAll: () => void
+  onResetSamples: () => void
 }) {
   const { t, i18n } = useTranslation('merchant')
   return (
@@ -42,14 +46,24 @@ export function RequestQueue({
           <h2>{t('queue.title')}</h2>
           <span>{t('queue.count', { count: cases.length })}</span>
         </div>
-        <button
-          type="button"
-          className="merchant-sample"
-          onClick={onCreateAll}
-          disabled={creating || samples.every((sample) => waitingSampleIds.has(sample.id))}
-        >
-          {t('queue.sample')}
-        </button>
+        <div className="merchant-panel__actions">
+          <button
+            type="button"
+            className="merchant-sample"
+            onClick={onCreateAll}
+            disabled={creating || samples.every((sample) => waitingSampleIds.has(sample.id))}
+          >
+            {t('queue.sample')}
+          </button>
+          <button
+            type="button"
+            className="merchant-sample-reset"
+            onClick={onResetSamples}
+            disabled={creating || !hasDemoCases}
+          >
+            {t('queue.resetSamples')}
+          </button>
+        </div>
       </div>
       <div className="merchant-samples">
         <span>{t('queue.sampleLegend')}</span>

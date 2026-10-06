@@ -17,13 +17,16 @@
     "sampleCreatedMany": "샘플 {{count}}건을 이 매장 Queue에 넣었어요.",
     "sampleExists": "이 샘플은 이미 대기 중이에요.",
     "sampleNoneLeft": "넣을 수 있는 샘플이 더 없어요.",
-    "sampleFailed": "샘플 요청을 만들지 못했어요."
+    "sampleFailed": "샘플 요청을 만들지 못했어요.",
+    "samplesReset": "전체 데모 샘플을 초기화했어요."
   },
   "queue": {
     "title": "확인 요청",
     "empty": "대기 중인 확인 요청이 없어요.",
     "emptyHint": "아래 샘플을 넣으면, 에이전트 없이 확인 요청이 들어온 모습을 볼 수 있어요.",
     "sample": "남은 샘플 모두 넣기",
+    "resetSamples": "샘플 초기화",
+    "resetConfirm": "점주와 Human CS 화면의 데모 샘플을 모두 삭제할까요? 고객이 직접 만든 문의는 유지됩니다.",
     "sampleLegend": "샘플 요청",
     "sampleWaiting": "대기 중",
     "count": "{{count}}건",
