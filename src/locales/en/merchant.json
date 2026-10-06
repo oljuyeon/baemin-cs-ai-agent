@@ -17,13 +17,16 @@
     "sampleCreatedMany": "{{count}} sample requests were added to this store's queue.",
     "sampleExists": "This sample is already waiting.",
     "sampleNoneLeft": "Every sample for this store is already waiting.",
-    "sampleFailed": "The sample request could not be created."
+    "sampleFailed": "The sample request could not be created.",
+    "samplesReset": "All demo samples were reset."
   },
   "queue": {
     "title": "Confirmation queue",
     "empty": "No requests are waiting.",
     "emptyHint": "Add a sample below to see a confirmation request without the agent.",
     "sample": "Add remaining samples",
+    "resetSamples": "Reset samples",
+    "resetConfirm": "Delete all demo samples from the Merchant and Human CS screens? Customer-created requests will be kept.",
     "sampleLegend": "Sample requests",
     "sampleWaiting": "Waiting",
     "count": "{{count}}",
