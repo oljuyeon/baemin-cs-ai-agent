@@ -8,12 +8,6 @@ import {
   readSelectedStoreId,
   writeSelectedStoreId,
 } from '../features/merchant/desk'
-import {
-  createRemainingSamples,
-  createSampleMerchantRequest,
-  samplesForStore,
-  waitingSampleIds,
-} from '../features/merchant/sampleRequest'
 import { MerchantAlerts } from '../components/merchant/MerchantAlerts'
 import { MerchantHeader } from '../components/merchant/MerchantHeader'
 import { RequestDetail } from '../components/merchant/RequestDetail'
@@ -45,8 +39,6 @@ export function MerchantPage() {
   const [mobileDetail, setMobileDetail] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
-  const [hasDemoCases, setHasDemoCases] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const narrow = useNarrowLayout()
   const seenCount = useRef<number | null>(null)
@@ -58,7 +50,6 @@ export function MerchantPage() {
     seenCount.current = nextQueue.length
     setQueue(nextQueue)
     setHistory(nextHistory)
-    setHasDemoCases(caseStore.getAllCases().some((caseData) => Boolean(caseData.demoCaseId)))
   }, [storeId])
 
   useEffect(() => {
@@ -116,61 +107,6 @@ export function MerchantPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const createSample = async (sampleId: string) => {
-    setCreating(true)
-    setFlash(null)
-    try {
-      const result = await createSampleMerchantRequest(storeId, sampleId)
-      if (result.status === 'created') {
-        setFlash(t('alerts.sampleCreated'))
-        setSelectedId(result.caseId)
-        setPanel('queue')
-        setMobileDetail(false)
-      } else if (result.status === 'already_waiting') {
-        setFlash(t('alerts.sampleExists'))
-        setSelectedId(result.caseId)
-        setPanel('queue')
-        setMobileDetail(false)
-      } else {
-        setFlash(t('alerts.sampleFailed'))
-      }
-      refresh()
-    } finally {
-      setCreating(false)
-    }
-  }
-
-  const createAllSamples = async () => {
-    setCreating(true)
-    setFlash(null)
-    try {
-      const created = await createRemainingSamples(storeId)
-      if (created.length === 0) setFlash(t('alerts.sampleNoneLeft'))
-      else setFlash(t('alerts.sampleCreatedMany', { count: created.length }))
-      setPanel('queue')
-      setMobileDetail(false)
-      if (created[0]) setSelectedId(created[0])
-      refresh()
-    } finally {
-      setCreating(false)
-    }
-  }
-
-  const resetSamples = () => {
-    if (!window.confirm(t('queue.resetConfirm'))) return
-
-    const selectedWasDemo = selectedId
-      ? Boolean(caseStore.getCase(selectedId)?.demoCaseId)
-      : false
-    caseStore.resetAllDemoCases()
-    if (selectedWasDemo) setSelectedId(null)
-    setPanel('queue')
-    setMobileDetail(false)
-    setShowNew(false)
-    setFlash(t('alerts.samplesReset'))
-    refresh()
-  }
-
   const selected = queue.find((caseData) => caseData.caseId === selectedId)
     ?? history.find((caseData) => caseData.caseId === selectedId)
     ?? null
@@ -195,16 +131,9 @@ export function MerchantPage() {
             {showQueue && (
               <RequestQueue
                 cases={queue}
-                samples={samplesForStore(storeId)}
-                waitingSampleIds={waitingSampleIds(storeId)}
                 selectedId={selectedId}
                 now={now}
-                creating={creating}
-                hasDemoCases={hasDemoCases}
                 onSelect={(caseId) => selectCase(caseId, 'queue')}
-                onCreateSample={(sampleId) => { void createSample(sampleId) }}
-                onCreateAll={() => { void createAllSamples() }}
-                onResetSamples={resetSamples}
               />
             )}
             {showHistory && (

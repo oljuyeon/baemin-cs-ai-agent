@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { CsCase } from '../../features/cs'
 import { isAwaitingMerchantReply, isOverdueRequest } from '../../features/merchant/desk'
-import type { SampleSpec } from '../../features/merchant/sampleRequest'
 
 const formatWhen = (value: string | undefined, language: string) => {
   if (!value) return ''
@@ -15,28 +14,14 @@ const formatWhen = (value: string | undefined, language: string) => {
 
 export function RequestQueue({
   cases,
-  samples,
-  waitingSampleIds,
   selectedId,
   now,
-  creating,
-  hasDemoCases,
   onSelect,
-  onCreateSample,
-  onCreateAll,
-  onResetSamples,
 }: {
   cases: CsCase[]
-  samples: SampleSpec[]
-  waitingSampleIds: Set<string>
   selectedId: string | null
   now: number
-  creating: boolean
-  hasDemoCases: boolean
   onSelect: (caseId: string) => void
-  onCreateSample: (sampleId: string) => void
-  onCreateAll: () => void
-  onResetSamples: () => void
 }) {
   const { t, i18n } = useTranslation('merchant')
   return (
@@ -46,41 +31,6 @@ export function RequestQueue({
           <h2>{t('queue.title')}</h2>
           <span>{t('queue.count', { count: cases.length })}</span>
         </div>
-        <div className="merchant-panel__actions">
-          <button
-            type="button"
-            className="merchant-sample"
-            onClick={onCreateAll}
-            disabled={creating || samples.every((sample) => waitingSampleIds.has(sample.id))}
-          >
-            {t('queue.sample')}
-          </button>
-          <button
-            type="button"
-            className="merchant-sample-reset"
-            onClick={onResetSamples}
-            disabled={creating || !hasDemoCases}
-          >
-            {t('queue.resetSamples')}
-          </button>
-        </div>
-      </div>
-      <div className="merchant-samples">
-        <span>{t('queue.sampleLegend')}</span>
-        {samples.map((sample) => {
-          const waiting = waitingSampleIds.has(sample.id)
-          return (
-            <button
-              key={sample.id}
-              type="button"
-              disabled={creating || waiting}
-              onClick={() => onCreateSample(sample.id)}
-            >
-              {t(`samples.${sample.id}`)}
-              {waiting ? ` · ${t('queue.sampleWaiting')}` : ''}
-            </button>
-          )
-        })}
       </div>
       {cases.length === 0 ? (
         <div className="merchant-empty">
