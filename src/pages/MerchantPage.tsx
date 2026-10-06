@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { processMerchantResponse } from '../features/agent'
 import { caseStore, type CsCase } from '../features/cs'
 import {
   historyForStore,
@@ -154,6 +155,12 @@ export function MerchantPage() {
     }
   }
 
+  const submitToAgent = async (caseId: string) => {
+    const result = await processMerchantResponse(caseId)
+    refresh()
+    return result.outcome
+  }
+
   const selected = queue.find((caseData) => caseData.caseId === selectedId)
     ?? history.find((caseData) => caseData.caseId === selectedId)
     ?? null
@@ -206,6 +213,7 @@ export function MerchantPage() {
                 refresh()
               }}
               onError={(message) => setFlash(message)}
+              onSubmitToAgent={submitToAgent}
             />
           )}
         </div>

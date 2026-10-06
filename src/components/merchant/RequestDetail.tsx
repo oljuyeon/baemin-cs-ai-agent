@@ -57,17 +57,20 @@ export function RequestDetail({
   onBack,
   onSaved,
   onError,
+  onSubmitToAgent,
 }: {
   caseData: CsCase | null
   showBack: boolean
   onBack: () => void
   onSaved: (message: string) => void
   onError: (message: string) => void
+  onSubmitToAgent: (caseId: string) => Promise<'completed' | 'follow_up'>
 }) {
   const { t, i18n } = useTranslation('merchant')
   const [order, setOrder] = useState<OrderData | null>(caseData?.order ?? null)
   const [draft, setDraft] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  const [submittingToAgent, setSubmittingToAgent] = useState(false)
 
   const caseId = caseData?.caseId
   const orderId = caseData?.orderId
@@ -76,6 +79,7 @@ export function RequestDetail({
   useEffect(() => {
     setDraft('')
     setFormError(null)
+    setSubmittingToAgent(false)
     if (!caseId || !orderId) {
       setOrder(null)
       return
@@ -128,6 +132,9 @@ export function RequestDetail({
         }]
       : []),
   ].sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+  const canSubmitToAgent = Boolean(
+    selectedResponse || messages.some((message) => message.role === 'merchant'),
+  )
   const choose = (choice: MerchantResponse) => {
     if (selectedResponse) return
     try {
@@ -153,6 +160,24 @@ export function RequestDetail({
       const message = t('detail.error')
       setFormError(message)
       onError(message)
+    }
+  }
+
+  const submitToAgent = async () => {
+    if (submittingToAgent) return
+    setSubmittingToAgent(true)
+    setFormError(null)
+    try {
+      const outcome = await onSubmitToAgent(caseData.caseId)
+      onSaved(t(outcome === 'completed'
+        ? 'detail.agentCompleted'
+        : 'detail.agentFollowUp'))
+    } catch {
+      const message = t('detail.agentSubmitError')
+      setFormError(message)
+      onError(message)
+    } finally {
+      setSubmittingToAgent(false)
     }
   }
 
@@ -276,6 +301,19 @@ export function RequestDetail({
                 <button type="submit" className="merchant-submit">{t('detail.send')}</button>
               </span>
             </label>
+            <div className="merchant-agent-submit">
+              <p>{t('detail.submitHint')}</p>
+              <button
+                type="button"
+                className="merchant-agent-submit__button"
+                disabled={!canSubmitToAgent || submittingToAgent}
+                onClick={() => { void submitToAgent() }}
+              >
+                {t(submittingToAgent
+                  ? 'detail.submittingToAgent'
+                  : 'detail.submitToAgent')}
+              </button>
+            </div>
             {formError && <p className="merchant-form-error">{formError}</p>}
             <p className="merchant-follow-up">{t('detail.followUpNote')}</p>
           </form>

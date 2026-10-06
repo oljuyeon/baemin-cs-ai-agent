@@ -83,6 +83,10 @@
 .merchant-chat__send textarea { flex: 1; min-height: 46px; margin: 0; }
 .merchant-chat__send button { width: auto; min-height: 46px; margin-top: 0; padding: 0 16px; }
 .merchant-follow-up { margin: 8px 0 0; color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .75rem; line-height: 1.45; }
+.merchant-agent-submit { display: grid; gap: 8px; margin-top: 4px; padding: 12px; border: 1px solid #b9ddd5; border-radius: 14px; background: #effaf7; }
+.merchant-agent-submit p { margin: 0; color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .76rem; line-height: 1.45; }
+.merchant-agent-submit__button { width: 100%; min-height: 46px; border: 0; border-radius: var(--radius-pill); background: var(--color-primary); color: #fff; cursor: pointer; font-weight: 800; }
+.merchant-agent-submit__button:disabled { cursor: default; opacity: .5; }
 .merchant-response--chat { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--color-line); }
 .merchant-response__choices { display: grid; grid-template-columns: 1fr; gap: 8px; }
 .merchant-response__choices button { min-width: 0; min-height: 44px; padding: 0 15px; border: 1px solid var(--color-line); border-radius: 14px; background: #fff; text-align: left; white-space: nowrap; cursor: pointer; font-size: .84rem; font-weight: 800; letter-spacing: -.035em; }
