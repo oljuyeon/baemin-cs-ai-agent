@@ -29,6 +29,48 @@ const formatWhen = (value: string | undefined, language: string) => {
 const formatPrice = (price: number, language: string) =>
   new Intl.NumberFormat(language === 'en' ? 'en-US' : 'ko-KR').format(price)
 
+const latestAgentUpdate = (caseData: CsCase) => {
+  const respondedAt = caseData.merchantConfirmation?.respondedAt
+  if (!respondedAt) return undefined
+
+  return [
+    ...caseData.conversation.filter((message) =>
+      message.role === 'agent' && message.createdAt >= respondedAt,
+    ),
+    ...(caseData.merchantConfirmation?.conversation ?? []).filter((message) =>
+      message.role === 'agent' && message.createdAt >= respondedAt,
+    ),
+  ].sort((left, right) => left.createdAt.localeCompare(right.createdAt)).at(-1)?.content
+}
+
+const progressKey = (caseData: CsCase) => {
+  switch (caseData.status) {
+    case 'COLLECTING_INFO': return 'history.waitingCustomer'
+    case 'WAITING_EVIDENCE': return 'history.waitingEvidence'
+    case 'WAITING_MERCHANT': return 'history.waitingMerchant'
+    case 'CHECKING_DATA':
+    case 'POLICY_CHECK':
+    case 'RISK_CHECK':
+      return 'history.agentProcessing'
+    default:
+      return `status.${caseData.status}`
+  }
+}
+
+const pendingActionKey = (caseData: CsCase) => {
+  switch (caseData.status) {
+    case 'COLLECTING_INFO': return 'history.afterCustomerReply'
+    case 'WAITING_EVIDENCE': return 'history.afterEvidence'
+    case 'WAITING_MERCHANT': return 'history.afterMerchantReply'
+    case 'CHECKING_DATA':
+    case 'POLICY_CHECK':
+    case 'RISK_CHECK':
+      return 'history.agentReviewing'
+    default:
+      return 'history.noFinal'
+  }
+}
+
 function EvidenceCard({ url }: { url: string }) {
   const { t } = useTranslation('merchant')
   const displayable = /^(https?:|blob:|data:)/.test(url)
@@ -113,6 +155,7 @@ export function RequestDetail({
 
   const messages = confirmation?.conversation ?? []
   const selectedResponse = confirmation?.response
+  const agentUpdate = latestAgentUpdate(caseData)
   const responseLabel = (response: MerchantResponse) => t(
     `issueResponses.${caseData.issueType}.${response}`,
     { defaultValue: t(`responses.${response}`) },
@@ -283,10 +326,18 @@ export function RequestDetail({
           <div className="merchant-response merchant-response--saved">
             <h3>{t('history.responded')}</h3>
             <p>{selectedResponse ? responseLabel(selectedResponse) : ''}</p>
+            <h3>{t('history.agentReply')}</h3>
+            <p className="merchant-agent-update">
+              {agentUpdate ?? t('history.noAgentReply')}
+            </p>
             <h3>{t('history.status')}</h3>
-            <p>{t(`status.${caseData.status}`)}</p>
+            <p>{t(progressKey(caseData))}</p>
             <h3>{t('history.finalAction')}</h3>
-            <p>{caseData.finalAction ? t(`finalAction.${caseData.finalAction}`) : t('history.noFinal')}</p>
+            <p>
+              {caseData.finalAction
+                ? t(`finalAction.${caseData.finalAction}`)
+                : t(pendingActionKey(caseData))}
+            </p>
           </div>
         )}
       </div>
