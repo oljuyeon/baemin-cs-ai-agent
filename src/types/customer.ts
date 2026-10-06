@@ -24,6 +24,7 @@ export type AgentActionId =
 export interface AgentAction {
   id: AgentActionId
   labelKey: string
+  label?: string
   primary?: boolean
 }
 

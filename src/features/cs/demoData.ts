@@ -7,10 +7,11 @@ import type {
   OrderData,
 } from './types'
 
-let appStartedAt = Date.now()
+const DEMO_NOW = new Date('2026-09-30T21:48:00+09:00').getTime()
+let appStartedAt = DEMO_NOW
 
 export const markAppStarted = () => {
-  appStartedAt = Date.now()
+  appStartedAt = DEMO_NOW
 }
 
 export const mockCustomers: CustomerData[] = [

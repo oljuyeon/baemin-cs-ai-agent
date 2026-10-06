@@ -3,11 +3,17 @@
 이 폴더는 공통 `CsCase`, `caseStore`, `agentTools`를 사용해 담당자 A의
 Dynamic Agent Loop를 구현한다.
 
-현재 범위는 저가 메뉴 누락 Demo B다. `decisionEngine.ts`는 Demo ID나 고정
-Tool 배열을 사용하지 않고 Case에 없는 Observation을 기준으로 다음 행동을
-고른다. Customer 화면에서는 `missing_item`만 Agent Loop를 실행하며 다른 문의는
-기존처럼 Case 저장까지만 수행한다.
+`remoteAgent.ts`는 OpenAI Responses API 중계 경로를 통해 고객 문장과 다음 Agent
+행동을 구조화해 받는다. API 오류, 시간 초과, Policy·Risk 위반 행동이면 `nlu.ts`와
+`decisionEngine.ts`의 규칙 기반 판단으로 자동 전환한다. 빠른 선택은 자연어 결과가
+없거나 동률일 때만 보조 힌트로 사용한다.
 
-최종 LLM 연결 시 서버 측 판단 API가 구조화된 `AgentAction`을 반환하도록
-`decisionEngine.ts`를 교체한다. Controller, Tool 실행, Case와 이력 저장은 그대로
-재사용한다. API 키는 브라우저 번들에 넣지 않는다.
+OpenAI에는 고객 입력 문장, Mock 메뉴명·가격, 배달 상태·지연 시간, Policy 허용
+Action, Risk 차단 Action, Tool 성공 여부만 전달한다. 고객·주문·매장 ID, 전체 CS
+이력, 증빙 URL과 이미지는 보내지 않으며 Responses 저장은 끈다. Tool 입력은 모델이
+만들지 않고 로컬 Controller가 검증된 Case에서 구성한다.
+
+API 키는 `.env`의 `OPENAI_API_KEY`로만 읽고 브라우저 번들에 넣지 않는다. 현재 API
+중계는 `server/agentApiPlugin.ts`에서 Vite 개발 서버 middleware로 제공한다. 규칙
+기반 PoC는 API 키 없이도 실행되며, 실제 배포 전에는 같은 계약의 별도 서버
+endpoint로 옮겨야 한다.

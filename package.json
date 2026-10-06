@@ -11,12 +11,15 @@
   },
   "dependencies": {
     "i18next": "^25.5.2",
+    "openai": "^7.28.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-i18next": "^15.7.3",
-    "react-router-dom": "^7.9.3"
+    "react-router-dom": "^7.9.3",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/node": "^26.6.4",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.4",

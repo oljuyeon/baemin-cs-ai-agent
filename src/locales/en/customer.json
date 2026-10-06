@@ -43,6 +43,11 @@
     "draftReady": "I drafted a message from your selection. Review it and send it when ready.",
     "requiredHint": "Please attach a photo so we can verify the wrong delivery.",
     "savedWithoutAgent": "Your message is saved on the case. The AI agent is not connected yet, so no lookup or refund was run.",
+    "unsupported": "This demo currently supports delivery delay, missing item, and wrong delivery cases. Please describe what happened in a little more detail.",
+    "recognized": {
+      "delay": "I understood this as a delivery delay. I saved it as a case for checking the order and delivery status. Automated delay lookup is still being connected in this demo.",
+      "wrong": "I understood this as a wrong delivery. Please attach a photo of the food if you have one. I saved it with the order in the same case."
+    },
     "quickDraft": {
       "delay": "The estimated arrival time has passed, but my delivery is not here yet.",
       "missing": "The cola from my order was missing.",
@@ -79,6 +84,18 @@
       "refundExecuted": "Requested a partial refund to the original payment method",
       "noAction": "Kept the current delivery without an additional action"
     },
+    "toolEvents": {
+      "getOrder": "Checked the order and included items",
+      "getDelivery": "Checked delivery status and ETA",
+      "getCsHistory": "Checked prior handling and refunds for this order",
+      "getPolicy": "Checked the applicable resolution policy",
+      "checkRisk": "Checked duplicate refunds and risk signals",
+      "analyzeEvidence": "Analyzed the attached evidence",
+      "requestMerchant": "Sent a confirmation request to the restaurant",
+      "refund": "Executed the Mock partial refund after customer approval",
+      "redelivery": "Executed the Mock redelivery request",
+      "escalateHuman": "Added the case to the human review queue"
+    },
     "actions": {
       "trackDelivery": "Turn on delivery updates",
       "checkCompensation": "Check delay compensation",
@@ -92,12 +109,15 @@
     },
     "results": {
       "trackingDone": "Live delivery updates are on. I’ll notify you when the location or ETA changes. You can keep asking for help in this chat.",
-      "compensationOffer": "The delay policy applies. Would you like me to issue a ₩3,000 coupon now?",
+      "compensationOffer": "Delivery data shows a {{delayMinutes}}-minute delay, meeting the {{minimumMinutes}}-minute Mock policy threshold. Issue a ₩{{amount}} coupon?",
+      "compensationNotEligible": "Delivery data shows a {{delayMinutes}}-minute delay. The current Mock policy requires at least {{minimumMinutes}} minutes, so this order is not eligible for a coupon.",
+      "compensationNeedsData": "I cannot determine coupon eligibility because delivery timing data is unavailable.",
+      "compensationAlreadyIssued": "A delay compensation coupon has already been issued for this order, so another coupon cannot be issued.",
       "refundOffer": "This meets the automated resolution policy. I can refund ₩3,500 for the missing fries to your original payment method.",
       "merchantPending": "I sent the restaurant a confirmation request. When they reply, the Agent will automatically continue in this chat. Progress is saved if you close the page.",
       "redeliveryDone": "Redelivery is confirmed. The restaurant has started preparing it and the new ETA is 8:20 PM. You can track it in this chat.",
       "escalationDone": "I sent the order, photo, and findings so the agent can decide immediately. You won’t need to explain everything again.",
-      "couponDone": "Your ₩3,000 delay coupon has been issued. You can find it in Coupons. Is there anything else to resolve?",
+      "couponDone": "Your ₩{{amount}} delay coupon has been issued. You can find it in Coupons. Is there anything else to resolve?",
       "refundDone": "The ₩3,500 refund is complete. It may take 2–3 business days to appear on your original payment method.",
       "noAction": "Got it. The current delivery will continue, and I’ll post any status changes in this chat."
     },

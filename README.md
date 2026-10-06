@@ -2,7 +2,7 @@
 
 배달 지연, 메뉴 누락, 오배달 문의를 Customer, Merchant, Human CS가 하나의 `CsCase`로 이어서 처리하는 모바일 우선 PoC입니다.
 
-현재 공통 데이터·Tool·Policy·Risk·저장 기능과 세 역할 화면은 `main`에 통합되어 있습니다. Customer 문의도 공통 Case로 저장됩니다. 저가 메뉴 누락 Demo B에는 Case의 부족한 Observation을 기준으로 다음 행동을 고르는 첫 **Dynamic Agent Loop 골격**이 연결되어 있습니다. 배달 지연·오배달, Merchant 확인과 Human CS 이관은 아직 전체 Agent 흐름에 연결되지 않았습니다.
+현재 공통 데이터·Tool·Policy·Risk·저장 기능과 세 역할 화면은 `main`에 통합되어 있습니다. `OPENAI_API_KEY`가 있으면 OpenAI Responses API가 자연어 문의와 다음 Agent 행동을 구조화해 판단하고, API를 사용할 수 없거나 안전 검증을 통과하지 못하면 규칙 기반 엔진으로 자동 전환합니다. Customer 문의는 공통 Case로 저장되며 메뉴 누락, 배달 지연, 오배달에서 Dynamic Agent Loop를 실행합니다. Merchant 확인 재개와 Human CS 결과의 Customer 반영은 아직 전체 흐름 연결이 남아 있습니다.
 
 데이터 형식, 상태, Tool 입출력, Policy, Risk, Guardrail의 최종 기준은 [`COMMON_AGENT_CONTRACT`](./README/COMMON_AGENT_CONTRACT.md) `ver4.3`입니다.
 
@@ -17,10 +17,10 @@
 | Case Store | 구현됨 | 생성·조회·변경·구독, 역할별 조회, `localStorage` 복원, 이력 저장 |
 | Policy·Risk | 구현됨 | 허용 Action·제약과 Risk Flag·차단 Action을 분리해 반환 |
 | 가상 로그인·역할 권한 | 부분 구현 | 역할별 진입 화면은 있으나 계정 세션, Route 보호, 역할별 접근 제한은 미구현 |
-| Customer 화면 | 부분 구현 | Case 생성·후속 대화 저장과 Demo B Agent 실행·결과 표시. 이전 문의와 다른 Demo 연결은 남음 |
+| Customer 화면 | 부분 구현 | OpenAI 우선·규칙 fallback 자연어 분류, Case 생성·후속 대화, 세 문의 유형 Agent 실행. 이전 문의 연결은 남음 |
 | Merchant 화면 | 부분 구현 | Queue·응답·이력은 구현. 실제 Agent 요청과 로그인한 사장님의 매장 제한은 남음 |
 | Human CS 화면 | 부분 구현 | 이관 Queue, 상세, Policy, 최종 처리·이력. 전체 Risk 표시 보완 필요 |
-| Dynamic Agent Loop | 부분 구현 | Demo B에서 Case 기반 Tool 선택·Observation 저장·추가 질문·Mock 환불 종료. LLM 판단과 다른 Demo 확장 필요 |
+| Dynamic Agent Loop | 부분 구현 | OpenAI 구조화 판단과 로컬 안전 검증, 규칙 fallback, Tool·Observation·Mock Action 연결. Merchant 재개 등 확장 필요 |
 | 전체 화면 연결 | 미완료 | 세 화면은 통합됨. 실제 Agent 요청 대신 일부 Queue를 샘플로 생성 |
 
 상세 현황과 역할별 완료 기준은 [`구현현황과_역할분담.md`](./README/구현현황과_역할분담.md)에서 확인합니다.
@@ -36,8 +36,12 @@
 
 ```bash
 npm ci
+cp .env.example .env
+# .env의 OPENAI_API_KEY에 개인 프로젝트 키 입력
 npm run dev
 ```
+
+API 키가 없거나 요청에 실패해도 규칙 기반 엔진으로 기본 Demo가 동작합니다. 키에는 `VITE_` 접두사를 붙이지 않으며 브라우저 번들에 포함하지 않습니다.
 
 프로덕션 빌드 검증:
 
@@ -63,7 +67,8 @@ npm run lint
 | Merchant | [`src/pages/MerchantPage.tsx`](./src/pages/MerchantPage.tsx) | `/merchant` | 매장별 확인 요청 Queue와 응답 이력 |
 | Human CS | [`src/pages/CsPage.tsx`](./src/pages/CsPage.tsx) | `/cs` | 이관 Queue, 상세 검토, 최종 처리 이력 |
 | Policy 상세 | [`src/pages/PolicyPage.tsx`](./src/pages/PolicyPage.tsx) | `/cs/cases/:caseId/policy` | 해당 Case에 적용되는 허용 Action과 제약 확인 |
-| Demo·미등록 경로 | [`src/pages/PlaceholderPage.tsx`](./src/pages/PlaceholderPage.tsx) | `/demo`, `*` | 전체 Agent Demo 연결 예정·Not Found 표시 |
+| Demo 진입 | [`src/app/router.tsx`](./src/app/router.tsx) | `/demo` | 역할 선택 화면인 `/login`으로 이동 |
+| 미등록 경로 | [`src/pages/PlaceholderPage.tsx`](./src/pages/PlaceholderPage.tsx) | `*` | Not Found 표시 |
 
 ## 핵심 처리 원칙
 
@@ -106,6 +111,8 @@ Risk Flag만으로 즉시 Human CS에 이관하지 않습니다. 허용된 추�
 - 최근 주문 형태의 주문·배달 카드
 - 배달 지연, 메뉴 누락, 오배달 빠른 선택
 - 자연어 문의와 이미지 파일 선택 UI
+- 빠른 선택 없이 입력한 문장을 OpenAI 우선, 규칙 fallback으로 `delivery_delay`, `missing_item`, `wrong_delivery`, `other` 분류
+- 누락 문의에서 메뉴명과 `음료` 같은 별칭을 주문 항목에 매핑
 - 고객 문장으로 공통 `CsCase` 생성
 - 같은 Case에 후속 고객 대화 저장
 - 메뉴 누락 Demo B의 주문·CS 이력·Policy·Risk 조회와 Mock 부분 환불
@@ -117,10 +124,10 @@ Risk Flag만으로 즉시 Human CS에 이관하지 않습니다. 허용된 추�
 현재 제한:
 
 - 문의 유형에 따라 샘플 주문이 고정되어 있으며 주문 변경 버튼은 아직 연결되지 않음
-- 빠른 선택은 세 가지 문의 유형만 제공하며 `other` 진입과 자연어 Intent Classification은 아직 없음
+- 빠른 선택 UI는 세 가지 문의 유형만 제공하며 `other`는 자유 입력 문장을 통해 안내
 - 파일 내용이나 미리보기가 아니라 파일 이름만 저장
 - 모바일 카메라 직접 호출, 이미지 미리보기, 복수 첨부는 아직 연결되지 않음
-- 배달 지연·오배달은 Case 저장 뒤 Agent Tool을 아직 실행하지 않음
+- 배달 지연·오배달 Agent 흐름은 초기 연결 단계이며 Demo A·C·D·E 회귀 검증이 더 필요함
 - Case 구독, 최종 결과, 처리 시각, 이전 문의 내역은 아직 화면에 연결되지 않음
 
 ### Merchant
@@ -257,7 +264,7 @@ Agent Loop가 아직 없으므로 현재는 샘플 버튼으로 임시 확인 �
 
 ## 남은 핵심 작업
 
-1. Demo B Agent 골격을 서버 측 LLM Decision Engine과 Demo A·C·D·E로 확장
+1. OpenAI Decision Engine의 Demo A·C·D·E 회귀 테스트와 프롬프트·fallback 보강
 2. 가상 계정 로그인, 세션 유지, 역할별 Route·데이터 접근 제한
 3. Customer의 `other` 문의 진입, 최근 주문 선택·가장 최근 주문 자동 제안
 4. Customer의 Case 구독, 진행 상태, 최종 결과, 처리 시각, 문의 이력 연결
@@ -272,11 +279,13 @@ Agent Loop가 아직 없으므로 현재는 샘플 버튼으로 임시 확인 �
 
 ## PoC 제한 사항
 
-- 외부 LLM API는 미연결이며 현재 Demo B Decision Engine은 코드 기반 첫 골격
+- `OPENAI_API_KEY`가 있으면 Responses API를 사용하고, 실패하거나 안전 검증을 통과하지 못하면 규칙 기반으로 전환
+- OpenAI에는 고객 입력 문장, Mock 메뉴명·가격, 배달 상태·지연 시간, 허용·차단 Action, Tool 성공 여부만 전송하며 식별자·증빙 URL·이미지는 제외
+- Responses 요청은 `store: false`이며 현재 API 중계는 Vite 개발 서버용이므로 정적 배포 전 별도 서버 배포가 필요
 - 가상 로그인 세션과 역할 기반 Route·데이터 접근 제한 미구현
 - 실제 주문·배달·CS·결제 시스템 미연동
 - 실제 이미지 분석 대신 URL별 Mock 증빙 분석 사용
 - 샘플 주문·배달 시각이 `2026-09-30`으로 고정되어 실행 날짜에 따라 Demo A 판정이 달라질 수 있음
 - 환불과 재배달은 Mock 결과만 생성
 - 음성 입력·STT는 현재 범위에서 제외
-- `/demo`는 아직 Placeholder
+- `/demo`는 역할 선택 화면(`/login`)으로 이동

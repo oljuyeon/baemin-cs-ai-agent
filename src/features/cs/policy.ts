@@ -3,6 +3,16 @@ import type { CsCase, FinalAction, MerchantResponse, PolicyResult, RiskFlag, Ris
 
 export const LOW_PRICE_LIMIT = 5_000
 export const FREQUENT_REFUND_LIMIT_30D = 5
+export const DELAY_COMPENSATION_MINUTES = 30
+export const DELAY_COMPENSATION_AMOUNT = 3_000
+
+export type DelayCompensationResult = {
+  eligible: boolean
+  delayMinutes: number | null
+  minimumMinutes: number
+  amount: number
+  reason: 'eligible' | 'missing_delivery' | 'insufficient_delay' | 'already_issued'
+}
 
 const unique = <T>(values: T[]): T[] => [...new Set(values)]
 
@@ -92,6 +102,36 @@ export function assessRisk(caseData: CsCase): RiskResult {
     blockedActions: unique(flags.flatMap((flag) => riskCopy[flag].blockedActions)),
     reason: flags.map((flag) => riskCopy[flag].reason).join(' '),
   }
+}
+
+/** 수업용 Mock 정책: 실측 지연 30분 이상이며 동일 주문 쿠폰이 아직 없을 때만 허용한다. */
+export function evaluateDelayCompensation(caseData: CsCase): DelayCompensationResult {
+  const base = {
+    minimumMinutes: DELAY_COMPENSATION_MINUTES,
+    amount: DELAY_COMPENSATION_AMOUNT,
+  }
+
+  if (!caseData.delivery) {
+    return { ...base, eligible: false, delayMinutes: null, reason: 'missing_delivery' }
+  }
+
+  const delayMinutes = Math.max(0, calculateDelayMinutes(caseData.delivery))
+  const alreadyIssued = caseData.finalAction === 'mock_coupon'
+    || caseData.csHistory.some((record) =>
+      record.orderId === caseData.orderId
+      && record.action === 'mock_coupon'
+      && record.status === 'completed',
+    )
+
+  if (alreadyIssued) {
+    return { ...base, eligible: false, delayMinutes, reason: 'already_issued' }
+  }
+
+  if (delayMinutes < DELAY_COMPENSATION_MINUTES) {
+    return { ...base, eligible: false, delayMinutes, reason: 'insufficient_delay' }
+  }
+
+  return { ...base, eligible: true, delayMinutes, reason: 'eligible' }
 }
 
 export function evaluatePolicy(caseData: CsCase): PolicyResult {

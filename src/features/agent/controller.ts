@@ -5,6 +5,7 @@ import {
   type CsCase,
 } from '../cs'
 import { decideNextAction } from './decisionEngine'
+import { resolveOrderItem } from './nlu'
 import { executeTool } from './toolExecutor'
 
 const MAX_STEPS = 8
@@ -20,21 +21,16 @@ const isTerminal = (caseData: CsCase) =>
   || caseData.status === 'ESCALATED'
   || caseData.status === 'CLOSED'
 
-const normalize = (value: string) => value.replace(/\s+/g, '').toLowerCase()
-
 const enrichClaimedItem = (caseData: CsCase) => {
   if (caseData.claimedItemName || !caseData.order) return caseData
-  const customerText = normalize(
+  const customerText =
     caseData.conversation
       .filter((message) => message.role === 'customer')
       .map((message) => message.content)
-      .join(' '),
-  )
-  const item = caseData.order.items.find((candidate) =>
-    customerText.includes(normalize(candidate.name)),
-  )
-  if (!item) return caseData
-  return caseStore.updateCase(caseData.caseId, { claimedItemName: item.name })
+      .join(' ')
+  const itemName = resolveOrderItem(customerText, caseData.order.items)
+  if (!itemName) return caseData
+  return caseStore.updateCase(caseData.caseId, { claimedItemName: itemName })
 }
 
 const finish = (caseId: string, action: Extract<AgentAction, { type: 'FINISH' }>) => {
@@ -100,13 +96,42 @@ export const agentController: AgentController = {
         current.status === 'WAITING_MERCHANT'
         && current.merchantConfirmation?.status !== 'completed'
       ) {
+        if (current.issueType === 'delivery_delay') {
+          caseStore.updateCase(caseId, {
+            status: 'CHECKING_DATA',
+            decision: undefined,
+            merchantConfirmation: undefined,
+          })
+          continue
+        }
+
+        const lastMessage = current.conversation[current.conversation.length - 1]
+        if (lastMessage?.role === 'customer') {
+          caseStore.appendConversation(
+            caseId,
+            'agent',
+            '매장 확인 요청을 전달했고 현재 답변을 기다리고 있습니다. 답변이 오면 바로 이어서 안내할게요.',
+          )
+          return requireCase(caseId)
+        }
         return current
       }
 
       const action = await decideNextAction(current)
 
       if (action.type === 'CALL_TOOL') {
-        await executeTool(caseId, action)
+        const updated = await executeTool(caseId, action)
+        if (
+          action.toolName === 'request_merchant_confirmation'
+          && updated.status === 'WAITING_MERCHANT'
+        ) {
+          caseStore.appendConversation(
+            caseId,
+            'agent',
+            '매장에 확인 요청을 보냈습니다. 답변이 오면 이 대화에서 바로 이어서 안내할게요.',
+          )
+          return requireCase(caseId)
+        }
         continue
       }
 
