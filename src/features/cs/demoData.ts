@@ -7,11 +7,18 @@ import type {
   OrderData,
 } from './types'
 
-const DEMO_NOW = new Date('2026-09-30T21:48:00+09:00').getTime()
-let appStartedAt = DEMO_NOW
+const FIXTURE_NOW = new Date('2026-10-15T10:00:00+09:00').getTime()
+const APP_OPENED_AT = Date.now()
+let appStartedAt = APP_OPENED_AT
+
+const shiftFixtureTime = (value: string) =>
+  new Date(new Date(value).getTime() + APP_OPENED_AT - FIXTURE_NOW).toISOString()
+
+const shiftOptionalFixtureTime = (value?: string) =>
+  value ? shiftFixtureTime(value) : undefined
 
 export const markAppStarted = () => {
-  appStartedAt = DEMO_NOW
+  appStartedAt = APP_OPENED_AT
 }
 
 export const mockCustomers: CustomerData[] = [
@@ -43,28 +50,28 @@ export const mockMerchants: MerchantData[] = [
   { storeId: 'S003', storeName: '분식연구소', merchantUserId: 'M003' },
 ]
 
-export const mockOrders: OrderData[] = [
+const orderFixtures: OrderData[] = [
   {
     orderId: 'A1001', customerId: 'C001', storeId: 'S001',
-    orderedAt: '2026-09-30T20:10:00+09:00',
+    orderedAt: '2026-10-15T08:22:00+09:00',
     items: [{ itemId: 'I001', name: '김치찌개', price: 12000 }],
     totalAmount: 12000, orderStatus: 'delivering',
   },
   {
     orderId: 'A1006', customerId: 'C006', storeId: 'S002',
-    orderedAt: '2026-09-30T19:00:00+09:00',
+    orderedAt: '2026-10-15T08:23:00+09:00',
     items: [{ itemId: 'I009', name: '간장치킨', price: 21000 }],
     totalAmount: 21000, orderStatus: 'delivering',
   },
   {
     orderId: 'A1007', customerId: 'C007', storeId: 'S003',
-    orderedAt: '2026-09-30T17:40:00+09:00',
+    orderedAt: '2026-10-15T07:30:00+09:00',
     items: [{ itemId: 'I010', name: '모둠튀김', price: 9000 }],
     totalAmount: 9000, orderStatus: 'delivering',
   },
   {
     orderId: 'A1002', customerId: 'C002', storeId: 'S002',
-    orderedAt: '2026-09-30T18:00:00+09:00',
+    orderedAt: '2026-10-15T06:12:00+09:00',
     items: [
       { itemId: 'I002', name: '후라이드치킨', price: 20000 },
       { itemId: 'I003', name: '콜라', price: 2000 },
@@ -73,7 +80,7 @@ export const mockOrders: OrderData[] = [
   },
   {
     orderId: 'A1003', customerId: 'C003', storeId: 'S001',
-    orderedAt: '2026-09-30T18:10:00+09:00',
+    orderedAt: '2026-10-15T06:22:00+09:00',
     items: [
       { itemId: 'I004', name: '불고기정식', price: 18000 },
       { itemId: 'I005', name: '공깃밥', price: 1000 },
@@ -81,8 +88,8 @@ export const mockOrders: OrderData[] = [
     totalAmount: 19000, orderStatus: 'delivered',
   },
   {
-    orderId: 'A1004', customerId: 'C004', storeId: 'S003',
-    orderedAt: '2026-09-30T18:30:00+09:00',
+    orderId: 'A1004', customerId: 'C008', storeId: 'S003',
+    orderedAt: '2026-10-15T06:42:00+09:00',
     items: [
       { itemId: 'I006', name: '떡볶이', price: 6000 },
       { itemId: 'I007', name: '튀김세트', price: 6000 },
@@ -91,19 +98,19 @@ export const mockOrders: OrderData[] = [
   },
   {
     orderId: 'A1005', customerId: 'C005', storeId: 'S002',
-    orderedAt: '2026-09-30T18:40:00+09:00',
+    orderedAt: '2026-10-15T06:52:00+09:00',
     items: [{ itemId: 'I008', name: '양념치킨', price: 21000 }],
     totalAmount: 21000, orderStatus: 'delivered',
   },
   {
     orderId: 'A1008', customerId: 'C008', storeId: 'S001',
-    orderedAt: '2026-09-30T17:10:00+09:00',
+    orderedAt: '2026-10-15T05:22:00+09:00',
     items: [{ itemId: 'I011', name: '된장찌개', price: 11000 }],
     totalAmount: 11000, orderStatus: 'delivered',
   },
   {
     orderId: 'A1009', customerId: 'C009', storeId: 'S001',
-    orderedAt: '2026-09-30T19:20:00+09:00',
+    orderedAt: '2026-10-15T07:32:00+09:00',
     items: [
       { itemId: 'I012', name: '제육정식', price: 16000 },
       { itemId: 'I013', name: '된장국', price: 2000 },
@@ -112,7 +119,7 @@ export const mockOrders: OrderData[] = [
   },
   {
     orderId: 'A1012', customerId: 'C010', storeId: 'S001',
-    orderedAt: '2026-09-30T18:50:00+09:00',
+    orderedAt: '2026-10-15T07:02:00+09:00',
     items: [
       { itemId: 'I014', name: '비빔밥', price: 9000 },
       { itemId: 'I015', name: '계란찜', price: 3000 },
@@ -121,7 +128,7 @@ export const mockOrders: OrderData[] = [
   },
   {
     orderId: 'A1010', customerId: 'C011', storeId: 'S002',
-    orderedAt: '2026-09-30T19:40:00+09:00',
+    orderedAt: '2026-10-15T07:52:00+09:00',
     items: [
       { itemId: 'I016', name: '반반치킨', price: 23000 },
       { itemId: 'I017', name: '맥주', price: 4000 },
@@ -130,13 +137,13 @@ export const mockOrders: OrderData[] = [
   },
   {
     orderId: 'A1014', customerId: 'C014', storeId: 'S002',
-    orderedAt: '2026-09-30T17:20:00+09:00',
+    orderedAt: '2026-10-15T05:32:00+09:00',
     items: [{ itemId: 'I018', name: '순살양념', price: 19000 }],
     totalAmount: 19000, orderStatus: 'delivered',
   },
   {
     orderId: 'A1011', customerId: 'C012', storeId: 'S003',
-    orderedAt: '2026-09-30T19:10:00+09:00',
+    orderedAt: '2026-10-15T07:22:00+09:00',
     items: [
       { itemId: 'I019', name: '참치김밥', price: 4500 },
       { itemId: 'I020', name: '라면', price: 5000 },
@@ -145,7 +152,7 @@ export const mockOrders: OrderData[] = [
   },
   {
     orderId: 'A1013', customerId: 'C013', storeId: 'S003',
-    orderedAt: '2026-09-30T16:40:00+09:00',
+    orderedAt: '2026-10-15T04:52:00+09:00',
     items: [
       { itemId: 'I021', name: '치즈떡볶이', price: 8000 },
       { itemId: 'I022', name: '순대', price: 5000 },
@@ -154,7 +161,7 @@ export const mockOrders: OrderData[] = [
   },
   {
     orderId: 'A1015', customerId: 'C015', storeId: 'S001',
-    orderedAt: '2026-09-30T19:05:00+09:00',
+    orderedAt: '2026-10-15T07:17:00+09:00',
     items: [
       { itemId: 'I023', name: '갈비탕', price: 14000 },
       { itemId: 'I024', name: '공기밥', price: 1000 },
@@ -163,13 +170,13 @@ export const mockOrders: OrderData[] = [
   },
   {
     orderId: 'A1016', customerId: 'C016', storeId: 'S001',
-    orderedAt: '2026-09-30T17:50:00+09:00',
+    orderedAt: '2026-10-15T06:02:00+09:00',
     items: [{ itemId: 'I025', name: '물냉면', price: 11000 }],
     totalAmount: 11000, orderStatus: 'delivered',
   },
   {
     orderId: 'A1017', customerId: 'C017', storeId: 'S002',
-    orderedAt: '2026-09-30T18:20:00+09:00',
+    orderedAt: '2026-10-15T06:32:00+09:00',
     items: [
       { itemId: 'I026', name: '허니콤보', price: 22000 },
       { itemId: 'I027', name: '콜라', price: 2000 },
@@ -178,13 +185,13 @@ export const mockOrders: OrderData[] = [
   },
   {
     orderId: 'A1018', customerId: 'C018', storeId: 'S002',
-    orderedAt: '2026-09-30T16:10:00+09:00',
+    orderedAt: '2026-10-15T04:22:00+09:00',
     items: [{ itemId: 'I028', name: '양념반마리', price: 13000 }],
     totalAmount: 13000, orderStatus: 'delivered',
   },
   {
     orderId: 'A1019', customerId: 'C019', storeId: 'S003',
-    orderedAt: '2026-09-30T18:05:00+09:00',
+    orderedAt: '2026-10-15T06:17:00+09:00',
     items: [
       { itemId: 'I029', name: '라볶이', price: 7000 },
       { itemId: 'I030', name: '김밥', price: 4000 },
@@ -193,116 +200,130 @@ export const mockOrders: OrderData[] = [
   },
   {
     orderId: 'A1020', customerId: 'C020', storeId: 'S003',
-    orderedAt: '2026-09-30T15:40:00+09:00',
+    orderedAt: '2026-10-15T03:52:00+09:00',
     items: [{ itemId: 'I031', name: '쫄면', price: 6500 }],
     totalAmount: 6500, orderStatus: 'delivered',
   },
 ]
 
+/** 고정 Fixture의 시간 간격은 유지하고, 날짜는 앱을 연 시각 기준으로 이동한다. */
+export const mockOrders: OrderData[] = orderFixtures.map((order) => ({
+  ...order,
+  orderedAt: shiftFixtureTime(order.orderedAt),
+}))
+
 type StoredDelivery = Omit<DeliveryData, 'delayMinutes'>
 
-export const mockDeliveries: StoredDelivery[] = [
+const deliveryFixtures: StoredDelivery[] = [
   {
-    orderId: 'A1001', riderAssignedAt: '2026-09-30T20:18:00+09:00',
-    pickedUpAt: '2026-09-30T20:25:00+09:00',
-    expectedAt: '2026-09-30T21:30:00+09:00', deliveryStatus: 'picked_up',
+    orderId: 'A1001', riderAssignedAt: '2026-10-15T08:30:00+09:00',
+    pickedUpAt: '2026-10-15T08:37:00+09:00',
+    expectedAt: '2026-10-15T09:42:00+09:00', deliveryStatus: 'picked_up',
   },
   {
-    orderId: 'A1006', riderAssignedAt: '2026-09-30T19:25:00+09:00',
-    pickedUpAt: '2026-09-30T19:40:00+09:00',
-    expectedAt: '2026-09-30T20:05:00+09:00', deliveryStatus: 'picked_up',
+    orderId: 'A1006', riderAssignedAt: '2026-10-15T08:48:00+09:00',
+    pickedUpAt: '2026-10-15T09:03:00+09:00',
+    expectedAt: '2026-10-15T09:28:00+09:00', deliveryStatus: 'picked_up',
   },
   {
-    orderId: 'A1007', riderAssignedAt: '2026-09-30T18:10:00+09:00',
-    pickedUpAt: '2026-09-30T18:25:00+09:00',
-    expectedAt: '2026-09-30T19:05:00+09:00', deliveryStatus: 'picked_up',
+    orderId: 'A1007', riderAssignedAt: '2026-10-15T08:00:00+09:00',
+    pickedUpAt: '2026-10-15T08:15:00+09:00',
+    expectedAt: '2026-10-15T08:55:00+09:00', deliveryStatus: 'picked_up',
   },
   {
-    orderId: 'A1002', riderAssignedAt: '2026-09-30T18:15:00+09:00',
-    pickedUpAt: '2026-09-30T18:30:00+09:00', expectedAt: '2026-09-30T18:50:00+09:00',
-    deliveredAt: '2026-09-30T18:52:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1002', riderAssignedAt: '2026-10-15T06:27:00+09:00',
+    pickedUpAt: '2026-10-15T06:42:00+09:00', expectedAt: '2026-10-15T07:02:00+09:00',
+    deliveredAt: '2026-10-15T07:04:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1003', riderAssignedAt: '2026-09-30T18:25:00+09:00',
-    pickedUpAt: '2026-09-30T18:40:00+09:00', expectedAt: '2026-09-30T19:00:00+09:00',
-    deliveredAt: '2026-09-30T19:03:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1003', riderAssignedAt: '2026-10-15T06:37:00+09:00',
+    pickedUpAt: '2026-10-15T06:52:00+09:00', expectedAt: '2026-10-15T07:12:00+09:00',
+    deliveredAt: '2026-10-15T07:15:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1004', riderAssignedAt: '2026-09-30T18:42:00+09:00',
-    pickedUpAt: '2026-09-30T18:55:00+09:00', expectedAt: '2026-09-30T19:15:00+09:00',
-    deliveredAt: '2026-09-30T19:13:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1004', riderAssignedAt: '2026-10-15T06:54:00+09:00',
+    pickedUpAt: '2026-10-15T07:07:00+09:00', expectedAt: '2026-10-15T07:27:00+09:00',
+    deliveredAt: '2026-10-15T07:25:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1005', riderAssignedAt: '2026-09-30T18:55:00+09:00',
-    pickedUpAt: '2026-09-30T19:10:00+09:00', expectedAt: '2026-09-30T19:35:00+09:00',
-    deliveredAt: '2026-09-30T19:37:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1005', riderAssignedAt: '2026-10-15T07:07:00+09:00',
+    pickedUpAt: '2026-10-15T07:22:00+09:00', expectedAt: '2026-10-15T07:47:00+09:00',
+    deliveredAt: '2026-10-15T07:49:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1008', riderAssignedAt: '2026-09-30T17:20:00+09:00',
-    pickedUpAt: '2026-09-30T17:35:00+09:00', expectedAt: '2026-09-30T18:00:00+09:00',
-    deliveredAt: '2026-09-30T18:04:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1008', riderAssignedAt: '2026-10-15T05:32:00+09:00',
+    pickedUpAt: '2026-10-15T05:47:00+09:00', expectedAt: '2026-10-15T06:12:00+09:00',
+    deliveredAt: '2026-10-15T06:16:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1009', riderAssignedAt: '2026-09-30T19:35:00+09:00',
-    pickedUpAt: '2026-09-30T19:48:00+09:00', expectedAt: '2026-09-30T20:10:00+09:00',
-    deliveredAt: '2026-09-30T20:08:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1009', riderAssignedAt: '2026-10-15T07:47:00+09:00',
+    pickedUpAt: '2026-10-15T08:00:00+09:00', expectedAt: '2026-10-15T08:22:00+09:00',
+    deliveredAt: '2026-10-15T08:20:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1012', riderAssignedAt: '2026-09-30T19:05:00+09:00',
-    pickedUpAt: '2026-09-30T19:18:00+09:00', expectedAt: '2026-09-30T19:40:00+09:00',
-    deliveredAt: '2026-09-30T19:44:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1012', riderAssignedAt: '2026-10-15T07:17:00+09:00',
+    pickedUpAt: '2026-10-15T07:30:00+09:00', expectedAt: '2026-10-15T07:52:00+09:00',
+    deliveredAt: '2026-10-15T07:56:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1010', riderAssignedAt: '2026-09-30T19:55:00+09:00',
-    pickedUpAt: '2026-09-30T20:12:00+09:00', expectedAt: '2026-09-30T20:35:00+09:00',
-    deliveredAt: '2026-09-30T20:33:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1010', riderAssignedAt: '2026-10-15T08:07:00+09:00',
+    pickedUpAt: '2026-10-15T08:24:00+09:00', expectedAt: '2026-10-15T08:47:00+09:00',
+    deliveredAt: '2026-10-15T08:45:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1014', riderAssignedAt: '2026-09-30T17:35:00+09:00',
-    pickedUpAt: '2026-09-30T17:50:00+09:00', expectedAt: '2026-09-30T18:15:00+09:00',
-    deliveredAt: '2026-09-30T18:20:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1014', riderAssignedAt: '2026-10-15T05:47:00+09:00',
+    pickedUpAt: '2026-10-15T06:02:00+09:00', expectedAt: '2026-10-15T06:27:00+09:00',
+    deliveredAt: '2026-10-15T06:32:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1011', riderAssignedAt: '2026-09-30T19:22:00+09:00',
-    pickedUpAt: '2026-09-30T19:34:00+09:00', expectedAt: '2026-09-30T19:55:00+09:00',
-    deliveredAt: '2026-09-30T19:52:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1011', riderAssignedAt: '2026-10-15T07:34:00+09:00',
+    pickedUpAt: '2026-10-15T07:46:00+09:00', expectedAt: '2026-10-15T08:07:00+09:00',
+    deliveredAt: '2026-10-15T08:04:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1013', riderAssignedAt: '2026-09-30T16:55:00+09:00',
-    pickedUpAt: '2026-09-30T17:08:00+09:00', expectedAt: '2026-09-30T17:25:00+09:00',
-    deliveredAt: '2026-09-30T17:29:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1013', riderAssignedAt: '2026-10-15T05:07:00+09:00',
+    pickedUpAt: '2026-10-15T05:20:00+09:00', expectedAt: '2026-10-15T05:37:00+09:00',
+    deliveredAt: '2026-10-15T05:41:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1015', riderAssignedAt: '2026-09-30T19:18:00+09:00',
-    pickedUpAt: '2026-09-30T19:32:00+09:00', expectedAt: '2026-09-30T19:55:00+09:00',
-    deliveredAt: '2026-09-30T19:58:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1015', riderAssignedAt: '2026-10-15T07:30:00+09:00',
+    pickedUpAt: '2026-10-15T07:44:00+09:00', expectedAt: '2026-10-15T08:07:00+09:00',
+    deliveredAt: '2026-10-15T08:10:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1016', riderAssignedAt: '2026-09-30T18:02:00+09:00',
-    pickedUpAt: '2026-09-30T18:15:00+09:00', expectedAt: '2026-09-30T18:35:00+09:00',
-    deliveredAt: '2026-09-30T18:33:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1016', riderAssignedAt: '2026-10-15T06:14:00+09:00',
+    pickedUpAt: '2026-10-15T06:27:00+09:00', expectedAt: '2026-10-15T06:47:00+09:00',
+    deliveredAt: '2026-10-15T06:45:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1017', riderAssignedAt: '2026-09-30T18:35:00+09:00',
-    pickedUpAt: '2026-09-30T18:50:00+09:00', expectedAt: '2026-09-30T19:15:00+09:00',
-    deliveredAt: '2026-09-30T19:12:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1017', riderAssignedAt: '2026-10-15T06:47:00+09:00',
+    pickedUpAt: '2026-10-15T07:02:00+09:00', expectedAt: '2026-10-15T07:27:00+09:00',
+    deliveredAt: '2026-10-15T07:24:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1018', riderAssignedAt: '2026-09-30T16:25:00+09:00',
-    pickedUpAt: '2026-09-30T16:40:00+09:00', expectedAt: '2026-09-30T17:05:00+09:00',
-    deliveredAt: '2026-09-30T17:08:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1018', riderAssignedAt: '2026-10-15T04:37:00+09:00',
+    pickedUpAt: '2026-10-15T04:52:00+09:00', expectedAt: '2026-10-15T05:17:00+09:00',
+    deliveredAt: '2026-10-15T05:20:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1019', riderAssignedAt: '2026-09-30T18:18:00+09:00',
-    pickedUpAt: '2026-09-30T18:30:00+09:00', expectedAt: '2026-09-30T18:50:00+09:00',
-    deliveredAt: '2026-09-30T18:47:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1019', riderAssignedAt: '2026-10-15T06:30:00+09:00',
+    pickedUpAt: '2026-10-15T06:42:00+09:00', expectedAt: '2026-10-15T07:02:00+09:00',
+    deliveredAt: '2026-10-15T06:59:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1020', riderAssignedAt: '2026-09-30T15:52:00+09:00',
-    pickedUpAt: '2026-09-30T16:05:00+09:00', expectedAt: '2026-09-30T16:25:00+09:00',
-    deliveredAt: '2026-09-30T16:28:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1020', riderAssignedAt: '2026-10-15T04:04:00+09:00',
+    pickedUpAt: '2026-10-15T04:17:00+09:00', expectedAt: '2026-10-15T04:37:00+09:00',
+    deliveredAt: '2026-10-15T04:40:00+09:00', deliveryStatus: 'delivered',
   },
 ]
+
+export const mockDeliveries: StoredDelivery[] = deliveryFixtures.map((delivery) => ({
+  ...delivery,
+  riderAssignedAt: shiftOptionalFixtureTime(delivery.riderAssignedAt),
+  pickedUpAt: shiftOptionalFixtureTime(delivery.pickedUpAt),
+  expectedAt: shiftFixtureTime(delivery.expectedAt),
+  deliveredAt: shiftOptionalFixtureTime(delivery.deliveredAt),
+}))
 
 /** 배달 완료 시각이 있으면 그 시각, 없으면 앱을 연 시각을 고정된 예상 도착 시각과 비교한다. */
 export const calculateDelayMinutes = (
