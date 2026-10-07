@@ -35,6 +35,9 @@ const initialMessages: ChatMessage[] = [
   { id: 'intro', role: 'agent', content: 'chat.intro', translate: true },
 ]
 
+const ACTIVE_CUSTOMER_CASE_KEY = 'delivery-cs-agent:active-customer-case:v1'
+const NEW_CONVERSATION_VALUE = 'new'
+
 const mockCaseInput = (
   issue: CustomerIssue,
   orderId: string,
@@ -215,13 +218,60 @@ export function CustomerPage() {
   const [hasStarted, setHasStarted] = useState(false)
   const [focusRequest, setFocusRequest] = useState(0)
   const activeCaseId = useRef<string | null>(null)
+  const [activeCaseKey, setActiveCaseKey] = useState<string | null>(null)
   const sendingRef = useRef(false)
   const mounted = useRef(true)
+
+  const showCase = (caseData: CsCase) => {
+    activeCaseId.current = caseData.caseId
+    setActiveCaseKey(caseData.caseId)
+    window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, caseData.caseId)
+    setIssue(customerIssueForType(caseData.issueType))
+    setDraft('')
+    setAttachedFile(null)
+    setMessages(conversationToMessages(caseData))
+    setActions(actionsForCase(caseData))
+    setCaseState(toCustomerUiState(caseData))
+    setIsThinking(false)
+    setHasStarted(true)
+  }
+
+  const startNewConversation = () => {
+    activeCaseId.current = null
+    setActiveCaseKey(null)
+    window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, NEW_CONVERSATION_VALUE)
+  }
 
   useEffect(() => {
     mounted.current = true
     return () => { mounted.current = false }
   }, [])
+
+  useEffect(() => {
+    const storedCaseId = window.localStorage.getItem(ACTIVE_CUSTOMER_CASE_KEY)
+    if (storedCaseId === NEW_CONVERSATION_VALUE) return
+
+    const storedCase = storedCaseId
+      ? caseStore.getCase(storedCaseId)
+      : undefined
+    const latestCustomerCase = storedCase ?? caseStore.getAllCases()
+      .filter((caseData) => !caseData.demoCaseId && customerIssueForType(caseData.issueType))
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0]
+
+    if (latestCustomerCase) showCase(latestCustomerCase)
+  }, [])
+
+  useEffect(() => {
+    if (!activeCaseKey) return undefined
+    return caseStore.subscribe(activeCaseKey, (caseData) => {
+      if (!mounted.current) return
+      setIssue(customerIssueForType(caseData.issueType))
+      setMessages(conversationToMessages(caseData))
+      setActions(actionsForCase(caseData))
+      setCaseState(toCustomerUiState(caseData))
+      setHasStarted(true)
+    })
+  }, [activeCaseKey])
 
   const appendMessages = (...nextMessages: ChatMessage[]) => {
     if (mounted.current) setMessages((current) => [...current, ...nextMessages])
@@ -231,9 +281,12 @@ export function CustomerPage() {
     setIssue(nextIssue)
     setDraft(t(`chat.quickDraft.${nextIssue}`))
     setAttachedFile(null)
+    setMessages(initialMessages)
+    setActions([])
+    setIsThinking(false)
     setHasStarted(false)
     setCaseState('ready')
-    activeCaseId.current = null
+    startNewConversation()
     setFocusRequest((request) => request + 1)
   }
 
@@ -292,6 +345,8 @@ export function CustomerPage() {
           },
         )
         activeCaseId.current = caseData.caseId
+        setActiveCaseKey(caseData.caseId)
+        window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, caseData.caseId)
         currentCase = caseData
       } else {
         const current = caseStore.appendConversation(
@@ -375,7 +430,7 @@ export function CustomerPage() {
     setCaseState('ready')
     setIsThinking(false)
     setHasStarted(false)
-    activeCaseId.current = null
+    startNewConversation()
     sendingRef.current = false
   }
 
