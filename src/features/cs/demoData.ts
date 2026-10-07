@@ -7,11 +7,18 @@ import type {
   OrderData,
 } from './types'
 
-const DEMO_NOW = new Date('2026-09-30T21:48:00+09:00').getTime()
-let appStartedAt = DEMO_NOW
+const FIXTURE_NOW = new Date('2026-09-30T21:48:00+09:00').getTime()
+const APP_OPENED_AT = Date.now()
+let appStartedAt = APP_OPENED_AT
+
+const shiftFixtureTime = (value: string) =>
+  new Date(new Date(value).getTime() + APP_OPENED_AT - FIXTURE_NOW).toISOString()
+
+const shiftOptionalFixtureTime = (value?: string) =>
+  value ? shiftFixtureTime(value) : undefined
 
 export const markAppStarted = () => {
-  appStartedAt = DEMO_NOW
+  appStartedAt = APP_OPENED_AT
 }
 
 export const mockCustomers: CustomerData[] = [
@@ -43,7 +50,7 @@ export const mockMerchants: MerchantData[] = [
   { storeId: 'S003', storeName: '분식연구소', merchantUserId: 'M003' },
 ]
 
-export const mockOrders: OrderData[] = [
+const orderFixtures: OrderData[] = [
   {
     orderId: 'A1001', customerId: 'C001', storeId: 'S001',
     orderedAt: '2026-09-30T20:10:00+09:00',
@@ -52,13 +59,13 @@ export const mockOrders: OrderData[] = [
   },
   {
     orderId: 'A1006', customerId: 'C006', storeId: 'S002',
-    orderedAt: '2026-09-30T19:00:00+09:00',
+    orderedAt: '2026-09-30T19:38:00+09:00',
     items: [{ itemId: 'I009', name: '간장치킨', price: 21000 }],
     totalAmount: 21000, orderStatus: 'delivering',
   },
   {
     orderId: 'A1007', customerId: 'C007', storeId: 'S003',
-    orderedAt: '2026-09-30T17:40:00+09:00',
+    orderedAt: '2026-09-30T19:18:00+09:00',
     items: [{ itemId: 'I010', name: '모둠튀김', price: 9000 }],
     totalAmount: 9000, orderStatus: 'delivering',
   },
@@ -81,7 +88,7 @@ export const mockOrders: OrderData[] = [
     totalAmount: 19000, orderStatus: 'delivered',
   },
   {
-    orderId: 'A1004', customerId: 'C004', storeId: 'S003',
+    orderId: 'A1004', customerId: 'C008', storeId: 'S003',
     orderedAt: '2026-09-30T18:30:00+09:00',
     items: [
       { itemId: 'I006', name: '떡볶이', price: 6000 },
@@ -199,23 +206,29 @@ export const mockOrders: OrderData[] = [
   },
 ]
 
+/** 고정 Fixture의 시간 간격은 유지하고, 날짜는 앱을 연 시각 기준으로 이동한다. */
+export const mockOrders: OrderData[] = orderFixtures.map((order) => ({
+  ...order,
+  orderedAt: shiftFixtureTime(order.orderedAt),
+}))
+
 type StoredDelivery = Omit<DeliveryData, 'delayMinutes'>
 
-export const mockDeliveries: StoredDelivery[] = [
+const deliveryFixtures: StoredDelivery[] = [
   {
     orderId: 'A1001', riderAssignedAt: '2026-09-30T20:18:00+09:00',
     pickedUpAt: '2026-09-30T20:25:00+09:00',
     expectedAt: '2026-09-30T21:30:00+09:00', deliveryStatus: 'picked_up',
   },
   {
-    orderId: 'A1006', riderAssignedAt: '2026-09-30T19:25:00+09:00',
-    pickedUpAt: '2026-09-30T19:40:00+09:00',
-    expectedAt: '2026-09-30T20:05:00+09:00', deliveryStatus: 'picked_up',
+    orderId: 'A1006', riderAssignedAt: '2026-09-30T20:03:00+09:00',
+    pickedUpAt: '2026-09-30T20:18:00+09:00',
+    expectedAt: '2026-09-30T20:43:00+09:00', deliveryStatus: 'picked_up',
   },
   {
-    orderId: 'A1007', riderAssignedAt: '2026-09-30T18:10:00+09:00',
-    pickedUpAt: '2026-09-30T18:25:00+09:00',
-    expectedAt: '2026-09-30T19:05:00+09:00', deliveryStatus: 'picked_up',
+    orderId: 'A1007', riderAssignedAt: '2026-09-30T19:48:00+09:00',
+    pickedUpAt: '2026-09-30T20:03:00+09:00',
+    expectedAt: '2026-09-30T20:43:00+09:00', deliveryStatus: 'picked_up',
   },
   {
     orderId: 'A1002', riderAssignedAt: '2026-09-30T18:15:00+09:00',
@@ -303,6 +316,14 @@ export const mockDeliveries: StoredDelivery[] = [
     deliveredAt: '2026-09-30T16:28:00+09:00', deliveryStatus: 'delivered',
   },
 ]
+
+export const mockDeliveries: StoredDelivery[] = deliveryFixtures.map((delivery) => ({
+  ...delivery,
+  riderAssignedAt: shiftOptionalFixtureTime(delivery.riderAssignedAt),
+  pickedUpAt: shiftOptionalFixtureTime(delivery.pickedUpAt),
+  expectedAt: shiftFixtureTime(delivery.expectedAt),
+  deliveredAt: shiftOptionalFixtureTime(delivery.deliveredAt),
+}))
 
 /** 배달 완료 시각이 있으면 그 시각, 없으면 앱을 연 시각을 고정된 예상 도착 시각과 비교한다. */
 export const calculateDelayMinutes = (

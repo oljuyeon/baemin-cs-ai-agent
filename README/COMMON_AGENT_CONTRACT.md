@@ -2,7 +2,7 @@
 
 > 문서 버전: `ver4.3`
 >
-> 최종 수정일시: `2026-10-02 14:35:13 KST`
+> 최종 수정일시: `2026-10-07 15:25 KST`
 
 ## 문서 목적
 
@@ -272,6 +272,22 @@ export interface HumanCsResolution {
   handledBy: string
   handledAt: string
 }
+
+export interface HumanHandoffSummary {
+  customerClaimSummary: string
+  merchantResponseSummary: string
+  escalationReasonSummary: string
+  reviewGuidance: {
+    caution: string
+    verification: string
+    nextAction: string
+  }
+  sourceFingerprint: string
+  source: 'openai'
+  model: string
+  language: string
+  generatedAt: string
+}
 ```
 
 ------------------------------------------------------------------------
@@ -369,6 +385,7 @@ export interface CsCase {
 
   agentSummary?: string
   escalationReason?: string
+  humanHandoffSummary?: HumanHandoffSummary
   finalAction?: FinalAction
   finalActionResult?: MockActionResult
 
@@ -382,6 +399,13 @@ export interface CsCase {
 
 Customer, Merchant, Human CS는 반드시 같은 `caseId`와 `CsCase`를
 사용한다.
+
+`humanHandoffSummary`는 Human CS 화면용으로 생성한 인수인계 요약이다.
+원본 `customerClaim`, `merchantConfirmation`, `toolHistory`를 대체하지 않으며,
+고객 진술·매장 진술·Tool로 확인된 정보를 서로 다른 출처로 구분해 작성한다.
+요약 생성에 실패한 경우 고정 문구를 실제 요약처럼 저장하지 않는다.
+`escalationReasonSummary`에는 자동 처리를 중단한 원인만 기록하고, 상담원이
+확인하거나 수행할 내용은 `reviewGuidance`에 구분해 기록한다.
 
 ------------------------------------------------------------------------
 

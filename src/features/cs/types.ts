@@ -153,6 +153,24 @@ export interface HumanCsResolution {
   handledAt: string
 }
 
+export interface HumanReviewGuidance {
+  caution: string
+  verification: string
+  nextAction: string
+}
+
+export interface HumanHandoffSummary {
+  customerClaimSummary: string
+  merchantResponseSummary: string
+  escalationReasonSummary: string
+  reviewGuidance: HumanReviewGuidance
+  sourceFingerprint: string
+  source: 'openai'
+  model: string
+  language: string
+  generatedAt: string
+}
+
 export type CaseActor = 'customer' | 'agent' | 'merchant' | 'cs'
 
 export type CaseEvent =
@@ -221,6 +239,7 @@ export interface CsCase {
   riskFlags: RiskFlag[]
   agentSummary?: string
   escalationReason?: string
+  humanHandoffSummary?: HumanHandoffSummary
   finalAction?: FinalAction
   finalActionResult?: MockActionResult
   history: CaseHistory[]

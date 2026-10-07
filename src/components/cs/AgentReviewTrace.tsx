@@ -1,12 +1,19 @@
 import { useTranslation } from 'react-i18next'
-import type { CsCase, ToolCallLog } from '../../features/cs'
+import type { CsCase, HumanReviewGuidance, ToolCallLog } from '../../features/cs'
 
 interface Props {
   caseData: CsCase
 }
 
+interface DecisionSummaryProps {
+  guidance?: HumanReviewGuidance
+  isLoading: boolean
+  hasError: boolean
+}
+
 type Translate = ReturnType<typeof useTranslation<'cs'>>['t']
 type UnknownRecord = Record<string, unknown>
+type TraceRow = { label: string; value: string; multiline?: boolean }
 
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -15,14 +22,6 @@ const stringValue = (value: unknown) => typeof value === 'string' ? value : unde
 const numberValue = (value: unknown) => typeof value === 'number' ? value : undefined
 const stringList = (value: unknown) =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
-
-const successData = (log: ToolCallLog) =>
-  log.result.status === 'success' ? log.result.data : undefined
-
-const latestSuccess = (caseData: CsCase, toolName: ToolCallLog['toolName']) =>
-  [...caseData.toolHistory]
-    .reverse()
-    .find((log) => log.toolName === toolName && log.result.status === 'success')
 
 const formatMoney = (amount: number, language: string) =>
   new Intl.NumberFormat(language, { maximumFractionDigits: 0 }).format(amount)
@@ -58,7 +57,7 @@ const formatPrimitive = (value: unknown, t: Translate) => {
 const inputRows = (input: unknown, t: Translate) => {
   if (!isRecord(input)) return [{ label: t('detail.review.input'), value: formatPrimitive(input, t) }]
 
-  const rows: Array<{ label: string; value: string }> = []
+  const rows: TraceRow[] = []
   Object.entries(input).forEach(([key, value]) => {
     if (key === 'caseData' && isRecord(value)) {
       const identityKeys = ['caseId', 'orderId', 'customerId', 'storeId', 'issueType', 'status']
@@ -69,6 +68,25 @@ const inputRows = (input: unknown, t: Translate) => {
             value: formatPrimitive(value[identityKey], t),
           })
         }
+      })
+      return
+    }
+    if (key === 'summary' && typeof value === 'string') {
+      const summary = value
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const separator = line.indexOf('=')
+          return separator > 0
+            ? `• ${line.slice(0, separator)}: ${line.slice(separator + 1)}`
+            : `• ${line}`
+        })
+        .join('\n')
+      rows.push({
+        label: t('detail.review.field.summary'),
+        value: summary,
+        multiline: true,
       })
       return
     }
@@ -209,69 +227,30 @@ const rawJson = (value: unknown) => {
   }
 }
 
-const isGenericAgentSummary = (summary: string) =>
-  /Tool Observation|Tool \d+회|개의 Tool/i.test(summary)
-
-function buildDecisionReasons(caseData: CsCase, t: Translate) {
-  const reasons: string[] = []
-  const storedSummary = caseData.agentSummary?.trim()
-  if (
-    storedSummary
-    && storedSummary !== caseData.escalationReason?.trim()
-    && !isGenericAgentSummary(storedSummary)
-  ) reasons.push(storedSummary)
-
-  const merchant = caseData.merchantConfirmation
-  if (merchant?.response) {
-    const response = t(`merchantResponse.${merchant.response}`)
-    reasons.push(t('detail.review.summaryMerchant', {
-      response,
-      comment: merchant.comment ? ` · ${merchant.comment}` : '',
-    }))
-  } else if (merchant?.status === 'waiting') {
-    reasons.push(t('detail.review.summaryMerchantWaiting'))
-  }
-
-  const evidence = caseData.evidenceAnalysis?.filter((item) => item.observation) ?? []
-  evidence.forEach((item) => reasons.push(t('detail.review.summaryEvidence', { observation: item.observation })))
-
-  const policyLog = latestSuccess(caseData, 'get_policy')
-  const policyData = policyLog ? successData(policyLog) : undefined
-  if (isRecord(policyData) && stringValue(policyData.reason)) {
-    reasons.push(t('detail.review.summaryPolicy', { reason: stringValue(policyData.reason) }))
-  }
-
-  const riskLog = latestSuccess(caseData, 'check_risk')
-  const riskData = riskLog ? successData(riskLog) : undefined
-  if (isRecord(riskData) && stringValue(riskData.reason)) {
-    reasons.push(t('detail.review.summaryRisk', { reason: stringValue(riskData.reason) }))
-  }
-
-  const failed = caseData.toolHistory.filter((log) => log.result.status === 'error')
-  if (failed.length > 0) {
-    reasons.push(t('detail.review.summaryFailed', {
-      tools: failed.map((log) => t(`detail.review.tool.${log.toolName}`, { defaultValue: log.toolName })).join(', '),
-    }))
-  }
-
-  return [...new Set(reasons)].slice(0, 6)
-}
-
-export function AgentDecisionSummary({ caseData }: Props) {
+export function HumanReviewGuidanceCard({ guidance, isLoading, hasError }: DecisionSummaryProps) {
   const { t } = useTranslation('cs')
-  const reasons = buildDecisionReasons(caseData, t)
+  const fallback = (isLoading ? t('detail.summaryGenerating') : null)
+    || (hasError ? t('detail.summaryUnavailable') : t('detail.noSummary'))
 
   return (
     <section className="cs-summary">
       <p>{t('detail.summaryLabel')}</p>
-      <strong>{t('detail.review.summaryLead')}</strong>
-      {reasons.length > 0 ? (
-        <ul>
-          {reasons.map((reason) => <li key={reason}>{reason}</li>)}
-        </ul>
-      ) : (
-        <span>{caseData.agentSummary || t('detail.noSummary')}</span>
-      )}
+      {guidance ? (
+        <ol className="cs-summary__list">
+          <li className="cs-summary__item">
+            <strong>{t('detail.guidance.caution')}</strong>
+            <span>{guidance.caution}</span>
+          </li>
+          <li className="cs-summary__item">
+            <strong>{t('detail.guidance.verification')}</strong>
+            <span>{guidance.verification}</span>
+          </li>
+          <li className="cs-summary__item">
+            <strong>{t('detail.guidance.nextAction')}</strong>
+            <span>{guidance.nextAction}</span>
+          </li>
+        </ol>
+      ) : <span>{fallback}</span>}
     </section>
   )
 }
@@ -313,7 +292,10 @@ export function AgentReviewTrace({ caseData }: Props) {
                     <h4>{t('detail.review.checkedTarget')}</h4>
                     <dl>
                       {inputRows(log.input, t).map((row, index) => (
-                        <div key={`${row.label}-${index}`}><dt>{row.label}</dt><dd>{row.value}</dd></div>
+                        <div key={`${row.label}-${index}`}>
+                          <dt>{row.label}</dt>
+                          <dd className={row.multiline ? 'is-multiline' : undefined}>{row.value}</dd>
+                        </div>
                       ))}
                     </dl>
                   </section>
