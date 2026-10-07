@@ -4,7 +4,11 @@ import { AgentWorkspace } from '../components/customer/AgentWorkspace'
 import { CustomerBottomNav } from '../components/customer/CustomerBottomNav'
 import { CustomerHeader } from '../components/customer/CustomerHeader'
 import { IssueSelector } from '../components/customer/IssueSelector'
-import { firstSelectableOrderId, OrderSummaryCard } from '../components/customer/OrderSummaryCard'
+import {
+  firstSelectableOrderId,
+  OrderSummaryCard,
+  selectableOrders,
+} from '../components/customer/OrderSummaryCard'
 import { TrustPanel } from '../components/customer/TrustPanel'
 import {
   assessRisk,
@@ -38,6 +42,13 @@ const initialMessages: ChatMessage[] = [
 const ACTIVE_CUSTOMER_CASE_KEY = 'delivery-cs-agent:active-customer-case:v1'
 const NEW_CONVERSATION_VALUE = 'new'
 
+interface PendingIssueConflict {
+  message: string
+  attachment: string | null
+  selectedIssue: CustomerIssue
+  detectedIssue: CustomerIssue
+}
+
 const mockCaseInput = (
   issue: CustomerIssue,
   orderId: string,
@@ -66,6 +77,8 @@ const customerIssueForType = (issueType: CsCase['issueType']): CustomerIssue | n
   if (issueType === 'wrong_delivery') return 'wrong'
   return null
 }
+
+const selectableOrderItems = selectableOrders.flatMap((order) => order.items)
 
 const toCustomerUiState = (caseData: CsCase) => {
   if (caseData.status === 'AUTO_RESOLVED' || caseData.status === 'CLOSED') return 'resolved' as const
@@ -154,7 +167,12 @@ const actionsForCase = (caseData: CsCase): CustomerAgentAction[] => {
           label: `${item.name} ${item.price.toLocaleString('ko-KR')}원 환불하기`,
           primary: true,
         },
-        { id: 'requestMerchant', labelKey: 'agent.actions.requestMerchant' },
+        ...(!caseData.merchantConfirmation
+          ? [{
+              id: 'requestMerchant' as const,
+              labelKey: 'agent.actions.requestMerchant',
+            }]
+          : []),
         { id: 'cancelAction', labelKey: 'agent.actions.cancelAction' },
       ]
     }
@@ -217,6 +235,7 @@ export function CustomerPage() {
   const [isThinking, setIsThinking] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
   const [focusRequest, setFocusRequest] = useState(0)
+  const [pendingIssueConflict, setPendingIssueConflict] = useState<PendingIssueConflict | null>(null)
   const activeCaseId = useRef<string | null>(null)
   const [activeCaseKey, setActiveCaseKey] = useState<string | null>(null)
   const sendingRef = useRef(false)
@@ -226,6 +245,7 @@ export function CustomerPage() {
     activeCaseId.current = caseData.caseId
     setActiveCaseKey(caseData.caseId)
     window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, caseData.caseId)
+    setSelectedOrderId(caseData.orderId)
     setIssue(customerIssueForType(caseData.issueType))
     setDraft('')
     setAttachedFile(null)
@@ -265,6 +285,7 @@ export function CustomerPage() {
     if (!activeCaseKey) return undefined
     return caseStore.subscribe(activeCaseKey, (caseData) => {
       if (!mounted.current) return
+      setSelectedOrderId(caseData.orderId)
       setIssue(customerIssueForType(caseData.issueType))
       setMessages(conversationToMessages(caseData))
       setActions(actionsForCase(caseData))
@@ -283,11 +304,39 @@ export function CustomerPage() {
     setAttachedFile(null)
     setMessages(initialMessages)
     setActions([])
+    setPendingIssueConflict(null)
     setIsThinking(false)
     setHasStarted(false)
     setCaseState('ready')
     startNewConversation()
     setFocusRequest((request) => request + 1)
+  }
+
+  const createCaseForIssue = (
+    message: string,
+    attachment: string | null,
+    confirmedIssue: CustomerIssue,
+  ) => {
+    const baseInput = mockCaseInput(
+      confirmedIssue,
+      selectedOrderId,
+      message,
+      attachment ? [attachment] : [],
+    )
+    const orderItems = findOrder(baseInput.orderId)?.items ?? []
+    const claimedItemName = confirmedIssue === 'missing'
+      ? resolveOrderItem(message, orderItems)
+      : undefined
+    const caseData = caseStore.createCase({
+      ...baseInput,
+      claimedItemName,
+    })
+    activeCaseId.current = caseData.caseId
+    setActiveCaseKey(caseData.caseId)
+    window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, caseData.caseId)
+    setIssue(confirmedIssue)
+    setPendingIssueConflict(null)
+    return caseData
   }
 
   const sendMessage = async () => {
@@ -307,10 +356,40 @@ export function CustomerPage() {
     setAttachedFile(null)
 
     try {
+      const selectedOrder = findOrder(selectedOrderId)
+      const orderItems = selectedOrder?.items ?? []
+      const referencedItemName = resolveOrderItem(message, selectableOrderItems)
+      const itemBelongsToOrder = referencedItemName
+        ? orderItems.some((item) => item.name === referencedItemName)
+        : true
+
+      if (referencedItemName && !itemBelongsToOrder) {
+        appendMessages({
+          id: `order-mismatch-${Date.now()}`,
+          role: 'agent',
+          content: t('chat.itemNotInOrder', {
+            orderId: selectedOrderId,
+            itemName: referencedItemName,
+            orderItems: orderItems.map((item) => item.name).join(', '),
+          }),
+        })
+        if (mounted.current) {
+          setDraft(message)
+          setAttachedFile(attachment)
+          setCaseState('waiting')
+          setHasStarted(false)
+          setFocusRequest((request) => request + 1)
+        }
+        return
+      }
+
       let currentCase: CsCase
       if (!activeCaseId.current) {
-        const firstPass = await understandWithOpenAI(message, [], issue)
-          ?? understandCustomerMessage(message, [], issue)
+        const ruleUnderstanding = understandCustomerMessage(message, orderItems)
+        const remoteUnderstanding = ruleUnderstanding.issueType === 'other'
+          ? await understandWithOpenAI(message, orderItems, null)
+          : null
+        const firstPass = remoteUnderstanding ?? ruleUnderstanding
         const inferredIssue = customerIssueForType(firstPass.issueType)
 
         if (!inferredIssue) {
@@ -327,27 +406,46 @@ export function CustomerPage() {
           return
         }
 
-        const baseInput = mockCaseInput(
-          inferredIssue,
-          selectedOrderId,
-          message,
-          attachment ? [attachment] : [],
-        )
-        const orderItems = findOrder(baseInput.orderId)?.items ?? []
-        const claimedItemName = firstPass.issueType === 'missing_item'
-          ? resolveOrderItem(message, orderItems)
-          : undefined
-        if (mounted.current) setIssue(inferredIssue)
-        const caseData = caseStore.createCase(
-          {
-            ...baseInput,
-            claimedItemName,
-          },
-        )
-        activeCaseId.current = caseData.caseId
-        setActiveCaseKey(caseData.caseId)
-        window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, caseData.caseId)
-        currentCase = caseData
+        if (issue && issue !== inferredIssue) {
+          setPendingIssueConflict({
+            message,
+            attachment,
+            selectedIssue: issue,
+            detectedIssue: inferredIssue,
+          })
+          appendMessages({
+            id: `issue-conflict-${Date.now()}`,
+            role: 'agent',
+            content: t('chat.issueConflict', {
+              selected: t(`issues.${issue}.short`),
+              detected: t(`issues.${inferredIssue}.short`),
+            }),
+          })
+          setActions([
+            {
+              id: 'confirmDetectedIssue',
+              labelKey: 'agent.actions.confirmDetectedIssue',
+              label: t('agent.actions.confirmDetectedIssue', {
+                issue: t(`issues.${inferredIssue}.short`),
+              }),
+              primary: true,
+            },
+            {
+              id: 'keepSelectedIssue',
+              labelKey: 'agent.actions.keepSelectedIssue',
+              label: t('agent.actions.keepSelectedIssue', {
+                issue: t(`issues.${issue}.short`),
+              }),
+            },
+          ])
+          if (mounted.current) {
+            setCaseState('waiting')
+            setHasStarted(true)
+          }
+          return
+        }
+
+        currentCase = createCaseForIssue(message, attachment, issue ?? inferredIssue)
       } else {
         const current = caseStore.appendConversation(
           activeCaseId.current,
@@ -427,6 +525,7 @@ export function CustomerPage() {
     setAttachedFile(null)
     setMessages(initialMessages)
     setActions([])
+    setPendingIssueConflict(null)
     setCaseState('ready')
     setIsThinking(false)
     setHasStarted(false)
@@ -446,6 +545,39 @@ export function CustomerPage() {
       } else {
         appendMessages({ id: `action-${Date.now()}`, role: 'agent', content })
       }
+    }
+
+    if (
+      (action.id === 'confirmDetectedIssue' || action.id === 'keepSelectedIssue')
+      && pendingIssueConflict
+      && !isThinking
+    ) {
+      const confirmedIssue = action.id === 'confirmDetectedIssue'
+        ? pendingIssueConflict.detectedIssue
+        : pendingIssueConflict.selectedIssue
+      setActions([])
+      setIsThinking(true)
+      setCaseState('working')
+      try {
+        const created = createCaseForIssue(
+          pendingIssueConflict.message,
+          pendingIssueConflict.attachment,
+          confirmedIssue,
+        )
+        const completed = await agentController.runNextStep(created.caseId)
+        setMessages(conversationToMessages(completed))
+        setCaseState(toCustomerUiState(completed))
+        setActions(actionsForCase(completed))
+        setHasStarted(true)
+      } catch (error) {
+        appendAgentContent(error instanceof Error
+          ? `Case 저장 중 오류가 발생했습니다: ${error.message}`
+          : 'Case 저장 중 알 수 없는 오류가 발생했습니다.')
+        setCaseState('waiting')
+      } finally {
+        setIsThinking(false)
+      }
+      return
     }
 
     if (action.id === 'confirmRefund' && currentCase) {

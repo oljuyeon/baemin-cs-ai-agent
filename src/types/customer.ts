@@ -19,6 +19,8 @@ export type AgentActionId =
   | 'escalateHuman'
   | 'confirmCoupon'
   | 'confirmRefund'
+  | 'confirmDetectedIssue'
+  | 'keepSelectedIssue'
   | 'cancelAction'
 
 export interface AgentAction {

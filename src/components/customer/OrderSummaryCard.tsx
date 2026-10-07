@@ -7,7 +7,7 @@ import {
 } from '../../features/cs'
 
 const selectableOrderIds = new Set(['A1001', 'A1002', 'A1004'])
-const selectableOrders = mockOrders.filter((order) => selectableOrderIds.has(order.orderId))
+export const selectableOrders = mockOrders.filter((order) => selectableOrderIds.has(order.orderId))
 
 export const firstSelectableOrderId = selectableOrders[0]?.orderId ?? ''
 

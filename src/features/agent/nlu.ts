@@ -47,7 +47,7 @@ const hintMap: Record<CustomerIssueHint, Exclude<IssueType, 'other'>> = {
 const aliasesByItem: Record<string, string[]> = {
   콜라: ['콜라', '코크', '탄산', '음료'],
   사이다: ['사이다', '탄산', '음료'],
-  후라이드치킨: ['후라이드치킨', '후라이드 치킨', '후라이드'],
+  후라이드치킨: ['후라이드치킨', '후라이드 치킨', '후라이드', '치킨'],
   양념치킨: ['양념치킨', '양념 치킨', '양념'],
   공깃밥: ['공깃밥', '공기밥', '밥'],
   튀김세트: ['튀김세트', '튀김 세트', '튀김'],
@@ -139,15 +139,24 @@ export function understandCustomerMessage(
   hint?: CustomerIssueHint | null,
 ): MessageUnderstanding {
   const intent = classifyCustomerMessage(message, hint)
-  const claimedItemName = intent.issueType === 'missing_item'
-    ? resolveOrderItem(message, orderItems)
+  const referencedItemName = resolveOrderItem(message, orderItems)
+  const compactMessage = normalize(message)
+  const hasMissingCue = missingCues.some((cue) => compactMessage.includes(normalize(cue)))
+  const issueType = referencedItemName && hasMissingCue
+    ? 'missing_item'
+    : intent.issueType
+  const claimedItemName = issueType === 'missing_item'
+    ? referencedItemName
     : undefined
 
   return {
-    ...intent,
+    issueType,
+    confidence: issueType !== intent.issueType
+      ? Math.max(intent.confidence, 0.9)
+      : intent.confidence,
     claimedItemName,
     needsClarification:
-      intent.issueType === 'other'
-      || (intent.issueType === 'missing_item' && !claimedItemName),
+      issueType === 'other'
+      || (issueType === 'missing_item' && !claimedItemName),
   }
 }

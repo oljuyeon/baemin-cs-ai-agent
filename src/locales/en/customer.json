@@ -44,6 +44,8 @@
     "requiredHint": "Please attach a photo so we can verify the wrong delivery.",
     "savedWithoutAgent": "Your message is saved on the case. The AI agent is not connected yet, so no lookup or refund was run.",
     "unsupported": "This demo currently supports delivery delay, missing item, and wrong delivery cases. Please describe what happened in a little more detail.",
+    "issueConflict": "Your quick selection was '{{selected}}', but the message looks like '{{detected}}'. Please confirm which issue you want to continue with.",
+    "itemNotInOrder": "The selected order {{orderId}} does not include '{{itemName}}'. Its items are {{orderItems}}. Please choose the correct order or check the item name.",
     "recognized": {
       "delay": "I understood this as a delivery delay. I saved it as a case for checking the order and delivery status. Automated delay lookup is still being connected in this demo.",
       "wrong": "I understood this as a wrong delivery. Please attach a photo of the food if you have one. I saved it with the order in the same case."
@@ -105,6 +107,8 @@
       "escalateHuman": "Request human review",
       "confirmCoupon": "Get ₩3,000 coupon",
       "confirmRefund": "Refund ₩3,500 for fries",
+      "confirmDetectedIssue": "Continue as {{issue}}",
+      "keepSelectedIssue": "Keep {{issue}} selection",
       "cancelAction": "Wait without extra action"
     },
     "results": {

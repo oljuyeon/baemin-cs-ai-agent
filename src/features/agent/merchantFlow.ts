@@ -24,6 +24,13 @@ const responseDescription: Record<MerchantResponse, string> = {
   UNKNOWN: '현재 확인하기 어렵다는 답변',
 }
 
+const customerUpdateByResponse: Record<MerchantResponse, string> = {
+  ADMITTED_MISSING: '매장 확인 결과, 누락 또는 오배달이 있었다고 답변했습니다. 가능한 해결 방법을 이어서 확인할게요.',
+  CLAIMS_PACKED: '매장에서는 주문대로 포장했다고 답변했습니다. 확인 내용과 처리 기준을 함께 검토할게요.',
+  POSSIBLE_MISSING: '매장에서 누락 또는 주문 변경 가능성이 있다고 답변했습니다. 가능한 조치를 이어서 확인할게요.',
+  UNKNOWN: '매장에서 현재 포장 여부를 확정하기 어렵다고 답변했습니다. 상담원 검토가 필요한지 이어서 확인할게요.',
+}
+
 const normalize = (value: string) => value.replace(/\s+/g, '').toLowerCase()
 
 const inferMerchantResponse = (content: string): MerchantResponse | undefined => {
@@ -197,7 +204,15 @@ export async function processMerchantResponse(
   const detailChecked = requireSupportingDetail(conflictChecked)
   if (isHandoffResult(detailChecked)) return detailChecked
 
-  caseStore.completeMerchantConfirmation(caseId)
+  const confirmed = caseStore.completeMerchantConfirmation(caseId)
+  const confirmedResponse = confirmed.merchantConfirmation?.response
+  if (confirmedResponse) {
+    caseStore.appendConversation(
+      caseId,
+      'agent',
+      customerUpdateByResponse[confirmedResponse],
+    )
+  }
 
   const current = caseStore.getCase(caseId)
   if (!current) throw new Error(`Case ${caseId} was not found.`)

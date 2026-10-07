@@ -160,6 +160,16 @@ const buildFinishAction = (
 ): Extract<AgentAction, { type: 'FINISH' }> | null => {
   if (!decision.decision || !decision.finalAction) return null
 
+  if (
+    caseData.issueType === 'missing_item'
+    && actionIsAllowed(caseData, 'mock_refund')
+    && !latestResult(caseData, 'refund')
+  ) {
+    // 누락 건은 LLM이 안내만 하고 종료하지 못하게 한다. 규칙 엔진이
+    // 고객에게 환불·매장 확인·취소 선택지를 먼저 제시한다.
+    return null
+  }
+
   if (decision.decision === 'ESCALATE') {
     if (
       caseData.issueType !== 'other'
