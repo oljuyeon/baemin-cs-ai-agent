@@ -1,5 +1,6 @@
 import {
   caseStore,
+  inferLiability,
   type CsCase,
   type MerchantConversationMessage,
   type MerchantResponse,
@@ -18,16 +19,16 @@ const CHANGE_CONFIRMATION_PREFIX = '선택 확인:'
 const MORE_DETAIL_PREFIX = '추가 확인:'
 
 const responseDescription: Record<MerchantResponse, string> = {
-  ADMITTED_MISSING: '누락 또는 오배달을 인정한다는 답변',
-  CLAIMS_PACKED: '고객 주문대로 포장했다는 답변',
-  POSSIBLE_MISSING: '누락 또는 주문 변경 가능성이 있다는 답변',
+  CONFIRMED: '누락 또는 오배달을 인정한다는 답변',
+  DENIED: '고객 주문대로 포장했다는 답변',
+  POSSIBLE: '누락 또는 주문 변경 가능성이 있다는 답변',
   UNKNOWN: '현재 확인하기 어렵다는 답변',
 }
 
 const customerUpdateByResponse: Record<MerchantResponse, string> = {
-  ADMITTED_MISSING: '매장 확인 결과, 누락 또는 오배달이 있었다고 답변했습니다. 가능한 해결 방법을 이어서 확인할게요.',
-  CLAIMS_PACKED: '매장에서는 주문대로 포장했다고 답변했습니다. 확인 내용과 처리 기준을 함께 검토할게요.',
-  POSSIBLE_MISSING: '매장에서 누락 또는 주문 변경 가능성이 있다고 답변했습니다. 가능한 조치를 이어서 확인할게요.',
+  CONFIRMED: '매장 확인 결과, 누락 또는 오배달이 있었다고 답변했습니다. 가능한 해결 방법을 이어서 확인할게요.',
+  DENIED: '매장에서는 주문대로 포장했다고 답변했습니다. 고객 주장과 충돌해 상담원이 배송 과정까지 이어서 확인할게요.',
+  POSSIBLE: '매장에서 누락 또는 주문 변경 가능성이 있다고 답변했습니다. 가능한 조치를 이어서 확인할게요.',
   UNKNOWN: '매장에서 현재 포장 여부를 확정하기 어렵다고 답변했습니다. 상담원 검토가 필요한지 이어서 확인할게요.',
 }
 
@@ -40,13 +41,13 @@ const inferMerchantResponse = (content: string): MerchantResponse | undefined =>
     return 'UNKNOWN'
   }
   if (/(가능성|수도있|바뀌었을|누락됐을|빠졌을)/.test(text)) {
-    return 'POSSIBLE_MISSING'
+    return 'POSSIBLE'
   }
   if (/(정상포장|주문대로|포장했|넣었|포장기록|체크리스트)/.test(text)) {
-    return 'CLAIMS_PACKED'
+    return 'DENIED'
   }
   if (/(누락인정|오배달인정|못넣|빠뜨|빼먹|다른주문.*전달|잘못전달)/.test(text)) {
-    return 'ADMITTED_MISSING'
+    return 'CONFIRMED'
   }
 
   return undefined
@@ -151,7 +152,7 @@ const requireSupportingDetail = (caseData: CsCase): MerchantHandoffResult | CsCa
   const confirmation = caseData.merchantConfirmation
   if (!confirmation?.response) return caseData
   if (
-    confirmation.response !== 'CLAIMS_PACKED'
+    confirmation.response !== 'DENIED'
     && confirmation.response !== 'UNKNOWN'
   ) return caseData
 
@@ -163,10 +164,19 @@ const requireSupportingDetail = (caseData: CsCase): MerchantHandoffResult | CsCa
 
   if (hasMerchantReply) return caseData
 
-  const question = confirmation.response === 'CLAIMS_PACKED'
+  const followUpCount = confirmation.followUpCount ?? 0
+  if (followUpCount >= 1) return caseData
+
+  const question = confirmation.response === 'DENIED'
     ? `${MORE_DETAIL_PREFIX} 포장 체크리스트나 당시 담당자 확인 등 정상 포장으로 판단한 근거를 알려 주세요.`
     : `${MORE_DETAIL_PREFIX} 확인 가능한 포장 기록이나 당시 담당 직원의 확인 결과가 있는지 한 번 더 알려 주세요.`
 
+  caseStore.updateCase(caseData.caseId, {
+    merchantConfirmation: {
+      ...confirmation,
+      followUpCount: followUpCount + 1,
+    },
+  })
   return appendAgentQuestion(caseData.caseId, question)
 }
 
@@ -204,7 +214,10 @@ export async function processMerchantResponse(
   const detailChecked = requireSupportingDetail(conflictChecked)
   if (isHandoffResult(detailChecked)) return detailChecked
 
-  const confirmed = caseStore.completeMerchantConfirmation(caseId)
+  const completedConfirmation = caseStore.completeMerchantConfirmation(caseId)
+  const confirmed = caseStore.updateCase(caseId, {
+    liability: inferLiability(completedConfirmation),
+  })
   const confirmedResponse = confirmed.merchantConfirmation?.response
   if (confirmedResponse) {
     caseStore.appendConversation(

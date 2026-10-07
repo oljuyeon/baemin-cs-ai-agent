@@ -1,10 +1,19 @@
 import { calculateDelayMinutes, findCustomer } from './demoData'
-import type { CsCase, FinalAction, MerchantResponse, PolicyResult, RiskFlag, RiskResult } from './types'
+import { PROJECT_SIMULATION_POLICY } from './projectPolicy'
+import type {
+  CsCase,
+  FinalAction,
+  Liability,
+  MerchantResponse,
+  PolicyResult,
+  RiskFlag,
+  RiskResult,
+} from './types'
 
-export const LOW_PRICE_LIMIT = 5_000
-export const FREQUENT_REFUND_LIMIT_30D = 5
-export const DELAY_COMPENSATION_MINUTES = 30
-export const DELAY_COMPENSATION_AMOUNT = 3_000
+export const LOW_PRICE_LIMIT = PROJECT_SIMULATION_POLICY.autoRefundMaxAmount
+export const FREQUENT_REFUND_LIMIT_30D = PROJECT_SIMULATION_POLICY.maxSimilarClaims30d
+export const DELAY_COMPENSATION_MINUTES = PROJECT_SIMULATION_POLICY.delayCompensationThresholdMinutes
+export const DELAY_COMPENSATION_AMOUNT = PROJECT_SIMULATION_POLICY.delayCompensationAmount
 
 export type DelayCompensationResult = {
   eligible: boolean
@@ -24,8 +33,8 @@ const riskCopy: Record<RiskFlag, { blockedActions: FinalAction[], reason: string
     reason: '같은 주문과 같은 문제의 환불 이력이 있어 추가 환불을 막습니다.',
   },
   frequent_refund: {
-    blockedActions: [],
-    reason: '최근 30일 환불이 반복되어 검토 신호로만 표시합니다. 이 플래그만으로 행동을 막거나 바로 이관하지 않습니다.',
+    blockedActions: ['mock_refund', 'mock_redelivery'],
+    reason: `최근 30일 유사 처리가 ${FREQUENT_REFUND_LIMIT_30D}회를 초과해 자동 환불과 재배달을 막습니다.`,
   },
   order_claim_mismatch: {
     blockedActions: ['mock_refund', 'mock_redelivery'],
@@ -35,10 +44,38 @@ const riskCopy: Record<RiskFlag, { blockedActions: FinalAction[], reason: string
     blockedActions: ['mock_refund', 'mock_redelivery'],
     reason: '증빙이 주장과 충돌해 환불과 재배달을 막습니다.',
   },
+  high_value_claim: {
+    blockedActions: [],
+    reason: '자동 처리 금액 또는 주문 대비 비율 기준을 초과해 매장 확인이 필요합니다.',
+  },
 }
 
 const merchantConfirmed = (response?: MerchantResponse) =>
-  response === 'ADMITTED_MISSING' || response === 'POSSIBLE_MISSING'
+  response === 'CONFIRMED' || response === 'POSSIBLE'
+
+const claimedItem = (caseData: CsCase) => caseData.order?.items.find(
+  (candidate) => candidate.name === caseData.claimedItemName,
+)
+
+export const isAutomaticMissingCandidate = (caseData: CsCase) => {
+  const item = claimedItem(caseData)
+  if (!item || !caseData.order || caseData.order.totalAmount <= 0) return false
+  return item.price <= PROJECT_SIMULATION_POLICY.autoRefundMaxAmount
+    && item.price / caseData.order.totalAmount
+      <= PROJECT_SIMULATION_POLICY.autoRefundMaxOrderRatio
+}
+
+export function inferLiability(caseData: CsCase): Liability {
+  const response = caseData.merchantConfirmation?.response
+  if (response === 'CONFIRMED') return 'MERCHANT'
+  if (response === 'DENIED' || response === 'UNKNOWN') return 'UNKNOWN'
+  if (caseData.issueType === 'delivery_delay') {
+    if (!caseData.delivery) return 'UNKNOWN'
+    if (!caseData.delivery.riderAssignedAt) return 'PLATFORM'
+    if (caseData.delivery.pickedUpAt) return 'DELIVERY'
+  }
+  return caseData.liability ?? 'UNKNOWN'
+}
 
 const decide = (
   caseData: CsCase,
@@ -69,8 +106,12 @@ export function evaluateRisk(caseData: CsCase): RiskFlag[] {
   }
 
   const customer = findCustomer(caseData.customerId)
-  if (customer && customer.refundCount30d >= FREQUENT_REFUND_LIMIT_30D) {
+  if (customer && customer.refundCount30d > FREQUENT_REFUND_LIMIT_30D) {
     risks.push('frequent_refund')
+  }
+
+  if (caseData.issueType === 'missing_item' && claimedItem && !isAutomaticMissingCandidate(caseData)) {
+    risks.push('high_value_claim')
   }
 
   if (
@@ -137,7 +178,7 @@ export function evaluateDelayCompensation(caseData: CsCase): DelayCompensationRe
 export function evaluatePolicy(caseData: CsCase): PolicyResult {
   const response = caseData.merchantConfirmation?.response
 
-  if (response === 'CLAIMS_PACKED') {
+  if (response === 'DENIED') {
     return decide(caseData, {
       policyId: 'MERCHANT_CLAIM_CONFLICT',
       allowedActions: ['human_review'],
@@ -149,7 +190,7 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
     })
   }
 
-  if (response === 'UNKNOWN') {
+  if (response === 'UNKNOWN' && caseData.merchantConfirmation?.status === 'completed') {
     return decide(caseData, {
       policyId: 'MERCHANT_UNKNOWN',
       allowedActions: ['human_review'],
@@ -171,6 +212,15 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
     }
 
     const delayMinutes = calculateDelayMinutes(caseData.delivery)
+    if (delayMinutes >= DELAY_COMPENSATION_MINUTES) {
+      return decide(caseData, {
+        policyId: 'DELIVERY_COMPENSATION_ELIGIBLE',
+        allowedActions: ['guide_customer', 'mock_coupon', 'human_review'],
+        constraints: ['동일 주문의 지연 보상은 한 번만 지급한다.'],
+        reason: `예상 도착 시각보다 ${delayMinutes}분 지연되어 프로젝트 보상 기준을 충족합니다.`,
+      })
+    }
+
     if (delayMinutes > 0) {
       return decide(caseData, {
         policyId: 'DELIVERY_DELAYED',
@@ -191,41 +241,42 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
       (analysis) => analysis.assessment === 'supports_claim',
     ) ?? false
 
-    if (response === 'ADMITTED_MISSING') {
+    if (response === 'CONFIRMED') {
       return decide(caseData, {
         policyId: 'WRONG_DELIVERY_AFTER_ADMISSION',
-        allowedActions: ['mock_redelivery', 'human_review'],
+        allowedActions: ['mock_refund', 'mock_redelivery', 'human_review'],
         constraints: supportiveEvidence ? [] : ['증빙이 주장을 확정하지는 않습니다.'],
         reason: '매장이 누락을 인정해 Mock 재배달을 허용합니다.',
       })
     }
 
-    if (supportiveEvidence && response === 'POSSIBLE_MISSING') {
+    if (supportiveEvidence && response === 'POSSIBLE') {
       return decide(caseData, {
         policyId: 'WRONG_DELIVERY_REDELIVERY_AFTER_MERCHANT',
-        allowedActions: ['mock_redelivery', 'human_review'],
+        allowedActions: ['mock_refund', 'mock_redelivery', 'human_review'],
         reason: '증빙과 매장의 누락 가능성 확인이 모두 있어 Mock 재배달을 허용합니다.',
       })
     }
 
-    if (supportiveEvidence) {
+    if (supportiveEvidence && !response) {
       return decide(caseData, {
-        policyId: 'WRONG_DELIVERY_NEEDS_MERCHANT',
-        allowedActions: ['human_review'],
-        constraints: ['증빙이 오배달 주장을 뒷받침하지만 재배달 전에 매장 확인이 필요합니다.'],
-        reason: '증빙이 오배달 주장을 뒷받침하지만 재배달 전에 매장 확인이 필요합니다.',
+        policyId: 'WRONG_DELIVERY_CLEAR_LOW_RISK',
+        allowedActions: ['mock_refund', 'mock_redelivery', 'human_review'],
+        constraints: ['사진 분석은 보조 증빙이며 귀책 주체를 확정하지 않는다.'],
+        reason: '주문과 다른 음식이라는 보조 증빙이 명확해 자동 해결 후보입니다.',
       })
     }
 
     return decide(caseData, {
-      policyId: 'WRONG_DELIVERY_NEEDS_REVIEW',
+      policyId: 'WRONG_DELIVERY_NEEDS_MERCHANT',
       allowedActions: ['human_review'],
-      reason: '오배달을 확정할 증빙이 없어 추가 검토가 필요합니다.',
+      constraints: ['불명확한 오배달은 매장 확인 후 처리한다.'],
+      reason: '오배달 증빙이 불명확해 매장 확인이 필요합니다.',
     })
   }
 
   if (caseData.issueType === 'missing_item') {
-    const item = caseData.order?.items.find((candidate) => candidate.name === caseData.claimedItemName)
+    const item = claimedItem(caseData)
 
     if (!item) {
       return decide(caseData, {
@@ -235,7 +286,7 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
       })
     }
 
-    if (response === 'ADMITTED_MISSING') {
+    if (response === 'CONFIRMED') {
       return decide(caseData, {
         policyId: 'MISSING_ITEM_ADMITTED',
         allowedActions: ['mock_refund', 'mock_redelivery', 'human_review'],
@@ -251,20 +302,22 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
       })
     }
 
-    if (item.price > LOW_PRICE_LIMIT) {
+    if (!isAutomaticMissingCandidate(caseData)) {
       return decide(caseData, {
-        policyId: 'HIGH_PRICE_MERCHANT_CONFIRMATION',
+        policyId: 'MISSING_ITEM_NEEDS_MERCHANT',
         allowedActions: ['human_review'],
-        constraints: [`메뉴 가격이 ${LOW_PRICE_LIMIT.toLocaleString('ko-KR')}원을 초과해 매장 확인이 필요합니다.`],
-        reason: `메뉴 가격이 ${LOW_PRICE_LIMIT.toLocaleString('ko-KR')}원을 초과해 매장 확인이 필요합니다.`,
+        constraints: [
+          `자동 처리 기준은 ${LOW_PRICE_LIMIT.toLocaleString('ko-KR')}원 이하이면서 주문 금액의 ${Math.round(PROJECT_SIMULATION_POLICY.autoRefundMaxOrderRatio * 100)}% 이하입니다.`,
+        ],
+        reason: '자동 처리 금액 또는 주문 대비 비율 기준을 초과해 매장 확인이 필요합니다.',
       })
     }
 
     return decide(caseData, {
-      policyId: 'LOW_PRICE_MISSING_REFUND',
-      allowedActions: ['mock_refund', 'human_review'],
-      constraints: ['재배달은 매장이 누락을 인정하거나 가능성을 확인한 뒤에만 허용합니다.'],
-      reason: '저가 메뉴 누락으로 Mock 부분 환불을 허용합니다. 재배달은 매장 확인 후에만 허용합니다.',
+      policyId: 'MISSING_ITEM_AUTO_CANDIDATE',
+      allowedActions: ['mock_refund', 'mock_redelivery', 'human_review'],
+      constraints: ['고객이 환불 또는 재배달을 명시적으로 선택한 뒤 실행한다.'],
+      reason: '금액·주문 비율 기준을 충족해 자동 해결 후보입니다.',
     })
   }
 

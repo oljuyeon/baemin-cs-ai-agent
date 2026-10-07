@@ -1,4 +1,5 @@
 import { mockMerchants } from './demoData'
+import { PROJECT_SIMULATION_POLICY } from './projectPolicy'
 import type {
   CaseCommit,
   CaseHistory,
@@ -38,27 +39,72 @@ const isStoredCaseArray = (value: unknown): value is CsCase[] =>
   )
 
 const merchantResponses: MerchantResponse[] = [
-  'ADMITTED_MISSING',
-  'CLAIMS_PACKED',
-  'POSSIBLE_MISSING',
+  'CONFIRMED',
+  'DENIED',
+  'POSSIBLE',
   'UNKNOWN',
 ]
 
-const normalizeMerchantResponse = (response: MerchantResponse | 'PACKED' | undefined) => {
-  if (response === 'PACKED') return 'CLAIMS_PACKED' as MerchantResponse
+type LegacyMerchantResponse =
+  | 'PACKED'
+  | 'ADMITTED_MISSING'
+  | 'CLAIMS_PACKED'
+  | 'POSSIBLE_MISSING'
+
+const normalizeMerchantResponse = (
+  response: MerchantResponse | LegacyMerchantResponse | undefined,
+) => {
+  if (response === 'ADMITTED_MISSING') return 'CONFIRMED' as MerchantResponse
+  if (response === 'PACKED' || response === 'CLAIMS_PACKED') return 'DENIED' as MerchantResponse
+  if (response === 'POSSIBLE_MISSING') return 'POSSIBLE' as MerchantResponse
   if (response && merchantResponses.includes(response)) return response
   return undefined
 }
 
-const normalizeCase = (caseData: CsCase): CsCase => ({
-  ...caseData,
+const taskStatusForCaseStatus = (status: CaseStatus) => {
+  if (status === 'WAITING_MERCHANT') return 'WAITING_MERCHANT' as const
+  if (status === 'ESCALATED') return 'WAITING_HUMAN_CS' as const
+  if (status === 'ACTION_READY') return 'ACTION_READY' as const
+  if (status === 'ACTION_EXECUTING') return 'ACTION_EXECUTING' as const
+  if (status === 'AUTO_RESOLVED' || status === 'CLOSED') return 'RESOLVED' as const
+  if (status === 'COLLECTING_INFO' || status === 'WAITING_EVIDENCE') {
+    return 'WAITING_CUSTOMER' as const
+  }
+  return 'IN_PROGRESS' as const
+}
+
+const normalizeCase = (caseData: CsCase): CsCase => {
+  const taskId = caseData.activeTaskId ?? `TASK-${caseData.caseId}`
+  const tasks = Array.isArray(caseData.tasks) && caseData.tasks.length > 0
+    ? caseData.tasks
+    : [{
+        taskId,
+        issueType: caseData.issueType,
+        status: taskStatusForCaseStatus(caseData.status),
+        customerClaim: caseData.customerClaim,
+        claimedItemName: caseData.claimedItemName,
+        liability: caseData.liability ?? 'UNKNOWN',
+        resolutionPreference: caseData.resolutionPreference,
+        finalAction: caseData.finalAction,
+        createdAt: caseData.createdAt,
+        updatedAt: caseData.updatedAt,
+      }]
+
+  return {
+    ...caseData,
+    tasks,
+    activeTaskId: taskId,
+    liability: caseData.liability ?? 'UNKNOWN',
   merchantConfirmation: caseData.merchantConfirmation
     ? {
         ...caseData.merchantConfirmation,
-        response: normalizeMerchantResponse(caseData.merchantConfirmation.response as MerchantResponse | 'PACKED' | undefined),
+        response: normalizeMerchantResponse(
+          caseData.merchantConfirmation.response as MerchantResponse | LegacyMerchantResponse | undefined,
+        ),
         conversation: Array.isArray(caseData.merchantConfirmation.conversation)
           ? caseData.merchantConfirmation.conversation
           : [],
+        followUpCount: caseData.merchantConfirmation.followUpCount ?? 0,
       }
     : undefined,
   conversation: Array.isArray(caseData.conversation)
@@ -73,7 +119,8 @@ const normalizeCase = (caseData: CsCase): CsCase => ({
   riskFlags: Array.isArray(caseData.riskFlags) ? caseData.riskFlags : [],
   history: Array.isArray(caseData.history) ? caseData.history : [],
   toolHistory: Array.isArray(caseData.toolHistory) ? caseData.toolHistory : [],
-})
+  }
+}
 
 const finalActionForHumanCs = (action: HumanCsAction): FinalAction => {
   if (action === 'approve_refund') return 'mock_refund'
@@ -108,6 +155,7 @@ export class LocalCaseStore implements CaseStore {
   createCase(input: CreateCaseInput): CsCase {
     const timestamp = nowIso()
     const caseId = input.caseId ?? newId('CASE')
+    const taskId = newId('TASK')
     if (this.cases.has(caseId)) throw new Error(`Case ${caseId} already exists.`)
 
     const caseData: CsCase = {
@@ -116,10 +164,22 @@ export class LocalCaseStore implements CaseStore {
       orderId: input.orderId,
       storeId: input.storeId,
       issueType: input.issueType,
+      tasks: [{
+        taskId,
+        issueType: input.issueType,
+        status: 'IN_PROGRESS',
+        customerClaim: input.customerClaim,
+        claimedItemName: input.claimedItemName,
+        liability: 'UNKNOWN',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      }],
+      activeTaskId: taskId,
       status: 'NEW',
       customerClaim: input.customerClaim,
       claimedItemName: input.claimedItemName,
       receivedItemDescription: input.receivedItemDescription,
+      liability: 'UNKNOWN',
       conversation: [{
         role: 'customer',
         content: input.customerClaim,
@@ -205,6 +265,19 @@ export class LocalCaseStore implements CaseStore {
       updatedAt: timestamp,
     }
 
+    next.tasks = next.tasks.map((task) => task.taskId === next.activeTaskId
+      ? {
+          ...task,
+          issueType: next.issueType,
+          status: taskStatusForCaseStatus(next.status),
+          claimedItemName: next.claimedItemName,
+          liability: next.liability,
+          resolutionPreference: next.resolutionPreference,
+          finalAction: next.finalAction,
+          updatedAt: timestamp,
+        }
+      : task)
+
     this.cases.set(caseId, next)
     this.persistAndNotify(caseId)
     return clone(next)
@@ -219,6 +292,7 @@ export class LocalCaseStore implements CaseStore {
   }
 
   getCasesForRole(role: UserRole, subjectId?: string): CsCase[] {
+    this.expireMerchantConfirmations()
     const cases = this.getAllCases()
     if (role === 'cs') {
       return cases.filter((caseData) =>
@@ -237,6 +311,69 @@ export class LocalCaseStore implements CaseStore {
     return cases.filter((caseData) =>
       caseData.storeId === storeId && caseData.status === 'WAITING_MERCHANT',
     )
+  }
+
+  expireMerchantConfirmations(now = Date.now()): CsCase[] {
+    const expired: CsCase[] = []
+    const timeoutMs = PROJECT_SIMULATION_POLICY.merchantTimeoutSeconds * 1_000
+    for (const caseData of [...this.cases.values()]) {
+      const confirmation = caseData.merchantConfirmation
+      if (
+        caseData.status !== 'WAITING_MERCHANT'
+        || !confirmation
+        || confirmation.status !== 'waiting'
+      ) continue
+
+      const toTime = (value?: string) => value ? new Date(value).getTime() : 0
+      const latestAgentRequest = Math.max(
+        toTime(confirmation.requestedAt),
+        ...confirmation.conversation
+          .filter((message) => message.role === 'agent')
+          .map((message) => toTime(message.createdAt)),
+      )
+      const latestMerchantAnswer = Math.max(
+        confirmation.response ? toTime(confirmation.respondedAt) : 0,
+        ...confirmation.conversation
+          .filter((message) => message.role === 'merchant')
+          .map((message) => toTime(message.createdAt)),
+      )
+      if (
+        !Number.isFinite(latestAgentRequest)
+        || latestAgentRequest <= latestMerchantAnswer
+        || now - latestAgentRequest < timeoutMs
+      ) continue
+
+      const message = '매장 응답 기한 3분이 지나 상담원이 지금까지 확인한 내용을 이어받아 검토합니다.'
+      const next = this.commitCase(caseData.caseId, {
+        changes: {
+          status: 'ESCALATED',
+          decision: 'ESCALATE',
+          finalAction: 'human_review',
+          liability: 'UNKNOWN',
+          escalationReason: 'Merchant 응답 3분 타임아웃',
+          agentSummary: [
+            `문의 유형: ${caseData.issueType}`,
+            `고객 주장: ${caseData.customerClaim}`,
+            `대상 메뉴: ${caseData.claimedItemName ?? '없음'}`,
+            `Risk: ${caseData.riskFlags.join(', ') || '없음'}`,
+            '매장 응답: 3분 동안 없음',
+          ].join(' / '),
+          conversation: [
+            ...caseData.conversation,
+            { role: 'agent', content: message, createdAt: new Date(now).toISOString() },
+          ],
+        },
+        history: [{
+          actor: 'agent',
+          event: 'ESCALATED',
+          fromStatus: 'WAITING_MERCHANT',
+          toStatus: 'ESCALATED',
+          detail: 'Merchant 응답 3분 타임아웃으로 Human CS 이관',
+        }],
+      })
+      expired.push(next)
+    }
+    return expired
   }
 
   appendConversation(

@@ -109,10 +109,18 @@ class MockAgentTools implements AgentTools {
       if (!Number.isFinite(input.amount) || input.amount <= 0) {
         throw new Error('환불 금액은 0보다 커야 합니다.')
       }
+      const idempotencyKey = `refund:${input.caseId}:${input.orderId}:${input.itemName ?? 'order'}`
+      const alreadyCompleted = current.toolHistory.some((entry) =>
+        entry.toolName === 'refund'
+        && entry.result.status === 'success'
+        && (entry.result.data as MockActionResult).idempotencyKey === idempotencyKey,
+      )
+      if (alreadyCompleted) throw new Error('동일한 환불 요청이 이미 완료되었습니다.')
       return {
         actionId: newId('ACTION'),
         action: 'mock_refund',
         completedAt: nowIso(),
+        idempotencyKey,
       }
     })
   }
@@ -123,10 +131,18 @@ class MockAgentTools implements AgentTools {
       if (current.orderId !== input.orderId) {
         throw new Error('Case와 재배달 대상 주문이 일치하지 않습니다.')
       }
+      const idempotencyKey = `redelivery:${input.caseId}:${input.orderId}`
+      const alreadyCompleted = current.toolHistory.some((entry) =>
+        entry.toolName === 'redelivery'
+        && entry.result.status === 'success'
+        && (entry.result.data as MockActionResult).idempotencyKey === idempotencyKey,
+      )
+      if (alreadyCompleted) throw new Error('동일한 재배달 요청이 이미 완료되었습니다.')
       return {
         actionId: newId('ACTION'),
         action: 'mock_redelivery',
         completedAt: nowIso(),
+        idempotencyKey,
       }
     })
   }

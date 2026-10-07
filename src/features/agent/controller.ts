@@ -21,6 +21,30 @@ const isTerminal = (caseData: CsCase) =>
   || caseData.status === 'ESCALATED'
   || caseData.status === 'CLOSED'
 
+const buildHumanCsSummary = (caseData: CsCase, failureReason: string) => [
+  `caseId=${caseData.caseId}`,
+  `customerId=${caseData.customerId}`,
+  `orderId=${caseData.orderId}`,
+  `issueType=${caseData.issueType}`,
+  `고객 원문=${caseData.customerClaim}`,
+  `주문 사실=${caseData.order
+    ? `${caseData.order.items.map((item) => `${item.name} ${item.price}원`).join(', ')} / 총 ${caseData.order.totalAmount}원`
+    : '조회 실패'}`,
+  `배달 사실=${caseData.delivery
+    ? `${caseData.delivery.deliveryStatus}, 지연 ${caseData.delivery.delayMinutes}분`
+    : '없음'}`,
+  `증빙=${caseData.evidenceAnalysis?.map((item) => `${item.assessment}: ${item.observation}`).join(' | ') || caseData.evidenceUrls.join(', ') || '없음'}`,
+  `매장 응답=${caseData.merchantConfirmation?.response ?? '없음'}${caseData.merchantConfirmation?.comment ? ` (${caseData.merchantConfirmation.comment})` : ''}`,
+  `귀책 추정=${caseData.liability}`,
+  `Risk=${caseData.riskFlags.join(', ') || '없음'}`,
+  `Policy=${caseData.appliedPolicy ?? '미확인'}`,
+  `고객 희망=${caseData.resolutionPreference ?? '미정'}`,
+  `실행 Tool=${caseData.toolHistory.map((item) => `${item.toolName}:${item.result.status}`).join(', ') || '없음'}`,
+  `완료 Action=${caseData.finalActionResult?.action ?? '없음'}`,
+  `자동 처리 실패 이유=${failureReason}`,
+  'Human CS 결정 필요=환불·재배달·추가 확인 중 적절한 최종 조치',
+].join('\n')
+
 const enrichClaimedItem = (caseData: CsCase) => {
   if (caseData.claimedItemName || !caseData.order) return caseData
   const customerText =
@@ -46,7 +70,7 @@ const finish = (caseId: string, action: Extract<AgentAction, { type: 'FINISH' }>
         ? action.customerMessage
         : current.escalationReason,
       agentSummary: action.decision === 'ESCALATE'
-        ? `Agent가 ${current.toolHistory.length}개의 Tool Observation을 확인한 뒤 Human CS 검토가 필요하다고 판단했습니다.`
+        ? buildHumanCsSummary(current, action.customerMessage)
         : current.agentSummary,
     },
     history: [{
@@ -138,7 +162,7 @@ export const agentController: AgentController = {
       if (action.type === 'ASK_CUSTOMER') {
         caseStore.commitCase(caseId, {
           changes: {
-            status: 'COLLECTING_INFO',
+            status: action.waitStatus ?? 'COLLECTING_INFO',
             decision: 'NEED_MORE_INFO',
           },
         })
@@ -157,8 +181,8 @@ export const agentController: AgentController = {
           toolName: 'escalate_to_human',
           input: {
             caseId,
-            reason: action.customerMessage,
-            summary: `Agent가 ${current.toolHistory.length}개의 Tool Observation을 확인했습니다.`,
+          reason: action.customerMessage,
+            summary: buildHumanCsSummary(current, action.customerMessage),
           },
         })
       }

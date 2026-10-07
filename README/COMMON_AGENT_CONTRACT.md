@@ -1,8 +1,8 @@
 # 배달 플랫폼 CS AI Agent 공통 계약
 
-> 문서 버전: `ver4.3`
+> 문서 버전: `ver5.0`
 >
-> 최종 수정일시: `2026-10-02 14:35:13 KST`
+> 최종 수정일시: `2026-10-07 KST`
 
 ## 문서 목적
 
@@ -109,6 +109,8 @@ export type CaseStatus =
   | 'WAITING_MERCHANT'
   | 'POLICY_CHECK'
   | 'RISK_CHECK'
+  | 'ACTION_READY'
+  | 'ACTION_EXECUTING'
   | 'AUTO_RESOLVED'
   | 'ESCALATED'
   | 'CLOSED'
@@ -120,9 +122,16 @@ export type AgentDecision =
   | 'ESCALATE'
 
 export type MerchantResponse =
-  | 'ADMITTED_MISSING'
-  | 'CLAIMS_PACKED'
-  | 'POSSIBLE_MISSING'
+  | 'CONFIRMED'
+  | 'POSSIBLE'
+  | 'DENIED'
+  | 'UNKNOWN'
+
+export type Liability =
+  | 'CUSTOMER'
+  | 'MERCHANT'
+  | 'DELIVERY'
+  | 'PLATFORM'
   | 'UNKNOWN'
 
 export type RiskFlag =
@@ -130,6 +139,7 @@ export type RiskFlag =
   | 'frequent_refund'
   | 'order_claim_mismatch'
   | 'evidence_mismatch'
+  | 'high_value_claim'
 
 export type FinalAction =
   | 'guide_customer'
@@ -724,10 +734,10 @@ Agent가 현재 Case를 보고 Merchant 확인 필요성을 판단
 
 `MerchantResponse`의 의미는 다음과 같다.
 
--   `ADMITTED_MISSING`: Merchant가 해당 주문의 누락을 인정함
--   `CLAIMS_PACKED`: Merchant가 해당 상품을 포장했다고 진술함.
+-   `CONFIRMED`: Merchant가 누락 또는 오배달 등 문제 발생을 인정함
+-   `DENIED`: Merchant가 해당 상품을 정상 처리했다고 진술함.
     객관적으로 확정된 사실이 아니라 Merchant의 진술로 취급함
--   `POSSIBLE_MISSING`: Merchant가 누락 가능성은 인정하지만 확정하지
+-   `POSSIBLE`: Merchant가 문제 발생 가능성은 인정하지만 확정하지
     못함
 -   `UNKNOWN`: Merchant가 현재 확인하기 어렵거나 충분한 정보를 제공하지
     못함
@@ -786,7 +796,7 @@ Merchant 입력의 기본은 `MerchantResponse`에 대응하는 구조화된 선
                                                   재개
 
   D                       고객 주장과 Merchant의  자동 보상은 제한하되
-                          `CLAIMS_PACKED` 진술 등 Agent가 추가 해결
+                          `DENIED` 진술 등         Agent가 추가 해결
                           핵심 정보가 충돌        가능성을 판단하고, 해결
                                                   불가 시 Human CS 이관
 

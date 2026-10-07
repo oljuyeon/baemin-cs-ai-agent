@@ -127,11 +127,16 @@
     "WAITING_MERCHANT": "매장 확인",
     "POLICY_CHECK": "정책 확인",
     "RISK_CHECK": "리스크 확인",
+    "ACTION_READY": "고객 선택 대기",
+    "ACTION_EXECUTING": "조치 실행 중",
     "AUTO_RESOLVED": "자동 처리",
     "ESCALATED": "상담원 검토",
     "CLOSED": "종료"
   },
   "merchantResponse": {
+    "CONFIRMED": "문제 확인",
+    "DENIED": "정상 처리 주장",
+    "POSSIBLE": "문제 가능성",
     "ADMITTED_MISSING": "누락 인정",
     "CLAIMS_PACKED": "포장했다고 진술",
     "POSSIBLE_MISSING": "누락 가능",
@@ -139,6 +144,7 @@
     "none": "매장 응답 없음"
   },
   "risk": {
+    "high_value_claim": "자동 처리 금액 초과",
     "duplicate_refund": "동일 환불",
     "frequent_refund": "반복 환불",
     "order_claim_mismatch": "주문과 주장 불일치",
@@ -146,24 +152,29 @@
   },
   "riskDetail": {
     "duplicate_refund": "같은 주문, 같은 메뉴에 이미 환불 기록이 있습니다.",
-    "frequent_refund": "최근 30일 이내 환불이 5회 이상인 검토 신호입니다. 이 사실만으로 행동을 막지는 않습니다.",
+    "frequent_refund": "최근 30일 유사 처리가 2회를 초과해 자동 환불과 재배달이 제한됩니다.",
     "order_claim_mismatch": "고객이 말한 메뉴가 이 주문에 없습니다.",
-    "evidence_mismatch": "첨부 사진이 고객 설명과 맞지 않습니다."
+    "evidence_mismatch": "첨부 사진이 고객 설명과 맞지 않습니다.",
+    "high_value_claim": "메뉴 금액 또는 주문 대비 비율이 자동 처리 기준을 초과합니다."
   },
   "policy": {
     "MERCHANT_CLAIM_CONFLICT": "주장 충돌",
     "MERCHANT_UNKNOWN": "매장 확인 불가",
     "MISSING_ITEM_ADMITTED": "누락 인정 후 처리",
     "MISSING_ITEM_AFTER_MERCHANT_CONFIRMATION": "매장 확인 후 누락",
+    "MISSING_ITEM_AUTO_CANDIDATE": "누락 자동 처리 후보",
+    "MISSING_ITEM_NEEDS_MERCHANT": "누락 매장 확인 필요",
     "WRONG_DELIVERY_AFTER_ADMISSION": "누락 인정 후 재배달",
     "WRONG_DELIVERY_NEEDS_REVIEW": "오배달 추가 검토",
     "WRONG_DELIVERY_NEEDS_MERCHANT": "오배달 매장 확인",
     "WRONG_DELIVERY_REDELIVERY_AFTER_MERCHANT": "매장 확인 후 재배달",
+    "WRONG_DELIVERY_CLEAR_LOW_RISK": "명확한 저위험 오배달",
     "MISSING_ITEM_NEEDS_MORE_INFO": "주문 정보 확인",
     "HIGH_PRICE_MERCHANT_CONFIRMATION": "고가 메뉴 매장 확인",
     "LOW_PRICE_MISSING_REFUND": "저가 누락 환불",
     "DELIVERY_DELAY_NEEDS_DATA": "배달 정보 필요",
     "DELIVERY_DELAYED": "배달 지연",
+    "DELIVERY_COMPENSATION_ELIGIBLE": "지연 보상 대상",
     "DELIVERY_ON_TIME": "정상 진행",
     "OUT_OF_SCOPE": "범위 밖 문의"
   },

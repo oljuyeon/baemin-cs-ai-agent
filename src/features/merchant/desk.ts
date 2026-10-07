@@ -1,8 +1,8 @@
-import { caseStore, mockMerchants, type CsCase } from '../cs'
+import { caseStore, mockMerchants, PROJECT_SIMULATION_POLICY, type CsCase } from '../cs'
 
 const STORE_SESSION_KEY = 'delivery-cs-agent:selected-store'
 
-export const REMINDER_AFTER_MS = 3 * 60 * 1000
+export const REMINDER_AFTER_MS = PROJECT_SIMULATION_POLICY.merchantWarningSeconds * 1_000
 
 export const readSelectedStoreId = () => {
   const stored = window.sessionStorage.getItem(STORE_SESSION_KEY)

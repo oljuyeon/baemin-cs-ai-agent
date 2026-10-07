@@ -86,8 +86,10 @@ const toCustomerUiState = (caseData: CsCase) => {
     caseData.status === 'COLLECTING_INFO'
     || caseData.status === 'WAITING_EVIDENCE'
     || caseData.status === 'WAITING_MERCHANT'
+    || caseData.status === 'ACTION_READY'
     || caseData.status === 'ESCALATED'
   ) return 'waiting' as const
+  if (caseData.status === 'ACTION_EXECUTING') return 'working' as const
   return 'working' as const
 }
 
@@ -143,39 +145,41 @@ const actionsForCase = (caseData: CsCase): CustomerAgentAction[] => {
     && caseData.finalAction === 'guide_customer'
   ) return delayActions
 
-  if (
-    caseData.status === 'COLLECTING_INFO'
-    && caseData.issueType === 'missing_item'
-    && caseData.claimedItemName
-    && caseData.order
-    && !caseData.toolHistory.some((tool) => tool.toolName === 'refund')
-  ) {
+  if (caseData.status === 'ACTION_READY' && caseData.order) {
     const policy = evaluatePolicy(caseData)
     const risk = assessRisk(caseData)
     const item = caseData.order.items.find((candidate) =>
       candidate.name === caseData.claimedItemName,
     )
-    if (
-      item
-      && policy.allowedActions.includes('mock_refund')
+    const refundAllowed = policy.allowedActions.includes('mock_refund')
       && !risk.blockedActions.includes('mock_refund')
-    ) {
-      return [
+    const redeliveryAllowed = policy.allowedActions.includes('mock_redelivery')
+      && !risk.blockedActions.includes('mock_redelivery')
+    const refundAmount = caseData.issueType === 'missing_item'
+      ? item?.price
+      : caseData.order.totalAmount
+    const next: CustomerAgentAction[] = []
+    if (refundAllowed && refundAmount) {
+      next.push(
         {
           id: 'confirmRefund',
           labelKey: 'agent.actions.confirmRefund',
-          label: `${item.name} ${item.price.toLocaleString('ko-KR')}원 환불하기`,
+          label: `${caseData.issueType === 'missing_item' ? item?.name : '주문'} ${refundAmount.toLocaleString('ko-KR')}원 환불하기`,
           primary: true,
         },
-        ...(!caseData.merchantConfirmation
-          ? [{
-              id: 'requestMerchant' as const,
-              labelKey: 'agent.actions.requestMerchant',
-            }]
-          : []),
-        { id: 'cancelAction', labelKey: 'agent.actions.cancelAction' },
-      ]
+      )
     }
+    if (redeliveryAllowed) {
+      next.push({
+        id: 'requestRedelivery',
+        labelKey: 'agent.actions.requestRedelivery',
+        label: caseData.issueType === 'missing_item'
+          ? `${item?.name ?? '누락 메뉴'} 재배달 요청`
+          : '올바른 메뉴 재배달 요청',
+      })
+    }
+    if (next.length > 0) next.push({ id: 'cancelAction', labelKey: 'agent.actions.cancelAction' })
+    return next
   }
 
   return []
@@ -264,7 +268,13 @@ export function CustomerPage() {
 
   useEffect(() => {
     mounted.current = true
-    return () => { mounted.current = false }
+    const merchantTimeoutClock = window.setInterval(() => {
+      caseStore.expireMerchantConfirmations()
+    }, 5_000)
+    return () => {
+      mounted.current = false
+      window.clearInterval(merchantTimeoutClock)
+    }
   }, [])
 
   useEffect(() => {
@@ -584,20 +594,27 @@ export function CustomerPage() {
       const item = currentCase.order?.items.find((candidate) =>
         candidate.name === currentCase.claimedItemName,
       )
-      if (!item || isThinking) return
+      const amount = currentCase.issueType === 'missing_item'
+        ? item?.price
+        : currentCase.order?.totalAmount
+      if (!amount || isThinking) return
 
       setActions([])
       setIsThinking(true)
       setCaseState('working')
       try {
+        caseStore.updateCase(currentCase.caseId, {
+          status: 'ACTION_EXECUTING',
+          resolutionPreference: 'refund',
+        })
         await executeTool(currentCase.caseId, {
           type: 'CALL_TOOL',
           toolName: 'refund',
           input: {
             caseId: currentCase.caseId,
             orderId: currentCase.orderId,
-            itemName: item.name,
-            amount: item.price,
+            itemName: item?.name,
+            amount,
           },
         })
         const completed = await agentController.runNextStep(currentCase.caseId)
@@ -608,6 +625,38 @@ export function CustomerPage() {
         appendAgentContent(error instanceof Error
           ? `환불 처리 중 오류가 발생했습니다: ${error.message}`
           : '환불 처리 중 알 수 없는 오류가 발생했습니다.')
+        setCaseState('waiting')
+      } finally {
+        setIsThinking(false)
+      }
+      return
+    }
+
+    if (action.id === 'requestRedelivery' && currentCase && !isThinking) {
+      setActions([])
+      setIsThinking(true)
+      setCaseState('working')
+      try {
+        caseStore.updateCase(currentCase.caseId, {
+          status: 'ACTION_EXECUTING',
+          resolutionPreference: 'redelivery',
+        })
+        await executeTool(currentCase.caseId, {
+          type: 'CALL_TOOL',
+          toolName: 'redelivery',
+          input: {
+            caseId: currentCase.caseId,
+            orderId: currentCase.orderId,
+          },
+        })
+        const completed = await agentController.runNextStep(currentCase.caseId)
+        setMessages(conversationToMessages(completed))
+        setCaseState(toCustomerUiState(completed))
+        setActions(actionsForCase(completed))
+      } catch (error) {
+        appendAgentContent(error instanceof Error
+          ? `재배달 처리 중 오류가 발생했습니다: ${error.message}`
+          : '재배달 처리 중 알 수 없는 오류가 발생했습니다.')
         setCaseState('waiting')
       } finally {
         setIsThinking(false)
@@ -690,7 +739,6 @@ export function CustomerPage() {
       trackDelivery: 'agent.results.trackingDone',
       cancelAction: 'agent.results.noAction',
       checkRefund: 'agent.results.refundOffer',
-      requestRedelivery: 'agent.results.redeliveryDone',
       escalateHuman: 'agent.results.escalationDone',
     }
     const resultKey = resultKeyByAction[action.id]
@@ -698,6 +746,13 @@ export function CustomerPage() {
 
     const content = t(resultKey)
     appendAgentContent(content)
+
+    if (action.id === 'cancelAction' && currentCase) {
+      caseStore.updateCase(currentCase.caseId, {
+        status: 'AUTO_RESOLVED',
+        finalAction: 'no_action',
+      })
+    }
 
     if (action.id === 'checkRefund') {
       setActions([

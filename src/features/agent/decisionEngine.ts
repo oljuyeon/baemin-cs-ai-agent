@@ -6,7 +6,6 @@ import type {
   ToolName,
   ToolResult,
 } from '../cs'
-import { decideWithOpenAI } from './remoteAgent'
 
 const wasCalled = (caseData: CsCase, toolName: ToolName) =>
   caseData.toolHistory.some((log) => log.toolName === toolName)
@@ -90,14 +89,17 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
       && policy.data.allowedActions.includes('guide_customer')
       && !risk.data.blockedActions.includes('guide_customer')
     ) {
-      const delay = caseData.delivery.delayMinutes
+      const delay = Math.max(0, caseData.delivery.delayMinutes)
+      const message = delay >= 30
+        ? `시스템 배송 데이터 기준 예상 도착 시각보다 ${delay}분 지연됐습니다. 주문당 1회 지연 보상 기준에 해당하므로, 아래에서 쿠폰 지급 여부를 확인해 주세요.`
+        : delay > 0
+          ? `시스템 배송 데이터 기준 예상 도착 시각보다 ${delay}분 지연됐습니다. 현재 배송 상태를 안내해 드릴게요. 30분 이상 지연되면 보상 기준이 적용되며, 배송 알림도 켤 수 있어요.`
+          : '예상 도착 시각 전이거나 정상 진행 중입니다. 현재 배송 상태를 안내하고 배송 알림을 켤 수 있어요.'
       return {
         type: 'FINISH',
         decision: 'AUTO_RESOLVE',
         finalAction: 'guide_customer',
-        customerMessage: delay > 0
-          ? `예상 도착 시각보다 ${delay}분 지연된 상태로 확인됩니다. 현재 배달 상태를 계속 확인해 주세요.`
-          : '예상 도착 시각 전이거나 정상 진행 중인 배달로 확인됩니다.',
+        customerMessage: message,
       }
     }
 
@@ -105,6 +107,14 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
   }
 
   if (caseData.issueType === 'wrong_delivery') {
+    if (caseData.evidenceUrls.length === 0) {
+      return {
+        type: 'ASK_CUSTOMER',
+        waitStatus: 'WAITING_EVIDENCE',
+        question: '오배달 확인을 위해 받은 음식과 포장지 또는 영수증 사진을 첨부해 주세요. 사진은 보조 증빙으로만 사용하며, 사진만으로 책임을 단정하지 않아요.',
+      }
+    }
+
     const evidenceUrl = caseData.evidenceUrls.find((url) =>
       !caseData.evidenceAnalysis?.some((analysis) => analysis.evidenceUrl === url),
     )
@@ -121,30 +131,64 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
 
     const policy = latestResult<PolicyResult>(caseData, 'get_policy')
     const risk = latestResult<RiskResult>(caseData, 'check_risk')
+    const refundAllowed =
+      policy?.status === 'success'
+      && risk?.status === 'success'
+      && policy.data.allowedActions.includes('mock_refund')
+      && !risk.data.blockedActions.includes('mock_refund')
     const redeliveryAllowed =
       policy?.status === 'success'
       && risk?.status === 'success'
       && policy.data.allowedActions.includes('mock_redelivery')
       && !risk.data.blockedActions.includes('mock_redelivery')
+    const refundResult = latestResult(caseData, 'refund')
     const redeliveryResult = latestResult(caseData, 'redelivery')
-
-    if (redeliveryAllowed && !redeliveryResult) {
+    if (refundResult?.status === 'success') {
       return {
-        type: 'CALL_TOOL',
-        toolName: 'redelivery',
-        input: { caseId: caseData.caseId, orderId: caseData.orderId },
+        type: 'FINISH',
+        decision: 'AUTO_RESOLVE',
+        finalAction: 'mock_refund',
+        customerMessage: `오배달 해결 방식으로 주문 금액 ${caseData.order.totalAmount.toLocaleString('ko-KR')}원을 Mock 환불 처리했습니다.`,
       }
     }
-    if (redeliveryAllowed && redeliveryResult?.status === 'success') {
+    if (redeliveryResult?.status === 'success') {
       return {
         type: 'FINISH',
         decision: 'AUTO_RESOLVE',
         finalAction: 'mock_redelivery',
-        customerMessage: '오배달 확인 결과 Mock 재배달로 처리했습니다.',
+        customerMessage: '고객이 선택한 해결 방식에 따라 올바른 메뉴의 Mock 재배달을 요청했습니다.',
       }
     }
 
-    return finishForHumanReview('오배달 정보를 확인했으며 상담원이 이어서 검토합니다.')
+    if (refundAllowed || redeliveryAllowed) {
+      return {
+        type: 'ASK_CUSTOMER',
+        waitStatus: 'ACTION_READY',
+        question: '주문·증빙·정책·위험 신호를 확인했습니다. 가능한 해결 방법을 아래에서 선택해 주세요. 사진 분석은 보조 근거이며 책임 주체를 확정하지 않습니다.',
+      }
+    }
+
+    if (risk?.status === 'success' && risk.data.blockedActions.some(
+      (action) => action === 'mock_refund' || action === 'mock_redelivery',
+    )) {
+      return finishForHumanReview('증빙 불일치 또는 반복 신고 등 위험 신호가 있어 자동 처리하지 않고 상담원이 전체 맥락을 검토합니다.')
+    }
+
+    if (!caseData.merchantConfirmation) {
+      return {
+        type: 'CALL_TOOL',
+        toolName: 'request_merchant_confirmation',
+        input: {
+          caseId: caseData.caseId,
+          orderId: caseData.orderId,
+          issueType: caseData.issueType,
+          customerClaim: caseData.customerClaim,
+          evidenceUrl: caseData.evidenceUrls[0],
+        },
+      }
+    }
+
+    return finishForHumanReview('고객 증빙과 매장 확인 결과만으로 귀책을 확정하기 어려워 상담원이 배송 과정까지 이어서 검토합니다.')
   }
 
   if (caseData.issueType !== 'missing_item') {
@@ -180,35 +224,43 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
     && !risk.data.blockedActions.includes('mock_refund')
 
   const refundResult = latestResult(caseData, 'refund')
-
-  if (refundAllowed && !refundResult) {
-    const item = caseData.order.items.find(
-      (candidate) => candidate.name === caseData.claimedItemName,
-    )
-
-    if (!item) {
-      return finishForHumanReview(
-        '주문에서 요청한 메뉴를 확인하지 못해 상담원이 이어서 확인합니다.',
-      )
-    }
-
-    return {
-      type: 'ASK_CUSTOMER',
-      question: `주문 내역, 메뉴 가격, 동일 주문 환불 이력, 처리 정책과 위험 신호를 확인했습니다. ${item.name} ${item.price.toLocaleString('ko-KR')}원은 부분 환불 가능한 상태입니다. 아래에서 처리 방법을 선택해 주세요.`,
-    }
-  }
+  const redeliveryAllowed =
+    policy.data.allowedActions.includes('mock_redelivery')
+    && !risk.data.blockedActions.includes('mock_redelivery')
+  const redeliveryResult = latestResult(caseData, 'redelivery')
 
   if (refundAllowed && refundResult?.status === 'success') {
     const item = caseData.order.items.find(
       (candidate) => candidate.name === caseData.claimedItemName,
     )
-    const amount = item?.price.toLocaleString('ko-KR') ?? '해당'
-
     return {
       type: 'FINISH',
       decision: 'AUTO_RESOLVE',
       finalAction: 'mock_refund',
-      customerMessage: `${caseData.claimedItemName} 누락을 확인해 ${amount}원을 Mock 부분 환불로 처리했습니다.`,
+      customerMessage: `${caseData.claimedItemName} 누락에 대해 ${item?.price.toLocaleString('ko-KR') ?? '해당'}원을 Mock 부분 환불로 처리했습니다.`,
+    }
+  }
+
+  if (redeliveryAllowed && redeliveryResult?.status === 'success') {
+    return {
+      type: 'FINISH',
+      decision: 'AUTO_RESOLVE',
+      finalAction: 'mock_redelivery',
+      customerMessage: `${caseData.claimedItemName} 누락 해결 방식으로 Mock 재배달을 요청했습니다.`,
+    }
+  }
+
+  if ((refundAllowed || redeliveryAllowed) && !refundResult && !redeliveryResult) {
+    const item = caseData.order.items.find(
+      (candidate) => candidate.name === caseData.claimedItemName,
+    )
+    if (!item) {
+      return finishForHumanReview('주문에서 요청한 메뉴를 확인하지 못해 상담원이 이어서 확인합니다.')
+    }
+    return {
+      type: 'ASK_CUSTOMER',
+      waitStatus: 'ACTION_READY',
+      question: `주문 메뉴, ${item.price.toLocaleString('ko-KR')}원 가격, 주문 대비 비율, 최근 유사 신고, 중복 처리와 위험 신호를 확인했습니다. 가능한 해결 방법을 아래에서 선택해 주세요.`,
     }
   }
 
@@ -218,11 +270,33 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
     )
   }
 
+  if (risk.data.blockedActions.some(
+    (action) => action === 'mock_refund' || action === 'mock_redelivery',
+  )) {
+    return finishForHumanReview('중복 처리, 반복 신고 또는 증빙 불일치 위험 신호가 있어 자동 처리하지 않고 상담원이 검토합니다.')
+  }
+
+  if (!caseData.merchantConfirmation) {
+    return {
+      type: 'CALL_TOOL',
+      toolName: 'request_merchant_confirmation',
+      input: {
+        caseId: caseData.caseId,
+        orderId: caseData.orderId,
+        issueType: caseData.issueType,
+        itemName: caseData.claimedItemName,
+        customerClaim: caseData.customerClaim,
+        evidenceUrl: caseData.evidenceUrls[0],
+      },
+    }
+  }
+
   return finishForHumanReview(
-    '정책 또는 위험 기준상 자동 환불이 어려워 상담원이 이어서 확인합니다.',
+    '정책·위험 기준 또는 매장 확인 결과상 자동 처리가 어려워 상담원이 전체 맥락을 이어서 확인합니다.',
   )
 }
 
 export async function decideNextAction(caseData: CsCase): Promise<AgentAction> {
-  return await decideWithOpenAI(caseData) ?? decideNextActionWithRules(caseData)
+  // v2 원칙: LLM은 자연어 이해에 사용하고, Action Route는 Policy와 Risk로 결정한다.
+  return decideNextActionWithRules(caseData)
 }

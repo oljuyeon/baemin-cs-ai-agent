@@ -16,7 +16,7 @@ const queueTagForCase = (caseData: CsCase) => {
   if (caseData.riskFlags.includes('frequent_refund')) return 'frequent_refund'
   if (caseData.riskFlags.includes('evidence_mismatch')) return 'evidence_mismatch'
   if (caseData.riskFlags.includes('order_claim_mismatch')) return 'order_claim_mismatch'
-  if (caseData.merchantConfirmation?.response === 'CLAIMS_PACKED') return 'claim_conflict'
+  if (caseData.merchantConfirmation?.response === 'DENIED') return 'claim_conflict'
   if (caseData.merchantConfirmation?.response === 'UNKNOWN') return 'unknown'
   return null
 }

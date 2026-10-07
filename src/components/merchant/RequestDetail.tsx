@@ -10,9 +10,9 @@ import {
 import { BackIcon } from '../customer/CustomerIcons'
 
 const responses: MerchantResponse[] = [
-  'ADMITTED_MISSING',
-  'CLAIMS_PACKED',
-  'POSSIBLE_MISSING',
+  'CONFIRMED',
+  'DENIED',
+  'POSSIBLE',
   'UNKNOWN',
 ]
 

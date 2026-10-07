@@ -11,7 +11,7 @@
   },
   "alerts": {
     "newRequest": "A new confirmation request arrived.",
-    "overdue": "A request has been waiting for more than 3 minutes.",
+    "overdue": "A request has waited over 2 minutes. It will move to human support after 3 minutes.",
     "dismiss": "Dismiss alert",
     "sampleCreated": "A sample request was added to this store's queue.",
     "sampleCreatedMany": "{{count}} sample requests were added to this store's queue.",
@@ -80,18 +80,27 @@
     "correctionLabel": "Add details or correct your choice",
     "responsePlaceholder": {
       "default": {
+        "CONFIRMED": "Example: Describe what the store confirmed and what happened at the time.",
+        "DENIED": "Example: Describe what you found in the order and packing records.",
+        "POSSIBLE": "Example: Describe why this problem may have happened.",
         "ADMITTED_MISSING": "Example: Describe what the store confirmed and what happened at the time.",
         "CLAIMS_PACKED": "Example: Describe what you found in the order and packing records.",
         "POSSIBLE_MISSING": "Example: Describe why this problem may have happened.",
         "UNKNOWN": "Example: Explain why the store cannot confirm this yet."
       },
       "missing_item": {
+        "CONFIRMED": "Example: The staff member confirmed that the item was left out of the package.",
+        "DENIED": "Example: Our packing checklist shows that the item was included.",
+        "POSSIBLE": "Example: We were handling many orders, so the item may have been missed during packing.",
         "ADMITTED_MISSING": "Example: The staff member confirmed that the item was left out of the package.",
         "CLAIMS_PACKED": "Example: Our packing checklist shows that the item was included.",
         "POSSIBLE_MISSING": "Example: We were handling many orders, so the item may have been missed during packing.",
         "UNKNOWN": "Example: We cannot confirm it yet because the staff member on duty is unavailable."
       },
       "wrong_delivery": {
+        "CONFIRMED": "Example: Our packing review confirmed that another customer's order was delivered.",
+        "DENIED": "Example: The order slip and packing record show that the customer's order was prepared correctly.",
+        "POSSIBLE": "Example: Similar orders arrived together, so the orders may have been switched.",
         "ADMITTED_MISSING": "Example: Our packing review confirmed that another customer's order was delivered.",
         "CLAIMS_PACKED": "Example: The order slip and packing record show that the customer's order was prepared correctly.",
         "POSSIBLE_MISSING": "Example: Similar orders arrived together, so the orders may have been switched.",
@@ -112,6 +121,9 @@
     "back": "Back to list"
   },
   "responses": {
+    "CONFIRMED": "We confirmed the problem",
+    "DENIED": "We handled the order correctly",
+    "POSSIBLE": "The problem may have occurred",
     "ADMITTED_MISSING": "I admit it was missing",
     "CLAIMS_PACKED": "I claim it was packed",
     "POSSIBLE_MISSING": "It may be missing",
@@ -119,6 +131,9 @@
   },
   "issueResponses": {
     "wrong_delivery": {
+      "CONFIRMED": "I acknowledge the wrong delivery",
+      "DENIED": "We packed the customer's order correctly",
+      "POSSIBLE": "The orders may have been switched",
       "ADMITTED_MISSING": "I acknowledge the wrong delivery",
       "CLAIMS_PACKED": "We packed the customer's order correctly",
       "POSSIBLE_MISSING": "The orders may have been switched",
@@ -163,6 +178,8 @@
     "WAITING_MERCHANT": "Waiting for merchant",
     "POLICY_CHECK": "Policy check",
     "RISK_CHECK": "Risk check",
+    "ACTION_READY": "Waiting for customer choice",
+    "ACTION_EXECUTING": "Executing action",
     "AUTO_RESOLVED": "Auto resolved",
     "ESCALATED": "With human CS",
     "CLOSED": "Closed"
