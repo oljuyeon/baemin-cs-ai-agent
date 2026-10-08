@@ -84,8 +84,8 @@
     "traceOk": "ok",
     "traceError": "error",
     "resolution": "Decision",
-    "decide": "Final decision",
-    "mockNote": "Refunds and redeliveries are recorded as mock actions, not live payments or deliveries.",
+    "decide": "Customer-support follow-up",
+    "mockNote": "The store approves refunds or redelivery. Platform support only gathers more information and mediates when the customer requests help.",
     "comment": "Comment",
     "needAction": "Choose a decision.",
     "submit": "Save decision"
@@ -94,8 +94,8 @@
     "approve_refund": "Approve refund",
     "reject_refund": "Reject refund",
     "approve_redelivery": "Approve redelivery",
-    "request_more_info": "Request more info",
-    "request_additional_confirmation": "Request more confirmation"
+    "request_more_info": "Request more information from customer",
+    "request_additional_confirmation": "Check store or delivery process"
   },
   "history": {
     "title": "History",

@@ -14,9 +14,6 @@ import { CS_AGENT_ID } from '../../features/csDesk/desk'
 import { BackIcon } from '../customer/CustomerIcons'
 
 const actions: HumanCsAction[] = [
-  'approve_refund',
-  'reject_refund',
-  'approve_redelivery',
   'request_more_info',
   'request_additional_confirmation',
 ]

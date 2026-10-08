@@ -112,6 +112,7 @@
     "submitToAgent": "Submit response to agent",
     "submittingToAgent": "Agent is reviewing...",
     "agentCompleted": "The response was sent and the agent continued processing the case.",
+    "customerInputRequested": "The request for more information was sent to the customer. This case will reappear when the customer replies.",
     "agentFollowUp": "The agent sent a follow-up question. Reply in the conversation.",
     "agentSubmitError": "The response could not be sent to the agent.",
     "choiceSaved": "Your choice was saved. Submit the response to the agent when you are finished.",
@@ -121,7 +122,7 @@
     "back": "Back to list"
   },
   "responses": {
-    "CONFIRMED": "We confirmed the problem",
+    "CONFIRMED": "Confirmed · approve refund or redelivery",
     "DENIED": "We handled the order correctly",
     "POSSIBLE": "The problem may have occurred",
     "ADMITTED_MISSING": "I admit it was missing",
@@ -131,7 +132,7 @@
   },
   "issueResponses": {
     "wrong_delivery": {
-      "CONFIRMED": "I acknowledge the wrong delivery",
+      "CONFIRMED": "Wrong delivery confirmed · approve resolution",
       "DENIED": "We packed the customer's order correctly",
       "POSSIBLE": "The orders may have been switched",
       "ADMITTED_MISSING": "I acknowledge the wrong delivery",

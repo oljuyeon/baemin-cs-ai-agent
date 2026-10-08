@@ -27,7 +27,7 @@ export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const isComposingRef = useRef(false)
-  const canSubmit = Boolean(draft.trim() && !isThinking)
+  const canSubmit = Boolean((draft.trim() || attachedFile) && !isThinking)
 
   useEffect(() => {
     if (focusRequest > 0) textareaRef.current?.focus()

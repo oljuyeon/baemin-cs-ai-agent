@@ -84,8 +84,8 @@
     "traceOk": "성공",
     "traceError": "실패",
     "resolution": "처리 결과",
-    "decide": "최종 처리",
-    "mockNote": "환불과 재배달은 실제 결제나 배달이 아니라 가상 처리로 기록됩니다.",
+    "decide": "상담 지원 처리",
+    "mockNote": "환불·재배달 승인 여부는 매장 응답으로 결정합니다. 플랫폼 상담원은 고객 요청 시 추가 정보 확인과 분쟁 중재를 지원합니다.",
     "comment": "의견",
     "needAction": "처리 방법을 선택하세요.",
     "submit": "처리 저장"
@@ -94,8 +94,8 @@
     "approve_refund": "환불 승인",
     "reject_refund": "환불 거절",
     "approve_redelivery": "재배달 승인",
-    "request_more_info": "추가 정보 요청",
-    "request_additional_confirmation": "추가 확인 요청"
+    "request_more_info": "고객에게 추가 정보 요청",
+    "request_additional_confirmation": "매장·배송 과정 추가 확인"
   },
   "history": {
     "title": "처리 이력",

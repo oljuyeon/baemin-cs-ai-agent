@@ -63,27 +63,29 @@ AND 동일 주문·메뉴 환불 없음
 AND 환불·재배달 차단 Risk 없음
 ```
 
-자동 기준을 초과하지만 위험 충돌이 없는 Case는 Merchant 확인으로 보낸다. Merchant가 확인하면 다시 Policy와 Risk를 평가한 뒤 고객에게 환불·재배달 선택지를 제공한다.
+자동 기준을 초과하지만 위험 충돌이 없는 Case는 Merchant 확인으로 보낸다. Merchant가 문제를 확인하고 해결 조치에 동의하면 다시 Policy와 Risk를 평가한 뒤 고객에게 환불·재배달 선택지를 제공한다.
 
 ## 오배달
 
 - 사진이 없으면 `WAITING_EVIDENCE`로 고객 증빙을 요청한다.
 - 명확한 보조 증빙과 낮은 Risk가 있으면 자동 해결 후보가 될 수 있다.
 - 증빙이 불명확하거나 같은 매장 내 포장 오류 가능성이 있으면 Merchant 확인으로 보낸다.
-- Merchant가 정상 처리했다고 주장하면 배송 과정 확인이 필요하므로 Human CS로 보낸다.
+- Merchant가 해결 조치를 승인하지 않으면 고객에게 매장 답변을 전달하고, 고객이 문의 종료 또는 Human CS 연결을 직접 선택한다.
 
 ## Merchant 표준 응답
 
 | 응답 | 의미 | 다음 처리 |
 | --- | --- | --- |
-| `CONFIRMED` | 문제 발생 인정 | Policy·Risk 재검증 후 고객 선택 |
-| `POSSIBLE` | 문제 발생 가능 | 저위험이면 고객 선택, 아니면 Human CS |
-| `DENIED` | 정상 처리 주장 | 고객 주장과 충돌하므로 Human CS |
-| `UNKNOWN` | 판단 불가 | 추가 질문 최대 1회 후 Human CS |
+| `CONFIRMED` | 문제 발생 인정 및 해결 동의 | Policy·Risk 재검증 후 고객이 환불·재배달 선택 |
+| `POSSIBLE` | 문제 발생 가능, 해결 미승인 | 매장 답변 전달 후 고객이 종료·Human CS 선택 |
+| `DENIED` | 정상 처리 주장, 해결 미승인 | 매장 답변 전달 후 고객이 종료·Human CS 선택 |
+| `UNKNOWN` | 판단 불가 | 추가 자료 요청이 있으면 고객에게 전달, 아니면 고객이 종료·Human CS 선택 |
 
 기존 저장 데이터의 `ADMITTED_MISSING`, `POSSIBLE_MISSING`, `CLAIMS_PACKED`, `PACKED`는 Case 복원 시 새 값으로 변환한다.
 
 매장 요청 2분 후 지연 알림을 표시하고 3분 동안 응답이 없으면 전체 맥락과 함께 Human CS로 이관한다. 늦은 응답은 이미 완료된 Action을 다시 실행하지 않는다.
+
+매장이 자유 입력으로 사진·영수증·포장지 등 추가 자료를 요청하면 Case를 `WAITING_EVIDENCE`로 전환한다. 요청 문구는 고객 채팅에 전달되며, 고객이 첨부한 자료는 같은 Case의 Merchant 대화로 다시 전달한다. 고객은 자료 제공 대신 Human CS 연결을 직접 선택할 수 있다.
 
 ## Risk
 
@@ -101,7 +103,7 @@ Case는 `CUSTOMER`, `MERCHANT`, `DELIVERY`, `PLATFORM`, `UNKNOWN` 중 하나를 
 
 ## Human CS 전달
 
-자동 처리가 중단되면 주문·배달 사실, 고객 원문, 증빙 분석, Merchant 응답, 귀책 추정, Risk, Policy, 실행 Tool, 완료 Action, 실패 이유와 다음 결정 사항을 `agentSummary`에 저장한다.
+Human CS는 환불·재배달 승인 주체가 아니다. 고객이 직접 연결을 요청하거나 매장 무응답·배송 과정 분쟁이 발생했을 때 추가 정보 확인과 중재를 담당한다. 이관 시 주문·배달 사실, 고객 원문, 증빙 분석, Merchant 응답, 귀책 추정, Risk, Policy, 실행 Tool, 완료 Action과 이관 이유를 `agentSummary`에 저장한다.
 
 ## 복합 문의 데이터 모델
 

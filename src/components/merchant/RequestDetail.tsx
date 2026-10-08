@@ -106,7 +106,7 @@ export function RequestDetail({
   onBack: () => void
   onSaved: (message: string) => void
   onError: (message: string) => void
-  onSubmitToAgent: (caseId: string) => Promise<'completed' | 'follow_up'>
+  onSubmitToAgent: (caseId: string) => Promise<'completed' | 'follow_up' | 'customer_input'>
 }) {
   const { t, i18n } = useTranslation('merchant')
   const [order, setOrder] = useState<OrderData | null>(caseData?.order ?? null)
@@ -179,7 +179,6 @@ export function RequestDetail({
     selectedResponse || messages.some((message) => message.role === 'merchant'),
   )
   const choose = (choice: MerchantResponse) => {
-    if (selectedResponse) return
     try {
       caseStore.recordMerchantResponse(caseData.caseId, choice)
       setFormError(null)
@@ -212,9 +211,13 @@ export function RequestDetail({
     setFormError(null)
     try {
       const outcome = await onSubmitToAgent(caseData.caseId)
-      onSaved(t(outcome === 'completed'
-        ? 'detail.agentCompleted'
-        : 'detail.agentFollowUp'))
+      onSaved(t(
+        outcome === 'completed'
+          ? 'detail.agentCompleted'
+          : outcome === 'customer_input'
+            ? 'detail.customerInputRequested'
+            : 'detail.agentFollowUp',
+      ))
     } catch {
       const message = t('detail.agentSubmitError')
       setFormError(message)
@@ -301,24 +304,23 @@ export function RequestDetail({
               sendMessage()
             }}
           >
-            {!selectedResponse && (
-              <div
-                className="merchant-response__choices"
-                role="group"
-                aria-label={t('detail.choiceLabel')}
-              >
-                {responses.map((choice) => (
-                  <button
-                    key={choice}
-                    type="button"
-                    title={responseLabel(choice)}
-                    onClick={() => choose(choice)}
-                  >
-                    {responseLabel(choice)}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div
+              className="merchant-response__choices"
+              role="group"
+              aria-label={t('detail.choiceLabel')}
+            >
+              {responses.map((choice) => (
+                <button
+                  key={choice}
+                  type="button"
+                  className={selectedResponse === choice ? 'is-selected' : undefined}
+                  title={responseLabel(choice)}
+                  onClick={() => choose(choice)}
+                >
+                  {responseLabel(choice)}
+                </button>
+              ))}
+            </div>
             <p className="merchant-choice-note">
               {t(selectedResponse ? 'detail.choiceReceived' : 'detail.choiceHint')}
             </p>

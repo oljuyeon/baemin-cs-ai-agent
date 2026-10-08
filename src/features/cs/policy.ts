@@ -50,8 +50,8 @@ const riskCopy: Record<RiskFlag, { blockedActions: FinalAction[], reason: string
   },
 }
 
-const merchantConfirmed = (response?: MerchantResponse) =>
-  response === 'CONFIRMED' || response === 'POSSIBLE'
+const merchantApprovedResolution = (response?: MerchantResponse) =>
+  response === 'CONFIRMED'
 
 const claimedItem = (caseData: CsCase) => caseData.order?.items.find(
   (candidate) => candidate.name === caseData.claimedItemName,
@@ -250,14 +250,6 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
       })
     }
 
-    if (supportiveEvidence && response === 'POSSIBLE') {
-      return decide(caseData, {
-        policyId: 'WRONG_DELIVERY_REDELIVERY_AFTER_MERCHANT',
-        allowedActions: ['mock_refund', 'mock_redelivery', 'human_review'],
-        reason: '증빙과 매장의 누락 가능성 확인이 모두 있어 Mock 재배달을 허용합니다.',
-      })
-    }
-
     if (supportiveEvidence && !response) {
       return decide(caseData, {
         policyId: 'WRONG_DELIVERY_CLEAR_LOW_RISK',
@@ -294,11 +286,11 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
       })
     }
 
-    if (merchantConfirmed(response)) {
+    if (merchantApprovedResolution(response)) {
       return decide(caseData, {
         policyId: 'MISSING_ITEM_AFTER_MERCHANT_CONFIRMATION',
         allowedActions: ['mock_refund', 'mock_redelivery', 'human_review'],
-        reason: '매장이 누락 가능성을 확인해 Mock 환불 또는 재배달을 허용합니다.',
+        reason: '매장이 누락을 확인하고 해결 조치에 동의해 Mock 환불 또는 재배달을 허용합니다.',
       })
     }
 

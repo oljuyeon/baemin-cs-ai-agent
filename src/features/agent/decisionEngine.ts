@@ -23,6 +23,21 @@ const finishForHumanReview = (customerMessage: string): AgentAction => ({
   customerMessage,
 })
 
+const askCustomerAfterUnapprovedMerchantResponse = (caseData: CsCase): AgentAction | null => {
+  const confirmation = caseData.merchantConfirmation
+  if (
+    confirmation?.status !== 'completed'
+    || !confirmation.response
+    || confirmation.response === 'CONFIRMED'
+  ) return null
+
+  return {
+    type: 'ASK_CUSTOMER',
+    waitStatus: 'COLLECTING_INFO',
+    question: '매장이 아직 환불이나 재배달을 승인하지 않았습니다. 매장 답변을 확인하고 문의를 마치거나, 추가 확인이 필요하면 고객센터에 직접 도움을 요청해 주세요.',
+  }
+}
+
 const nextCommonObservation = (caseData: CsCase): AgentAction | null => {
   if (!wasCalled(caseData, 'get_cs_history')) {
     return {
@@ -174,6 +189,9 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
       return finishForHumanReview('증빙 불일치 또는 반복 신고 등 위험 신호가 있어 자동 처리하지 않고 상담원이 전체 맥락을 검토합니다.')
     }
 
+    const merchantChoice = askCustomerAfterUnapprovedMerchantResponse(caseData)
+    if (merchantChoice) return merchantChoice
+
     if (!caseData.merchantConfirmation) {
       return {
         type: 'CALL_TOOL',
@@ -269,6 +287,9 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
       'Mock 환불 처리 중 오류가 발생해 상담원이 이어서 확인합니다.',
     )
   }
+
+  const merchantChoice = askCustomerAfterUnapprovedMerchantResponse(caseData)
+  if (merchantChoice) return merchantChoice
 
   if (risk.data.blockedActions.some(
     (action) => action === 'mock_refund' || action === 'mock_redelivery',

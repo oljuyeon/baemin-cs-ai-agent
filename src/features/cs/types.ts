@@ -171,6 +171,10 @@ export interface MerchantConfirmationData {
   requestedAt: string
   respondedAt?: string
   followUpCount?: number
+  /** 매장이 고객에게 요청한 추가 자료 또는 설명 */
+  customerInfoRequest?: string
+  customerInfoRequestedAt?: string
+  customerInfoProvidedAt?: string
 }
 
 export interface CaseTask {
