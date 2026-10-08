@@ -11,7 +11,7 @@
   },
   "alerts": {
     "newRequest": "새 확인 요청이 도착했어요.",
-    "overdue": "3분 넘게 답하지 않은 요청이 있어요.",
+    "overdue": "2분 넘게 답하지 않은 요청이 있어요. 3분이 지나면 상담원에게 자동 이관됩니다.",
     "dismiss": "알림 닫기",
     "sampleCreated": "샘플 확인 요청을 이 매장 Queue에 넣었어요.",
     "sampleCreatedMany": "샘플 {{count}}건을 이 매장 Queue에 넣었어요.",
@@ -80,18 +80,27 @@
     "correctionLabel": "추가 설명 또는 선택 정정",
     "responsePlaceholder": {
       "default": {
+        "CONFIRMED": "예: 매장 확인 결과와 당시 상황을 자세히 적어 주세요.",
+        "DENIED": "예: 주문서와 포장 기록을 확인한 내용을 적어 주세요.",
+        "POSSIBLE": "예: 문제가 발생했을 가능성이 있는 상황을 적어 주세요.",
         "ADMITTED_MISSING": "예: 매장 확인 결과와 당시 상황을 자세히 적어 주세요.",
         "CLAIMS_PACKED": "예: 주문서와 포장 기록을 확인한 내용을 적어 주세요.",
         "POSSIBLE_MISSING": "예: 문제가 발생했을 가능성이 있는 상황을 적어 주세요.",
         "UNKNOWN": "예: 현재 확인하기 어려운 이유를 적어 주세요."
       },
       "missing_item": {
+        "CONFIRMED": "예: 포장 담당자에게 확인해 보니 해당 메뉴를 넣지 못했습니다.",
+        "DENIED": "예: 포장 체크리스트에는 해당 메뉴를 넣은 것으로 기록되어 있습니다.",
+        "POSSIBLE": "예: 주문이 몰린 시간대라 포장 과정에서 누락됐을 가능성이 있습니다.",
         "ADMITTED_MISSING": "예: 포장 담당자에게 확인해 보니 해당 메뉴를 넣지 못했습니다.",
         "CLAIMS_PACKED": "예: 포장 체크리스트에는 해당 메뉴를 넣은 것으로 기록되어 있습니다.",
         "POSSIBLE_MISSING": "예: 주문이 몰린 시간대라 포장 과정에서 누락됐을 가능성이 있습니다.",
         "UNKNOWN": "예: 당시 담당 직원과 바로 연락되지 않아 현재는 확인하기 어렵습니다."
       },
       "wrong_delivery": {
+        "CONFIRMED": "예: 포장 확인 결과 다른 주문의 메뉴가 전달된 것을 확인했습니다.",
+        "DENIED": "예: 주문서와 포장 기록에는 고객 주문대로 준비한 것으로 남아 있습니다.",
+        "POSSIBLE": "예: 비슷한 주문이 동시에 들어와 주문이 바뀌었을 가능성이 있습니다.",
         "ADMITTED_MISSING": "예: 포장 확인 결과 다른 주문의 메뉴가 전달된 것을 확인했습니다.",
         "CLAIMS_PACKED": "예: 주문서와 포장 기록에는 고객 주문대로 준비한 것으로 남아 있습니다.",
         "POSSIBLE_MISSING": "예: 비슷한 주문이 동시에 들어와 주문이 바뀌었을 가능성이 있습니다.",
@@ -103,6 +112,7 @@
     "submitToAgent": "에이전트에게 답변 제출",
     "submittingToAgent": "에이전트가 답변 확인 중...",
     "agentCompleted": "답변이 전달되어 에이전트가 다음 처리를 진행했습니다.",
+    "customerInputRequested": "추가 자료 요청을 고객 채팅에 전달했습니다. 고객 답변이 오면 이 문의가 다시 표시됩니다.",
     "agentFollowUp": "추가 확인 질문이 도착했습니다. 대화창에서 답변해 주세요.",
     "agentSubmitError": "에이전트에게 답변을 전달하지 못했어요.",
     "choiceSaved": "선택 답변이 저장되었습니다. 작성이 끝나면 에이전트에게 답변을 제출해 주세요.",
@@ -112,6 +122,9 @@
     "back": "목록으로"
   },
   "responses": {
+    "CONFIRMED": "문제 확인 · 환불/재배달에 동의합니다",
+    "DENIED": "정상 처리했다고 확인했습니다",
+    "POSSIBLE": "문제 발생 가능성이 있습니다",
     "ADMITTED_MISSING": "누락을 인정합니다",
     "CLAIMS_PACKED": "포장했다고 진술합니다",
     "POSSIBLE_MISSING": "누락 가능성이 있습니다",
@@ -119,6 +132,9 @@
   },
   "issueResponses": {
     "wrong_delivery": {
+      "CONFIRMED": "오배달 인정 · 환불/재배달에 동의합니다",
+      "DENIED": "고객 주문대로 포장했습니다",
+      "POSSIBLE": "주문이 바뀌었을 가능성이 있습니다",
       "ADMITTED_MISSING": "오배달을 인정합니다",
       "CLAIMS_PACKED": "고객 주문대로 포장했습니다",
       "POSSIBLE_MISSING": "주문이 바뀌었을 가능성이 있습니다",
@@ -163,6 +179,8 @@
     "WAITING_MERCHANT": "사장님 확인 중",
     "POLICY_CHECK": "정책 확인 중",
     "RISK_CHECK": "리스크 확인 중",
+    "ACTION_READY": "고객 선택 대기",
+    "ACTION_EXECUTING": "조치 실행 중",
     "AUTO_RESOLVED": "자동 처리 완료",
     "ESCALATED": "상담원 검토 중",
     "CLOSED": "처리 완료"

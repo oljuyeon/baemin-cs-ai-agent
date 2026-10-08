@@ -16,6 +16,8 @@ export type CaseStatus =
   | 'WAITING_MERCHANT'
   | 'POLICY_CHECK'
   | 'RISK_CHECK'
+  | 'ACTION_READY'
+  | 'ACTION_EXECUTING'
   | 'AUTO_RESOLVED'
   | 'ESCALATED'
   | 'CLOSED'
@@ -27,16 +29,40 @@ export type AgentDecision =
   | 'ESCALATE'
 
 export type MerchantResponse =
-  | 'ADMITTED_MISSING'
-  | 'CLAIMS_PACKED'
-  | 'POSSIBLE_MISSING'
+  | 'CONFIRMED'
+  | 'POSSIBLE'
+  | 'DENIED'
   | 'UNKNOWN'
+
+export type Liability =
+  | 'CUSTOMER'
+  | 'MERCHANT'
+  | 'DELIVERY'
+  | 'PLATFORM'
+  | 'UNKNOWN'
+
+export type ResolutionPreference =
+  | 'refund'
+  | 'redelivery'
+  | 'undecided'
+
+export type CaseTaskStatus =
+  | 'QUEUED'
+  | 'IN_PROGRESS'
+  | 'WAITING_CUSTOMER'
+  | 'WAITING_MERCHANT'
+  | 'WAITING_HUMAN_CS'
+  | 'ACTION_READY'
+  | 'ACTION_EXECUTING'
+  | 'RESOLVED'
+  | 'CANCELLED'
 
 export type RiskFlag =
   | 'duplicate_refund'
   | 'frequent_refund'
   | 'order_claim_mismatch'
   | 'evidence_mismatch'
+  | 'high_value_claim'
 
 export type FinalAction =
   | 'guide_customer'
@@ -144,6 +170,24 @@ export interface MerchantConfirmationData {
   status: 'waiting' | 'completed'
   requestedAt: string
   respondedAt?: string
+  followUpCount?: number
+  /** 매장이 고객에게 요청한 추가 자료 또는 설명 */
+  customerInfoRequest?: string
+  customerInfoRequestedAt?: string
+  customerInfoProvidedAt?: string
+}
+
+export interface CaseTask {
+  taskId: string
+  issueType: IssueType
+  status: CaseTaskStatus
+  customerClaim: string
+  claimedItemName?: string
+  liability: Liability
+  resolutionPreference?: ResolutionPreference
+  finalAction?: FinalAction
+  createdAt: string
+  updatedAt: string
 }
 
 export interface HumanCsResolution {
@@ -204,11 +248,15 @@ export interface CsCase {
   orderId: string
   storeId: string
   issueType: IssueType
+  tasks: CaseTask[]
+  activeTaskId: string
   status: CaseStatus
   decision?: AgentDecision
   customerClaim: string
   claimedItemName?: string
   receivedItemDescription?: string
+  liability: Liability
+  resolutionPreference?: ResolutionPreference
   conversation: ConversationMessage[]
   evidenceUrls: string[]
   evidenceAnalysis?: EvidenceAnalysis[]
@@ -246,6 +294,7 @@ export interface MockActionResult {
   actionId: string
   action: 'mock_refund' | 'mock_redelivery'
   completedAt: string
+  idempotencyKey: string
 }
 
 export interface HumanEscalationResult {
@@ -295,6 +344,7 @@ export type AgentAction =
   | {
       type: 'ASK_CUSTOMER'
       question: string
+      waitStatus?: 'COLLECTING_INFO' | 'WAITING_EVIDENCE' | 'ACTION_READY'
     }
   | {
       type: 'ASK_MERCHANT'
@@ -360,6 +410,7 @@ export interface CaseStore {
   updateCase(caseId: string, changes: CaseChanges): CsCase
   getCasesByStatus(status: CaseStatus): CsCase[]
   getCasesForRole(role: UserRole, subjectId?: string): CsCase[]
+  expireMerchantConfirmations(now?: number): CsCase[]
   appendConversation(
     caseId: string,
     role: ConversationMessage['role'],

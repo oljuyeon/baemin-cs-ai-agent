@@ -1,6 +1,6 @@
 # Merchant-Agent Loop 연결
 
-> 적용 브랜치: `Merchant_agent_loop`
+> 적용 브랜치: `codex/customer-merchant-loop-fix`
 >
 > 최종 수정일: `2026-10-06 KST`
 
@@ -42,7 +42,7 @@ Guardrail은 [`COMMON_AGENT_CONTRACT.md`](./COMMON_AGENT_CONTRACT.md) `ver4.3`�
 
 - 선택 없이 입력한 자연어를 `MerchantResponse`로 구조화
 - 선택값과 추가 설명이 충돌하면 변경 의사 재확인
-- `CLAIMS_PACKED`, `UNKNOWN`에 필요한 추가 근거 질문
+- `DENIED`, `UNKNOWN`에 필요한 추가 근거 질문
 - 충분한 답변에만 `completeMerchantConfirmation()` 호출
 - Merchant 답변 이후 `get_policy`, `check_risk` 결과 갱신
 - `agentController.runNextStep(caseId)`로 본 Loop 재개
@@ -61,8 +61,8 @@ Guardrail은 [`COMMON_AGENT_CONTRACT.md`](./COMMON_AGENT_CONTRACT.md) `ver4.3`�
 
 ## 응답 처리 기준
 
-- `ADMITTED_MISSING`, `POSSIBLE_MISSING`은 추가 충돌이 없으면 확인을 완료할 수 있다.
-- `CLAIMS_PACKED`은 포장 기록이나 담당자 확인 등 판단 근거를 한 번 더 요청한다.
+- `CONFIRMED`, `POSSIBLE`은 추가 충돌이 없으면 확인을 완료할 수 있다.
+- `DENIED`는 포장 기록이나 담당자 확인 등 판단 근거를 한 번 더 요청한다.
 - `UNKNOWN`은 확인 가능한 기록이나 담당 직원의 확인 결과가 있는지 한 번 더 요청한다.
 - 선택과 설명의 의미가 다르면 기존 선택을 자동으로 덮어쓰지 않는다.
 - 점주가 변경 의사를 확인한 경우에만 구조화 응답을 수정한다.

@@ -84,8 +84,8 @@
     "traceOk": "ok",
     "traceError": "error",
     "resolution": "Decision",
-    "decide": "Final decision",
-    "mockNote": "Refunds and redeliveries are recorded as mock actions, not live payments or deliveries.",
+    "decide": "Customer-support follow-up",
+    "mockNote": "The store approves refunds or redelivery. Platform support only gathers more information and mediates when the customer requests help.",
     "comment": "Comment",
     "needAction": "Choose a decision.",
     "submit": "Save decision"
@@ -94,8 +94,8 @@
     "approve_refund": "Approve refund",
     "reject_refund": "Reject refund",
     "approve_redelivery": "Approve redelivery",
-    "request_more_info": "Request more info",
-    "request_additional_confirmation": "Request more confirmation"
+    "request_more_info": "Request more information from customer",
+    "request_additional_confirmation": "Check store or delivery process"
   },
   "history": {
     "title": "History",
@@ -127,11 +127,16 @@
     "WAITING_MERCHANT": "Waiting for store",
     "POLICY_CHECK": "Policy check",
     "RISK_CHECK": "Risk check",
+    "ACTION_READY": "Waiting for customer choice",
+    "ACTION_EXECUTING": "Executing action",
     "AUTO_RESOLVED": "Auto resolved",
     "ESCALATED": "With CS",
     "CLOSED": "Closed"
   },
   "merchantResponse": {
+    "CONFIRMED": "Confirmed",
+    "DENIED": "Denied",
+    "POSSIBLE": "Possible",
     "ADMITTED_MISSING": "Admitted missing",
     "CLAIMS_PACKED": "Claims it was packed",
     "POSSIBLE_MISSING": "Possibly missing",
@@ -139,6 +144,7 @@
     "none": "No store reply"
   },
   "risk": {
+    "high_value_claim": "Above automatic limit",
     "duplicate_refund": "Duplicate refund",
     "frequent_refund": "Frequent refunds",
     "order_claim_mismatch": "Not on the order",
@@ -146,24 +152,29 @@
   },
   "riskDetail": {
     "duplicate_refund": "This order and item already have a completed refund.",
-    "frequent_refund": "Five or more refunds in 30 days are a review signal. This flag alone does not block an action.",
+    "frequent_refund": "More than two similar resolutions in 30 days block automatic refund and redelivery.",
     "order_claim_mismatch": "The claimed item is not on this order.",
-    "evidence_mismatch": "The photo does not match the customer's description."
+    "evidence_mismatch": "The photo does not match the customer's description.",
+    "high_value_claim": "The item amount or order ratio exceeds the automatic-resolution limit."
   },
   "policy": {
     "MERCHANT_CLAIM_CONFLICT": "Claim conflict",
     "MERCHANT_UNKNOWN": "Store could not confirm",
     "MISSING_ITEM_ADMITTED": "Refund after admission",
     "MISSING_ITEM_AFTER_MERCHANT_CONFIRMATION": "Missing after store check",
+    "MISSING_ITEM_AUTO_CANDIDATE": "Automatic missing-item candidate",
+    "MISSING_ITEM_NEEDS_MERCHANT": "Missing item needs merchant check",
     "WRONG_DELIVERY_AFTER_ADMISSION": "Redelivery after admission",
     "WRONG_DELIVERY_NEEDS_REVIEW": "Wrong delivery needs review",
     "WRONG_DELIVERY_NEEDS_MERCHANT": "Wrong delivery needs the store",
     "WRONG_DELIVERY_REDELIVERY_AFTER_MERCHANT": "Redelivery after store check",
+    "WRONG_DELIVERY_CLEAR_LOW_RISK": "Clear low-risk wrong delivery",
     "MISSING_ITEM_NEEDS_MORE_INFO": "Order needs review",
     "HIGH_PRICE_MERCHANT_CONFIRMATION": "High-price item needs the store",
     "LOW_PRICE_MISSING_REFUND": "Low-price missing refund",
     "DELIVERY_DELAY_NEEDS_DATA": "Delivery data needed",
     "DELIVERY_DELAYED": "Delivery delay",
+    "DELIVERY_COMPENSATION_ELIGIBLE": "Delay compensation eligible",
     "DELIVERY_ON_TIME": "On time",
     "OUT_OF_SCOPE": "Outside MVP scope"
   },

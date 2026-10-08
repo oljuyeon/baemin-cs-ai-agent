@@ -4,7 +4,11 @@ import { AgentWorkspace } from '../components/customer/AgentWorkspace'
 import { CustomerBottomNav } from '../components/customer/CustomerBottomNav'
 import { CustomerHeader } from '../components/customer/CustomerHeader'
 import { IssueSelector } from '../components/customer/IssueSelector'
-import { firstSelectableOrderId, OrderSummaryCard } from '../components/customer/OrderSummaryCard'
+import {
+  firstSelectableOrderId,
+  OrderSummaryCard,
+  selectableOrders,
+} from '../components/customer/OrderSummaryCard'
 import { TrustPanel } from '../components/customer/TrustPanel'
 import {
   assessRisk,
@@ -21,6 +25,7 @@ import {
   executeTool,
   replyWithOpenAI,
   resolveOrderItem,
+  surfaceMerchantCustomerRequest,
   understandCustomerMessage,
   understandWithOpenAI,
 } from '../features/agent'
@@ -34,6 +39,16 @@ import '../styles/customer.css'
 const initialMessages: ChatMessage[] = [
   { id: 'intro', role: 'agent', content: 'chat.intro', translate: true },
 ]
+
+const ACTIVE_CUSTOMER_CASE_KEY = 'delivery-cs-agent:active-customer-case:v1'
+const NEW_CONVERSATION_VALUE = 'new'
+
+interface PendingIssueConflict {
+  message: string
+  attachment: string | null
+  selectedIssue: CustomerIssue
+  detectedIssue: CustomerIssue
+}
 
 const mockCaseInput = (
   issue: CustomerIssue,
@@ -64,14 +79,18 @@ const customerIssueForType = (issueType: CsCase['issueType']): CustomerIssue | n
   return null
 }
 
+const selectableOrderItems = selectableOrders.flatMap((order) => order.items)
+
 const toCustomerUiState = (caseData: CsCase) => {
   if (caseData.status === 'AUTO_RESOLVED' || caseData.status === 'CLOSED') return 'resolved' as const
   if (
     caseData.status === 'COLLECTING_INFO'
     || caseData.status === 'WAITING_EVIDENCE'
     || caseData.status === 'WAITING_MERCHANT'
+    || caseData.status === 'ACTION_READY'
     || caseData.status === 'ESCALATED'
   ) return 'waiting' as const
+  if (caseData.status === 'ACTION_EXECUTING') return 'working' as const
   return 'working' as const
 }
 
@@ -128,33 +147,73 @@ const actionsForCase = (caseData: CsCase): CustomerAgentAction[] => {
   ) return delayActions
 
   if (
-    caseData.status === 'COLLECTING_INFO'
-    && caseData.issueType === 'missing_item'
-    && caseData.claimedItemName
-    && caseData.order
-    && !caseData.toolHistory.some((tool) => tool.toolName === 'refund')
+    caseData.status === 'WAITING_EVIDENCE'
+    && caseData.merchantConfirmation?.customerInfoRequest
+    && !caseData.merchantConfirmation.customerInfoProvidedAt
   ) {
+    return [{
+      id: 'escalateHuman',
+      labelKey: 'agent.actions.escalateHuman',
+      label: '고객센터에 직접 도움 요청',
+    }]
+  }
+
+  if (
+    caseData.status === 'COLLECTING_INFO'
+    && caseData.merchantConfirmation?.status === 'completed'
+    && caseData.merchantConfirmation.response
+    && caseData.merchantConfirmation.response !== 'CONFIRMED'
+  ) {
+    return [
+      {
+        id: 'escalateHuman',
+        labelKey: 'agent.actions.escalateHuman',
+        label: '고객센터에 직접 도움 요청',
+        primary: true,
+      },
+      {
+        id: 'cancelAction',
+        labelKey: 'agent.actions.cancelAction',
+        label: '매장 답변 확인 후 문의 종료',
+      },
+    ]
+  }
+
+  if (caseData.status === 'ACTION_READY' && caseData.order) {
     const policy = evaluatePolicy(caseData)
     const risk = assessRisk(caseData)
     const item = caseData.order.items.find((candidate) =>
       candidate.name === caseData.claimedItemName,
     )
-    if (
-      item
-      && policy.allowedActions.includes('mock_refund')
+    const refundAllowed = policy.allowedActions.includes('mock_refund')
       && !risk.blockedActions.includes('mock_refund')
-    ) {
-      return [
+    const redeliveryAllowed = policy.allowedActions.includes('mock_redelivery')
+      && !risk.blockedActions.includes('mock_redelivery')
+    const refundAmount = caseData.issueType === 'missing_item'
+      ? item?.price
+      : caseData.order.totalAmount
+    const next: CustomerAgentAction[] = []
+    if (refundAllowed && refundAmount) {
+      next.push(
         {
           id: 'confirmRefund',
           labelKey: 'agent.actions.confirmRefund',
-          label: `${item.name} ${item.price.toLocaleString('ko-KR')}원 환불하기`,
+          label: `${caseData.issueType === 'missing_item' ? item?.name : '주문'} ${refundAmount.toLocaleString('ko-KR')}원 환불하기`,
           primary: true,
         },
-        { id: 'requestMerchant', labelKey: 'agent.actions.requestMerchant' },
-        { id: 'cancelAction', labelKey: 'agent.actions.cancelAction' },
-      ]
+      )
     }
+    if (redeliveryAllowed) {
+      next.push({
+        id: 'requestRedelivery',
+        labelKey: 'agent.actions.requestRedelivery',
+        label: caseData.issueType === 'missing_item'
+          ? `${item?.name ?? '누락 메뉴'} 재배달 요청`
+          : '올바른 메뉴 재배달 요청',
+      })
+    }
+    if (next.length > 0) next.push({ id: 'cancelAction', labelKey: 'agent.actions.cancelAction' })
+    return next
   }
 
   return []
@@ -202,6 +261,47 @@ const canRecoverMissingItem = (caseData: CsCase) => {
     && !risk.blockedActions.includes('mock_refund')
 }
 
+const wantsHumanCs = (message: string) =>
+  /(고객센터|상담원|사람.*연결|직원.*연결|상담.*연결)/.test(message.replace(/\s+/g, ''))
+
+const escalateFromCustomerChoice = async (caseData: CsCase, reason: string) => {
+  await executeTool(caseData.caseId, {
+    type: 'CALL_TOOL',
+    toolName: 'escalate_to_human',
+    input: {
+      caseId: caseData.caseId,
+      reason,
+      summary: [
+        `고객 주장: ${caseData.customerClaim}`,
+        `매장 응답: ${caseData.merchantConfirmation?.response ?? '없음'}`,
+        `매장 추가 요청: ${caseData.merchantConfirmation?.customerInfoRequest ?? '없음'}`,
+        `고객 선택: Human CS 연결`,
+      ].join(' / '),
+    },
+  })
+  const escalated = caseStore.commitCase(caseData.caseId, {
+    changes: {
+      status: 'ESCALATED',
+      decision: 'ESCALATE',
+      finalAction: 'human_review',
+      escalationReason: reason,
+      agentSummary: `고객이 매장과의 추가 확인 대신 고객센터 연결을 요청했습니다. ${reason}`,
+    },
+    history: [{
+      actor: 'customer',
+      event: 'ESCALATED',
+      fromStatus: caseData.status,
+      toStatus: 'ESCALATED',
+      detail: reason,
+    }],
+  })
+  return caseStore.appendConversation(
+    escalated.caseId,
+    'agent',
+    '요청하신 대로 고객센터에 문의 맥락과 매장 답변을 함께 전달했습니다. 같은 내용을 다시 설명하지 않아도 됩니다.',
+  )
+}
+
 export function CustomerPage() {
   const { t } = useTranslation('customer')
   const [selectedOrderId, setSelectedOrderId] = useState(firstSelectableOrderId)
@@ -214,14 +314,73 @@ export function CustomerPage() {
   const [isThinking, setIsThinking] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
   const [focusRequest, setFocusRequest] = useState(0)
+  const [pendingIssueConflict, setPendingIssueConflict] = useState<PendingIssueConflict | null>(null)
   const activeCaseId = useRef<string | null>(null)
+  const [activeCaseKey, setActiveCaseKey] = useState<string | null>(null)
   const sendingRef = useRef(false)
   const mounted = useRef(true)
 
+  const showCase = (caseData: CsCase) => {
+    const visibleCase = caseData.merchantConfirmation
+      ? surfaceMerchantCustomerRequest(caseData.caseId)
+      : caseData
+    activeCaseId.current = visibleCase.caseId
+    setActiveCaseKey(visibleCase.caseId)
+    window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, visibleCase.caseId)
+    setSelectedOrderId(visibleCase.orderId)
+    setIssue(customerIssueForType(visibleCase.issueType))
+    setDraft('')
+    setAttachedFile(null)
+    setMessages(conversationToMessages(visibleCase))
+    setActions(actionsForCase(visibleCase))
+    setCaseState(toCustomerUiState(visibleCase))
+    setIsThinking(false)
+    setHasStarted(true)
+  }
+
+  const startNewConversation = () => {
+    activeCaseId.current = null
+    setActiveCaseKey(null)
+    window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, NEW_CONVERSATION_VALUE)
+  }
+
   useEffect(() => {
     mounted.current = true
-    return () => { mounted.current = false }
+    const merchantTimeoutClock = window.setInterval(() => {
+      caseStore.expireMerchantConfirmations()
+    }, 5_000)
+    return () => {
+      mounted.current = false
+      window.clearInterval(merchantTimeoutClock)
+    }
   }, [])
+
+  useEffect(() => {
+    const storedCaseId = window.localStorage.getItem(ACTIVE_CUSTOMER_CASE_KEY)
+    if (storedCaseId === NEW_CONVERSATION_VALUE) return
+
+    const storedCase = storedCaseId
+      ? caseStore.getCase(storedCaseId)
+      : undefined
+    const latestCustomerCase = storedCase ?? caseStore.getAllCases()
+      .filter((caseData) => !caseData.demoCaseId && customerIssueForType(caseData.issueType))
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0]
+
+    if (latestCustomerCase) showCase(latestCustomerCase)
+  }, [])
+
+  useEffect(() => {
+    if (!activeCaseKey) return undefined
+    return caseStore.subscribe(activeCaseKey, (caseData) => {
+      if (!mounted.current) return
+      setSelectedOrderId(caseData.orderId)
+      setIssue(customerIssueForType(caseData.issueType))
+      setMessages(conversationToMessages(caseData))
+      setActions(actionsForCase(caseData))
+      setCaseState(toCustomerUiState(caseData))
+      setHasStarted(true)
+    })
+  }, [activeCaseKey])
 
   const appendMessages = (...nextMessages: ChatMessage[]) => {
     if (mounted.current) setMessages((current) => [...current, ...nextMessages])
@@ -231,19 +390,50 @@ export function CustomerPage() {
     setIssue(nextIssue)
     setDraft(t(`chat.quickDraft.${nextIssue}`))
     setAttachedFile(null)
+    setMessages(initialMessages)
+    setActions([])
+    setPendingIssueConflict(null)
+    setIsThinking(false)
     setHasStarted(false)
     setCaseState('ready')
-    activeCaseId.current = null
+    startNewConversation()
     setFocusRequest((request) => request + 1)
   }
 
+  const createCaseForIssue = (
+    message: string,
+    attachment: string | null,
+    confirmedIssue: CustomerIssue,
+  ) => {
+    const baseInput = mockCaseInput(
+      confirmedIssue,
+      selectedOrderId,
+      message,
+      attachment ? [attachment] : [],
+    )
+    const orderItems = findOrder(baseInput.orderId)?.items ?? []
+    const claimedItemName = confirmedIssue === 'missing'
+      ? resolveOrderItem(message, orderItems)
+      : undefined
+    const caseData = caseStore.createCase({
+      ...baseInput,
+      claimedItemName,
+    })
+    activeCaseId.current = caseData.caseId
+    setActiveCaseKey(caseData.caseId)
+    window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, caseData.caseId)
+    setIssue(confirmedIssue)
+    setPendingIssueConflict(null)
+    return caseData
+  }
+
   const sendMessage = async () => {
-    const message = draft.trim()
+    const attachment = attachedFile
+    const message = draft.trim() || (attachment ? t('chat.photoReply') : '')
     if (!message || isThinking || sendingRef.current) return
     sendingRef.current = true
     setActions([])
 
-    const attachment = attachedFile
     appendMessages({
       id: `user-${Date.now()}`,
       role: 'user',
@@ -254,10 +444,40 @@ export function CustomerPage() {
     setAttachedFile(null)
 
     try {
+      const selectedOrder = findOrder(selectedOrderId)
+      const orderItems = selectedOrder?.items ?? []
+      const referencedItemName = resolveOrderItem(message, selectableOrderItems)
+      const itemBelongsToOrder = referencedItemName
+        ? orderItems.some((item) => item.name === referencedItemName)
+        : true
+
+      if (referencedItemName && !itemBelongsToOrder) {
+        appendMessages({
+          id: `order-mismatch-${Date.now()}`,
+          role: 'agent',
+          content: t('chat.itemNotInOrder', {
+            orderId: selectedOrderId,
+            itemName: referencedItemName,
+            orderItems: orderItems.map((item) => item.name).join(', '),
+          }),
+        })
+        if (mounted.current) {
+          setDraft(message)
+          setAttachedFile(attachment)
+          setCaseState('waiting')
+          setHasStarted(false)
+          setFocusRequest((request) => request + 1)
+        }
+        return
+      }
+
       let currentCase: CsCase
       if (!activeCaseId.current) {
-        const firstPass = await understandWithOpenAI(message, [], issue)
-          ?? understandCustomerMessage(message, [], issue)
+        const ruleUnderstanding = understandCustomerMessage(message, orderItems)
+        const remoteUnderstanding = ruleUnderstanding.issueType === 'other'
+          ? await understandWithOpenAI(message, orderItems, null)
+          : null
+        const firstPass = remoteUnderstanding ?? ruleUnderstanding
         const inferredIssue = customerIssueForType(firstPass.issueType)
 
         if (!inferredIssue) {
@@ -274,25 +494,46 @@ export function CustomerPage() {
           return
         }
 
-        const baseInput = mockCaseInput(
-          inferredIssue,
-          selectedOrderId,
-          message,
-          attachment ? [attachment] : [],
-        )
-        const orderItems = findOrder(baseInput.orderId)?.items ?? []
-        const claimedItemName = firstPass.issueType === 'missing_item'
-          ? resolveOrderItem(message, orderItems)
-          : undefined
-        if (mounted.current) setIssue(inferredIssue)
-        const caseData = caseStore.createCase(
-          {
-            ...baseInput,
-            claimedItemName,
-          },
-        )
-        activeCaseId.current = caseData.caseId
-        currentCase = caseData
+        if (issue && issue !== inferredIssue) {
+          setPendingIssueConflict({
+            message,
+            attachment,
+            selectedIssue: issue,
+            detectedIssue: inferredIssue,
+          })
+          appendMessages({
+            id: `issue-conflict-${Date.now()}`,
+            role: 'agent',
+            content: t('chat.issueConflict', {
+              selected: t(`issues.${issue}.short`),
+              detected: t(`issues.${inferredIssue}.short`),
+            }),
+          })
+          setActions([
+            {
+              id: 'confirmDetectedIssue',
+              labelKey: 'agent.actions.confirmDetectedIssue',
+              label: t('agent.actions.confirmDetectedIssue', {
+                issue: t(`issues.${inferredIssue}.short`),
+              }),
+              primary: true,
+            },
+            {
+              id: 'keepSelectedIssue',
+              labelKey: 'agent.actions.keepSelectedIssue',
+              label: t('agent.actions.keepSelectedIssue', {
+                issue: t(`issues.${issue}.short`),
+              }),
+            },
+          ])
+          if (mounted.current) {
+            setCaseState('waiting')
+            setHasStarted(true)
+          }
+          return
+        }
+
+        currentCase = createCaseForIssue(message, attachment, issue ?? inferredIssue)
       } else {
         const current = caseStore.appendConversation(
           activeCaseId.current,
@@ -305,6 +546,72 @@ export function CustomerPage() {
           })
         }
         currentCase = caseStore.getCase(activeCaseId.current) ?? current
+
+        const pendingMerchantRequest = currentCase.status === 'WAITING_EVIDENCE'
+          && currentCase.merchantConfirmation?.customerInfoRequest
+          && !currentCase.merchantConfirmation.customerInfoProvidedAt
+
+        if (pendingMerchantRequest) {
+          if (attachment && currentCase.merchantConfirmation) {
+            currentCase = caseStore.updateCase(currentCase.caseId, {
+              merchantConfirmation: {
+                ...currentCase.merchantConfirmation,
+                status: 'waiting',
+                customerInfoProvidedAt: new Date().toISOString(),
+              },
+            })
+            currentCase = caseStore.appendMerchantConversation(
+              currentCase.caseId,
+              'agent',
+              `고객이 요청하신 사진을 첨부했습니다. 고객 메시지: ${message}`,
+            )
+            currentCase = caseStore.appendConversation(
+              currentCase.caseId,
+              'agent',
+              '첨부한 사진과 메시지를 매장에 전달했습니다. 매장 답변이 오면 이 대화에서 바로 알려드릴게요.',
+            )
+            if (mounted.current) {
+              setMessages(conversationToMessages(currentCase))
+              setCaseState(toCustomerUiState(currentCase))
+              setActions(actionsForCase(currentCase))
+              setHasStarted(true)
+            }
+            return
+          }
+
+          currentCase = wantsHumanCs(message)
+            ? await escalateFromCustomerChoice(
+                currentCase,
+                '고객이 매장의 추가 자료 요청 대신 고객센터 연결을 선택했습니다.',
+              )
+            : caseStore.appendConversation(
+                currentCase.caseId,
+                'agent',
+                '매장에서 요청한 사진을 첨부해 보내주세요. 사진 제공이 어렵거나 직접 도움을 원하시면 “고객센터 연결”을 선택할 수 있어요.',
+              )
+          if (mounted.current) {
+            setMessages(conversationToMessages(currentCase))
+            setCaseState(toCustomerUiState(currentCase))
+            setActions(actionsForCase(currentCase))
+          }
+          return
+        }
+
+        const unapprovedMerchantResponse = currentCase.status === 'COLLECTING_INFO'
+          && currentCase.merchantConfirmation?.status === 'completed'
+          && currentCase.merchantConfirmation.response !== 'CONFIRMED'
+        if (unapprovedMerchantResponse && wantsHumanCs(message)) {
+          currentCase = await escalateFromCustomerChoice(
+            currentCase,
+            '고객이 매장 답변 확인 후 고객센터 연결을 요청했습니다.',
+          )
+          if (mounted.current) {
+            setMessages(conversationToMessages(currentCase))
+            setCaseState(toCustomerUiState(currentCase))
+            setActions([])
+          }
+          return
+        }
 
         if (canRecoverMissingItem(currentCase)) {
           currentCase = caseStore.updateCase(currentCase.caseId, {
@@ -372,10 +679,11 @@ export function CustomerPage() {
     setAttachedFile(null)
     setMessages(initialMessages)
     setActions([])
+    setPendingIssueConflict(null)
     setCaseState('ready')
     setIsThinking(false)
     setHasStarted(false)
-    activeCaseId.current = null
+    startNewConversation()
     sendingRef.current = false
   }
 
@@ -393,24 +701,86 @@ export function CustomerPage() {
       }
     }
 
+    if (
+      (action.id === 'confirmDetectedIssue' || action.id === 'keepSelectedIssue')
+      && pendingIssueConflict
+      && !isThinking
+    ) {
+      const confirmedIssue = action.id === 'confirmDetectedIssue'
+        ? pendingIssueConflict.detectedIssue
+        : pendingIssueConflict.selectedIssue
+      setActions([])
+      setIsThinking(true)
+      setCaseState('working')
+      try {
+        const created = createCaseForIssue(
+          pendingIssueConflict.message,
+          pendingIssueConflict.attachment,
+          confirmedIssue,
+        )
+        const completed = await agentController.runNextStep(created.caseId)
+        setMessages(conversationToMessages(completed))
+        setCaseState(toCustomerUiState(completed))
+        setActions(actionsForCase(completed))
+        setHasStarted(true)
+      } catch (error) {
+        appendAgentContent(error instanceof Error
+          ? `Case 저장 중 오류가 발생했습니다: ${error.message}`
+          : 'Case 저장 중 알 수 없는 오류가 발생했습니다.')
+        setCaseState('waiting')
+      } finally {
+        setIsThinking(false)
+      }
+      return
+    }
+
+    if (action.id === 'escalateHuman' && currentCase && !isThinking) {
+      setActions([])
+      setIsThinking(true)
+      setCaseState('working')
+      try {
+        const escalated = await escalateFromCustomerChoice(
+          currentCase,
+          '고객이 매장과의 추가 확인 대신 고객센터 연결을 직접 선택했습니다.',
+        )
+        setMessages(conversationToMessages(escalated))
+        setCaseState(toCustomerUiState(escalated))
+      } catch (error) {
+        appendAgentContent(error instanceof Error
+          ? `고객센터 연결 중 오류가 발생했습니다: ${error.message}`
+          : '고객센터 연결 중 알 수 없는 오류가 발생했습니다.')
+        setCaseState('waiting')
+      } finally {
+        setIsThinking(false)
+      }
+      return
+    }
+
     if (action.id === 'confirmRefund' && currentCase) {
       const item = currentCase.order?.items.find((candidate) =>
         candidate.name === currentCase.claimedItemName,
       )
-      if (!item || isThinking) return
+      const amount = currentCase.issueType === 'missing_item'
+        ? item?.price
+        : currentCase.order?.totalAmount
+      if (!amount || isThinking) return
 
       setActions([])
       setIsThinking(true)
       setCaseState('working')
       try {
+        caseStore.updateCase(currentCase.caseId, {
+          status: 'ACTION_EXECUTING',
+          resolutionPreference: 'refund',
+        })
         await executeTool(currentCase.caseId, {
           type: 'CALL_TOOL',
           toolName: 'refund',
           input: {
             caseId: currentCase.caseId,
             orderId: currentCase.orderId,
-            itemName: item.name,
-            amount: item.price,
+            itemName: item?.name,
+            amount,
           },
         })
         const completed = await agentController.runNextStep(currentCase.caseId)
@@ -421,6 +791,38 @@ export function CustomerPage() {
         appendAgentContent(error instanceof Error
           ? `환불 처리 중 오류가 발생했습니다: ${error.message}`
           : '환불 처리 중 알 수 없는 오류가 발생했습니다.')
+        setCaseState('waiting')
+      } finally {
+        setIsThinking(false)
+      }
+      return
+    }
+
+    if (action.id === 'requestRedelivery' && currentCase && !isThinking) {
+      setActions([])
+      setIsThinking(true)
+      setCaseState('working')
+      try {
+        caseStore.updateCase(currentCase.caseId, {
+          status: 'ACTION_EXECUTING',
+          resolutionPreference: 'redelivery',
+        })
+        await executeTool(currentCase.caseId, {
+          type: 'CALL_TOOL',
+          toolName: 'redelivery',
+          input: {
+            caseId: currentCase.caseId,
+            orderId: currentCase.orderId,
+          },
+        })
+        const completed = await agentController.runNextStep(currentCase.caseId)
+        setMessages(conversationToMessages(completed))
+        setCaseState(toCustomerUiState(completed))
+        setActions(actionsForCase(completed))
+      } catch (error) {
+        appendAgentContent(error instanceof Error
+          ? `재배달 처리 중 오류가 발생했습니다: ${error.message}`
+          : '재배달 처리 중 알 수 없는 오류가 발생했습니다.')
         setCaseState('waiting')
       } finally {
         setIsThinking(false)
@@ -503,7 +905,6 @@ export function CustomerPage() {
       trackDelivery: 'agent.results.trackingDone',
       cancelAction: 'agent.results.noAction',
       checkRefund: 'agent.results.refundOffer',
-      requestRedelivery: 'agent.results.redeliveryDone',
       escalateHuman: 'agent.results.escalationDone',
     }
     const resultKey = resultKeyByAction[action.id]
@@ -511,6 +912,13 @@ export function CustomerPage() {
 
     const content = t(resultKey)
     appendAgentContent(content)
+
+    if (action.id === 'cancelAction' && currentCase) {
+      caseStore.updateCase(currentCase.caseId, {
+        status: 'AUTO_RESOLVED',
+        finalAction: 'no_action',
+      })
+    }
 
     if (action.id === 'checkRefund') {
       setActions([

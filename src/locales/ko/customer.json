@@ -47,12 +47,15 @@
     "attach": "사진 첨부",
     "attached": "사진이 첨부됐어요",
     "photoIncluded": "사진 포함",
+    "photoReply": "요청하신 사진을 첨부합니다.",
     "send": "메시지 전송",
     "enterHint": "Enter로 전송",
     "draftReady": "선택한 유형을 바탕으로 초안을 만들었어요. 확인 후 직접 전송해주세요.",
     "requiredHint": "오배달 확인을 위해 사진을 첨부해주세요.",
     "savedWithoutAgent": "문의 내용을 케이스에 저장했어요. AI Agent는 아직 연결되지 않아서 조회나 환불 같은 조치는 실행하지 않았어요.",
     "unsupported": "현재 데모에서는 배달 지연, 메뉴 누락, 오배달 문의를 도와드릴 수 있어요. 상황을 조금 더 구체적으로 알려주세요.",
+    "issueConflict": "빠른 선택은 '{{selected}}'인데 입력한 내용은 '{{detected}}'으로 보여요. 어느 문의로 진행할지 확인해 주세요.",
+    "itemNotInOrder": "선택한 {{orderId}} 주문 메뉴에는 '{{itemName}}' 항목이 없어요. 이 주문의 메뉴는 {{orderItems}}입니다. 주문을 다시 선택하거나 메뉴명을 확인해 주세요.",
     "recognized": {
       "delay": "배달 지연 문의로 이해했어요. 주문과 배달 상태를 확인할 Case로 저장했습니다. 현재 데모에서는 지연 자동 조회 흐름을 연결하는 중이에요.",
       "wrong": "오배달 문의로 이해했어요. 받은 음식 사진이 있다면 첨부해 주세요. 주문 정보와 함께 같은 Case에 저장했습니다."
@@ -111,9 +114,11 @@
       "checkRefund": "즉시 환불 가능 여부 확인",
       "requestMerchant": "사장님께 확인 요청",
       "requestRedelivery": "재배달 바로 요청",
-      "escalateHuman": "상담원 검토 요청",
+      "escalateHuman": "고객센터에 직접 도움 요청",
       "confirmCoupon": "3,000원 쿠폰 받기",
       "confirmRefund": "감자튀김 3,500원 환불",
+      "confirmDetectedIssue": "{{issue}} 문의로 진행",
+      "keepSelectedIssue": "{{issue}} 선택 유지",
       "cancelAction": "추가 조치 없이 기다리기"
     },
     "results": {

@@ -31,7 +31,7 @@ const samples: EscalationSample[] = [
     customerClaim: '불고기정식은 왔는데 공깃밥이 없어요.',
     evidenceUrl: 'mock://evidence/merchant-check-inconclusive.jpg',
     merchant: {
-      response: 'CLAIMS_PACKED',
+      response: 'DENIED',
       comment: '공깃밥까지 넣어서 포장했습니다.',
     },
     reason: '고객은 공깃밥 누락을 주장하고, 매장은 포장했다고 진술해 주장이 충돌합니다.',
@@ -58,7 +58,7 @@ const samples: EscalationSample[] = [
     claimedItemName: '된장찌개',
     customerClaim: '된장찌개가 포장에서 빠졌어요.',
     merchant: {
-      response: 'POSSIBLE_MISSING',
+      response: 'POSSIBLE',
       comment: '포장 중 누락됐을 수 있습니다.',
     },
     reason: '최근 30일 환불이 5회라 자동 환불을 멈추고 상담원 확인이 필요합니다.',
@@ -115,7 +115,7 @@ export function queueTagForCase(caseData: CsCase) {
   if (caseData.riskFlags.includes('frequent_refund')) return 'frequent_refund'
   if (caseData.riskFlags.includes('evidence_mismatch')) return 'evidence_mismatch'
   if (caseData.riskFlags.includes('order_claim_mismatch')) return 'order_claim_mismatch'
-  if (caseData.merchantConfirmation?.response === 'CLAIMS_PACKED') return 'claim_conflict'
+  if (caseData.merchantConfirmation?.response === 'DENIED') return 'claim_conflict'
   if (caseData.merchantConfirmation?.response === 'UNKNOWN') return 'unknown'
   return null
 }

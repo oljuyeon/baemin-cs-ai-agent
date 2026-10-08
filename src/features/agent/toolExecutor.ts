@@ -1,6 +1,7 @@
 import {
   agentTools,
   caseStore,
+  inferLiability,
   type AgentAction,
   type CaseChanges,
   type CsCase,
@@ -48,6 +49,7 @@ export async function executeTool(caseId: string, action: ToolAction): Promise<C
       result = toolResult
       if (toolResult.status === 'success') {
         changes.delivery = toolResult.data
+        changes.liability = inferLiability({ ...current, delivery: toolResult.data })
         changes.status = 'CHECKING_DATA'
       }
       break
