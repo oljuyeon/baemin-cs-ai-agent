@@ -3,6 +3,7 @@ import type {
   AgentAction,
   CsCase,
   FinalAction,
+  HumanHandoffSummary,
   OrderItem,
   PolicyResult,
   RiskResult,
@@ -21,9 +22,9 @@ type RemoteDecision = {
   finalAction: Exclude<FinalAction, 'mock_coupon'> | null
 }
 
-const requestJson = async <T>(path: string, body: unknown): Promise<T> => {
+const requestJson = async <T>(path: string, body: unknown, timeoutMs = 20_000): Promise<T> => {
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 20_000)
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
   try {
     const response = await fetch(path, {
       method: 'POST',
@@ -36,6 +37,144 @@ const requestJson = async <T>(path: string, body: unknown): Promise<T> => {
   } finally {
     window.clearTimeout(timeout)
   }
+}
+
+type HumanHandoffSummaryResponse = Pick<
+  HumanHandoffSummary,
+  'customerClaimSummary' | 'merchantResponseSummary' | 'escalationReasonSummary' | 'reviewGuidance' | 'source' | 'model'
+>
+
+const handoffRequests = new Map<string, Promise<HumanHandoffSummary>>()
+const HUMAN_HANDOFF_SUMMARY_VERSION = 'v3'
+
+type OptionalHandoffTask = {
+  issueType?: unknown
+  status?: unknown
+  customerClaim?: unknown
+  claimedItemName?: unknown
+  liability?: unknown
+  resolutionPreference?: unknown
+  finalAction?: unknown
+}
+
+type HandoffCaseExtensions = {
+  liability?: unknown
+  resolutionPreference?: unknown
+  tasks?: OptionalHandoffTask[]
+}
+
+const humanHandoffContext = (caseData: CsCase) => {
+  const extendedCase = caseData as CsCase & HandoffCaseExtensions
+
+  return {
+  caseState: {
+    caseId: caseData.caseId,
+    customerId: caseData.customerId,
+    orderId: caseData.orderId,
+    storeId: caseData.storeId,
+    issueType: caseData.issueType,
+    status: caseData.status,
+    liability: extendedCase.liability ?? null,
+    resolutionPreference: extendedCase.resolutionPreference ?? null,
+    riskFlags: caseData.riskFlags,
+    appliedPolicy: caseData.appliedPolicy ?? null,
+    finalAction: caseData.finalAction ?? null,
+    finalActionResult: caseData.finalActionResult ?? null,
+    humanCsResolution: caseData.humanCsResolution ?? null,
+    legacyAgentSummary: caseData.agentSummary ?? null,
+    legacyEscalationReason: caseData.escalationReason ?? null,
+    tasks: (extendedCase.tasks ?? []).map((task) => ({
+      issueType: task.issueType,
+      status: task.status,
+      customerClaim: task.customerClaim,
+      claimedItemName: task.claimedItemName ?? null,
+      liability: task.liability,
+      resolutionPreference: task.resolutionPreference ?? null,
+      finalAction: task.finalAction ?? null,
+    })),
+  },
+  customerStatements: {
+    initialClaim: caseData.customerClaim,
+    claimedItemName: caseData.claimedItemName ?? null,
+    receivedItemDescription: caseData.receivedItemDescription ?? null,
+    conversation: caseData.conversation.map((message) => ({
+      role: message.role,
+      content: message.content,
+      createdAt: message.createdAt,
+    })),
+  },
+  merchantStatements: {
+    requestStatus: caseData.merchantConfirmation?.status ?? null,
+    response: caseData.merchantConfirmation?.response ?? null,
+    comment: caseData.merchantConfirmation?.comment ?? null,
+    conversation: caseData.merchantConfirmation?.conversation.map((message) => ({
+      role: message.role,
+      content: message.content,
+      createdAt: message.createdAt,
+    })) ?? [],
+  },
+  verifiedFacts: {
+    order: caseData.order ? {
+      orderId: caseData.order.orderId,
+      customerId: caseData.order.customerId,
+      storeId: caseData.order.storeId,
+      orderedAt: caseData.order.orderedAt,
+      items: caseData.order.items,
+      totalAmount: caseData.order.totalAmount,
+      orderStatus: caseData.order.orderStatus,
+    } : null,
+    delivery: caseData.delivery ?? null,
+    csHistory: caseData.csHistory,
+    evidenceAnalysis: caseData.evidenceAnalysis ?? [],
+    toolObservations: caseData.toolHistory.map((entry) => ({
+      toolName: entry.toolName,
+      status: entry.result.status,
+      observation: entry.result.status === 'success' ? entry.result.data : null,
+      error: entry.result.status === 'error' ? entry.result.error : null,
+      completedAt: entry.completedAt,
+    })),
+  },
+  }
+}
+
+const fingerprint = (value: unknown) => {
+  const text = JSON.stringify(value)
+  let hash = 2166136261
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `${HUMAN_HANDOFF_SUMMARY_VERSION}-${(hash >>> 0).toString(16)}`
+}
+
+export const getHumanHandoffSourceFingerprint = (caseData: CsCase) =>
+  fingerprint(humanHandoffContext(caseData))
+
+export async function summarizeHumanHandoffWithOpenAI(
+  caseData: CsCase,
+  language: string,
+): Promise<HumanHandoffSummary> {
+  const context = humanHandoffContext(caseData)
+  const sourceFingerprint = fingerprint(context)
+  const requestKey = `${caseData.caseId}:${sourceFingerprint}:${language}`
+  const existing = handoffRequests.get(requestKey)
+  if (existing) return existing
+
+  const request = requestJson<HumanHandoffSummaryResponse>(
+    '/api/agent/handoff-summary',
+    { language, context },
+    60_000,
+  ).then((result) => ({
+    ...result,
+    sourceFingerprint,
+    language,
+    generatedAt: new Date().toISOString(),
+  })).finally(() => {
+    handoffRequests.delete(requestKey)
+  })
+
+  handoffRequests.set(requestKey, request)
+  return request
 }
 
 export async function understandWithOpenAI(

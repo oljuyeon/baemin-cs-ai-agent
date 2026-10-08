@@ -7,11 +7,23 @@ import {
   findCustomer,
   findMerchant,
   type CsCase,
+  type DeliveryData,
   type HumanCsAction,
   type OrderData,
 } from '../../features/cs'
+import {
+  getHumanHandoffSourceFingerprint,
+  summarizeHumanHandoffWithOpenAI,
+} from '../../features/agent'
 import { CS_AGENT_ID } from '../../features/csDesk/desk'
 import { BackIcon } from '../customer/CustomerIcons'
+import { AgentReviewTrace, HumanReviewGuidanceCard } from './AgentReviewTrace'
+
+type ConversationEntry = {
+  role: 'customer' | 'merchant' | 'agent'
+  content: string
+  createdAt: string
+}
 
 const actions: HumanCsAction[] = [
   'request_more_info',
@@ -37,6 +49,12 @@ const formatWhen = (value: string, language: string) =>
     minute: '2-digit',
   }).format(new Date(value))
 
+const formatTime = (value: string, language: string) =>
+  new Intl.DateTimeFormat(language, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
+
 function EvidenceCard({ url, caption }: { url: string; caption?: string }) {
   const { t } = useTranslation('cs')
   const isMock = url.startsWith('mock://')
@@ -51,12 +69,50 @@ function EvidenceCard({ url, caption }: { url: string; caption?: string }) {
   )
 }
 
+function ConversationToggle({
+  messages,
+  toggleLabel,
+  participantLabel,
+}: {
+  messages: ConversationEntry[]
+  toggleLabel: string
+  participantLabel: string
+}) {
+  const { t, i18n } = useTranslation('cs')
+  if (messages.length === 0) return null
+
+  return (
+    <details className="cs-conversation">
+      <summary>{toggleLabel}</summary>
+      <div className="cs-conversation__thread">
+        {messages.map((message) => {
+          const isAgent = message.role === 'agent'
+          return (
+            <article
+              key={`${message.createdAt}-${message.role}-${message.content}`}
+              className={`cs-conversation__bubble ${isAgent ? 'is-agent' : 'is-participant'}`}
+            >
+              <header>
+                <strong>{isAgent ? t('detail.agentName') : participantLabel}</strong>
+                <time dateTime={message.createdAt}>{formatWhen(message.createdAt, i18n.language)}</time>
+              </header>
+              <p>{message.content}</p>
+            </article>
+          )
+        })}
+      </div>
+    </details>
+  )
+}
+
 export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError }: Props) {
   const { t, i18n } = useTranslation('cs')
   const [action, setAction] = useState<HumanCsAction | null>(null)
   const [comment, setComment] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [order, setOrder] = useState<OrderData | null>(null)
+  const [delivery, setDelivery] = useState<DeliveryData | null>(null)
+  const [summaryState, setSummaryState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const caseId = caseData?.caseId
   const updatedAt = caseData?.updatedAt
 
@@ -64,6 +120,7 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
     setAction(null)
     setComment('')
     setError(null)
+    setSummaryState('idle')
   }, [caseId])
 
   useEffect(() => {
@@ -85,6 +142,56 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
     }
   }, [caseId, updatedAt, caseData])
 
+  useEffect(() => {
+    if (!caseData) {
+      setDelivery(null)
+      return
+    }
+    if (caseData.delivery) {
+      setDelivery(caseData.delivery)
+      return
+    }
+
+    let cancelled = false
+    setDelivery(null)
+    void agentTools.getDelivery({ orderId: caseData.orderId }).then((result) => {
+      if (!cancelled && result.status === 'success') setDelivery(result.data)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [caseId, updatedAt, caseData])
+
+  useEffect(() => {
+    if (!caseData || (caseData.status !== 'ESCALATED' && caseData.status !== 'CLOSED')) return
+
+    const language = i18n.resolvedLanguage || i18n.language || 'ko'
+    const sourceFingerprint = getHumanHandoffSourceFingerprint(caseData)
+    const stored = caseData.humanHandoffSummary
+    if (stored?.sourceFingerprint === sourceFingerprint && stored.language === language) {
+      setSummaryState('ready')
+      return
+    }
+
+    let cancelled = false
+    setSummaryState('loading')
+    void summarizeHumanHandoffWithOpenAI(caseData, language)
+      .then((summary) => {
+        if (cancelled) return
+        caseStore.updateCase(caseData.caseId, { humanHandoffSummary: summary })
+        setSummaryState('ready')
+      })
+      .catch((summaryError) => {
+        if (cancelled) return
+        console.warn('Human CS 인수인계 요약을 생성하지 못했습니다.', summaryError)
+        setSummaryState('error')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [caseId, updatedAt, caseData, i18n.language, i18n.resolvedLanguage])
+
   if (!caseData) {
     return (
       <section className="cs-detail cs-detail--empty">
@@ -98,6 +205,15 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
   const customer = findCustomer(caseData.customerId)
   const resolution = caseData.humanCsResolution
   const merchant = caseData.merchantConfirmation
+  const summaryLanguage = i18n.resolvedLanguage || i18n.language || 'ko'
+  const summaryFingerprint = getHumanHandoffSourceFingerprint(caseData)
+  const handoffSummary = caseData.humanHandoffSummary?.sourceFingerprint === summaryFingerprint
+    && caseData.humanHandoffSummary.language === summaryLanguage
+    ? caseData.humanHandoffSummary
+    : undefined
+  const summaryFallback = summaryState === 'error'
+    ? t('detail.summaryUnavailable')
+    : t('detail.summaryGenerating')
 
   const submit = () => {
     if (!action) {
@@ -149,18 +265,38 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
         </div>
         <div>
           <dt>{t('detail.delivery')}</dt>
-          <dd>
-            {caseData.delivery
-              ? t('detail.delay', { minutes: caseData.delivery.delayMinutes })
-              : t('detail.noDelivery')}
+          <dd className="cs-status-value">
+            <span>
+              {delivery
+                ? t(`orderStatus.${delivery.deliveryStatus}`, { defaultValue: delivery.deliveryStatus })
+                : t('detail.noDelivery')}
+            </span>
+            {delivery?.deliveryStatus === 'delivered' && delivery.deliveredAt && (
+              <small>{t('detail.deliveredAt', { time: formatTime(delivery.deliveredAt, i18n.language) })}</small>
+            )}
+            {delivery?.deliveryStatus !== 'delivered' && delivery?.pickedUpAt && (
+              <small>{t('detail.pickedUpAt', { time: formatTime(delivery.pickedUpAt, i18n.language) })}</small>
+            )}
           </dd>
         </div>
         <div>
           <dt>{t('detail.orderStatus')}</dt>
-          <dd>
-            {order
-              ? t(`orderStatus.${order.orderStatus}`, { defaultValue: order.orderStatus })
-              : t('detail.loading')}
+          <dd className="cs-status-value">
+            <span>
+              {order
+                ? t(`orderStatus.${order.orderStatus}`, { defaultValue: order.orderStatus })
+                : t('detail.loading')}
+            </span>
+            {order?.orderStatus === 'delivering' && delivery?.expectedAt && (
+              <small>
+                {t('detail.expectedAt', { time: formatTime(delivery.expectedAt, i18n.language) })}
+                {delivery.delayMinutes > 0 && (
+                  <span className="cs-status-delay">
+                    {t('detail.overdueBy', { minutes: delivery.delayMinutes })}
+                  </span>
+                )}
+              </small>
+            )}
           </dd>
         </div>
         <div className="cs-facts__customer">
@@ -182,7 +318,12 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
       </dl>
 
       <h3>{t('detail.claim')}</h3>
-      <blockquote>{caseData.customerClaim}</blockquote>
+      <blockquote>{handoffSummary?.customerClaimSummary || summaryFallback}</blockquote>
+      <ConversationToggle
+        messages={caseData.conversation}
+        participantLabel={t('detail.customerName')}
+        toggleLabel={t('detail.customerConversation', { count: caseData.conversation.length })}
+      />
       {caseData.claimedItemName && (
         <p className="cs-claim-item"><span>{t('detail.item')}</span>{caseData.claimedItemName}</p>
       )}
@@ -214,45 +355,25 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
       )}
 
       <h3>{t('detail.merchant')}</h3>
-      {merchant?.response ? (
-        <blockquote>
-          {t(`merchantResponse.${merchant.response}`)}
-          {merchant.comment ? ` — ${merchant.comment}` : ''}
-        </blockquote>
-      ) : (
-        <p className="cs-muted">{t('merchantResponse.none')}</p>
-      )}
-      {merchant?.conversation && merchant.conversation.length > 0 && (
-        <div className="cs-merchant-thread">
-          {merchant.conversation.map((message) => (
-            <p key={`${message.createdAt}-${message.role}-${message.content}`} className={message.role === 'agent' ? 'is-agent' : 'is-merchant'}>
-              <small>{t(message.role === 'agent' ? 'detail.agentName' : 'detail.merchantName')}</small>
-              {message.content}
-            </p>
-          ))}
-        </div>
-      )}
+      <blockquote>{handoffSummary?.merchantResponseSummary || summaryFallback}</blockquote>
+      <ConversationToggle
+        messages={merchant?.conversation ?? []}
+        participantLabel={t('detail.merchantName')}
+        toggleLabel={t('detail.merchantConversation', { count: merchant?.conversation.length ?? 0 })}
+      />
 
       <h3>{t('detail.handoff')}</h3>
-      <blockquote>{caseData.escalationReason || t('detail.noReason')}</blockquote>
+      <blockquote>{handoffSummary?.escalationReasonSummary || summaryFallback}</blockquote>
 
-      <section className="cs-summary">
-        <p>{t('detail.summaryLabel')}</p>
-        <strong>{caseData.agentSummary || t('detail.noSummary')}</strong>
-      </section>
+      <HumanReviewGuidanceCard
+        guidance={handoffSummary?.reviewGuidance}
+        isLoading={summaryState === 'idle' || summaryState === 'loading'}
+        hasError={summaryState === 'error'}
+      />
 
       <Link className="cs-policy-link" to={`/cs/cases/${caseData.caseId}/policy`}>{t('detail.openPolicy')}</Link>
 
-      {caseData.toolHistory.length > 0 && (
-        <details className="cs-trace">
-          <summary>{t('detail.trace', { count: caseData.toolHistory.length })}</summary>
-          <ul>
-            {caseData.toolHistory.map((log) => (
-              <li key={log.id}>{log.toolName} · {log.result.status === 'success' ? t('detail.traceOk') : t('detail.traceError')}</li>
-            ))}
-          </ul>
-        </details>
-      )}
+      <AgentReviewTrace caseData={caseData} />
 
       {resolution ? (
         <div className="cs-response cs-response--saved">
