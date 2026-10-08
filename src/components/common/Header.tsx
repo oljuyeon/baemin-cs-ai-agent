@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { BrandMark } from './BrandMark'
 import { LanguageSwitcher } from './LanguageSwitcher'
@@ -18,7 +17,6 @@ export function Header() {
           <a href="/#service" onClick={close}>{t('nav.service')}</a>
           <a href="/#roles" onClick={close}>{t('nav.roles')}</a>
           <LanguageSwitcher />
-          <Link className="header__login" to="/login" onClick={close}>{t('nav.login')}</Link>
         </nav>
         <button
           className="header__menu"

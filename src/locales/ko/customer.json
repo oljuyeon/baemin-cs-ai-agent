@@ -5,7 +5,8 @@
     "history": "내 문의"
   },
   "welcome": {
-    "eyebrow": "안녕하세요, 민지님",
+    "eyebrow": "안녕하세요, {{name}}님",
+    "customerFallback": "고객",
     "title": "어떤 문제가 생겼나요?",
     "description": "최근 주문을 확인하고 AI가 해결 과정을 바로 시작할게요."
   },
@@ -19,7 +20,13 @@
     "price": "28,500원",
     "statusLabel": "배달 상태",
     "status": "배달 중",
+    "statuses": {
+      "delivering": "배달 중",
+      "picked_up": "픽업 완료",
+      "delivered": "배달 완료"
+    },
     "etaLabel": "예상 도착",
+    "deliveredAtLabel": "배달 완료",
     "eta": "오후 7:35",
     "orderedAt": "오늘 오후 6:42 주문"
   },

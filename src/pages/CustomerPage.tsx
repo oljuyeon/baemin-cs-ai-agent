@@ -15,6 +15,7 @@ import {
   caseStore,
   evaluateDelayCompensation,
   evaluatePolicy,
+  findCustomer,
   findOrder,
   type CsCase,
   type CreateCaseInput,
@@ -933,13 +934,29 @@ export function CustomerPage() {
     setCaseState('resolved')
   }
 
+  const orderCardCase = activeCaseKey ? caseStore.getCase(activeCaseKey) : undefined
+  const selectedOrder = orderCardCase?.order ?? findOrder(selectedOrderId)
+  const customerName = selectedOrder
+    ? findCustomer(selectedOrder.customerId)?.name
+    : undefined
+
   return (
     <div className="customer-page">
       <CustomerHeader />
       <main className="customer-shell customer-main">
-        <section className="customer-welcome"><span>{t('welcome.eyebrow')}</span><h1>{t('welcome.title')}</h1><p>{t('welcome.description')}</p></section>
+        <section className="customer-welcome"><span>{t('welcome.eyebrow', { name: customerName ?? t('welcome.customerFallback') })}</span><h1>{t('welcome.title')}</h1><p>{t('welcome.description')}</p></section>
         <div className="customer-layout">
-          <div className="customer-layout__left"><OrderSummaryCard orderId={selectedOrderId} locked={hasStarted || isThinking} onOrderChange={setSelectedOrderId} /><IssueSelector selected={issue} onSelect={selectIssue} /><TrustPanel /></div>
+          <div className="customer-layout__left">
+            <OrderSummaryCard
+              orderId={selectedOrderId}
+              locked={hasStarted || isThinking}
+              onOrderChange={setSelectedOrderId}
+              orderSnapshot={orderCardCase?.order}
+              deliverySnapshot={orderCardCase?.delivery}
+            />
+            <IssueSelector selected={issue} onSelect={selectIssue} />
+            <TrustPanel />
+          </div>
           <div className="customer-layout__right">
             <AgentWorkspace
               issue={issue}

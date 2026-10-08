@@ -5,7 +5,8 @@
     "history": "My cases"
   },
   "welcome": {
-    "eyebrow": "Hi, Minji",
+    "eyebrow": "Hi, {{name}}",
+    "customerFallback": "Customer",
     "title": "What went wrong?",
     "description": "AI will review your recent order and start resolving it right away."
   },
@@ -19,7 +20,13 @@
     "price": "₩28,500",
     "statusLabel": "Delivery",
     "status": "On the way",
+    "statuses": {
+      "delivering": "On the way",
+      "picked_up": "Picked up",
+      "delivered": "Delivered"
+    },
     "etaLabel": "Estimated arrival",
+    "deliveredAtLabel": "Delivered at",
     "eta": "7:35 PM",
     "orderedAt": "Ordered today at 6:42 PM"
   },

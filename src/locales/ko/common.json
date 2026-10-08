@@ -1,16 +1,15 @@
 {
   "brand": {
-    "name": "바로해결 AI",
+    "name": "이음이",
     "tagline": "배달 문제 해결 도우미"
   },
   "meta": {
-    "title": "바로해결 AI",
+    "title": "이음이",
     "description": "배달 문제를 더 빠르게 해결하는 AI 고객센터"
   },
   "nav": {
     "service": "서비스 소개",
-    "roles": "역할별 시작",
-    "login": "로그인"
+    "roles": "역할별 시작"
   },
   "actions": {
     "start": "시작하기",
@@ -22,6 +21,12 @@
     "label": "언어 선택",
     "ko": "한국어",
     "en": "English"
+  },
+  "apiStatus": {
+    "checking": "AI API 연결 확인 중",
+    "connected": "AI API 연결됨 · {{model}}",
+    "disconnected": "AI API 연결 안 됨",
+    "unknownModel": "모델 확인 불가"
   },
   "accessibility": {
     "mainNav": "주요 메뉴",
