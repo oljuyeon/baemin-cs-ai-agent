@@ -40,8 +40,8 @@ const initialMessages: ChatMessage[] = [
   { id: 'intro', role: 'agent', content: 'chat.intro', translate: true },
 ]
 
-const ACTIVE_CUSTOMER_CASE_KEY = 'delivery-cs-agent:active-customer-case:v1'
 const NEW_CONVERSATION_VALUE = 'new'
+let activeCustomerCaseId: string | null = null
 
 interface PendingIssueConflict {
   message: string
@@ -326,7 +326,7 @@ export function CustomerPage() {
       : caseData
     activeCaseId.current = visibleCase.caseId
     setActiveCaseKey(visibleCase.caseId)
-    window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, visibleCase.caseId)
+    activeCustomerCaseId = visibleCase.caseId
     setSelectedOrderId(visibleCase.orderId)
     setIssue(customerIssueForType(visibleCase.issueType))
     setDraft('')
@@ -341,7 +341,7 @@ export function CustomerPage() {
   const startNewConversation = () => {
     activeCaseId.current = null
     setActiveCaseKey(null)
-    window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, NEW_CONVERSATION_VALUE)
+    activeCustomerCaseId = NEW_CONVERSATION_VALUE
   }
 
   useEffect(() => {
@@ -356,7 +356,7 @@ export function CustomerPage() {
   }, [])
 
   useEffect(() => {
-    const storedCaseId = window.localStorage.getItem(ACTIVE_CUSTOMER_CASE_KEY)
+    const storedCaseId = activeCustomerCaseId
     if (storedCaseId === NEW_CONVERSATION_VALUE) return
 
     const storedCase = storedCaseId
@@ -421,7 +421,7 @@ export function CustomerPage() {
     })
     activeCaseId.current = caseData.caseId
     setActiveCaseKey(caseData.caseId)
-    window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, caseData.caseId)
+    activeCustomerCaseId = caseData.caseId
     setIssue(confirmedIssue)
     setPendingIssueConflict(null)
     return caseData

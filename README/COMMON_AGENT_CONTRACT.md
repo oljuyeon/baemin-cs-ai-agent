@@ -35,7 +35,7 @@ Case와 Tool Observation을 바탕으로 동적으로 판단한다.
 -   URL별 Mock 증빙 분석 결과
 -   Tool 이름과 입출력 계약
 -   엄격한 `ToolResult<T>`
--   Case 생성, 조회, 변경, 구독과 `localStorage` 복원
+-   Case 생성, 조회, 변경, 구독과 현재 앱 실행 중 메모리 유지
 -   Case 업무 처리 이력 `history`
 -   Agent Tool 호출 이력 `toolHistory`
 -   Merchant Confirmation 응답 저장

@@ -19,46 +19,11 @@ import type {
   UserRole,
 } from './types'
 
-const STORAGE_KEY = 'delivery-cs-agent:cases:v2'
-
 const clone = <T>(value: T): T => structuredClone(value)
 const nowIso = () => new Date().toISOString()
 const newId = (prefix: string) => {
   const suffix = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
   return `${prefix}-${suffix}`
-}
-
-const isStoredCaseArray = (value: unknown): value is CsCase[] =>
-  Array.isArray(value)
-  && value.every((item) =>
-    typeof item === 'object'
-    && item !== null
-    && typeof (item as CsCase).caseId === 'string'
-    && Array.isArray((item as CsCase).history)
-    && Array.isArray((item as CsCase).toolHistory),
-  )
-
-const merchantResponses: MerchantResponse[] = [
-  'CONFIRMED',
-  'DENIED',
-  'POSSIBLE',
-  'UNKNOWN',
-]
-
-type LegacyMerchantResponse =
-  | 'PACKED'
-  | 'ADMITTED_MISSING'
-  | 'CLAIMS_PACKED'
-  | 'POSSIBLE_MISSING'
-
-const normalizeMerchantResponse = (
-  response: MerchantResponse | LegacyMerchantResponse | undefined,
-) => {
-  if (response === 'ADMITTED_MISSING') return 'CONFIRMED' as MerchantResponse
-  if (response === 'PACKED' || response === 'CLAIMS_PACKED') return 'DENIED' as MerchantResponse
-  if (response === 'POSSIBLE_MISSING') return 'POSSIBLE' as MerchantResponse
-  if (response && merchantResponses.includes(response)) return response
-  return undefined
 }
 
 const taskStatusForCaseStatus = (status: CaseStatus) => {
@@ -73,84 +38,15 @@ const taskStatusForCaseStatus = (status: CaseStatus) => {
   return 'IN_PROGRESS' as const
 }
 
-const normalizeCase = (caseData: CsCase): CsCase => {
-  const taskId = caseData.activeTaskId ?? `TASK-${caseData.caseId}`
-  const tasks = Array.isArray(caseData.tasks) && caseData.tasks.length > 0
-    ? caseData.tasks
-    : [{
-        taskId,
-        issueType: caseData.issueType,
-        status: taskStatusForCaseStatus(caseData.status),
-        customerClaim: caseData.customerClaim,
-        claimedItemName: caseData.claimedItemName,
-        liability: caseData.liability ?? 'UNKNOWN',
-        resolutionPreference: caseData.resolutionPreference,
-        finalAction: caseData.finalAction,
-        createdAt: caseData.createdAt,
-        updatedAt: caseData.updatedAt,
-      }]
-
-  return {
-    ...caseData,
-    tasks,
-    activeTaskId: taskId,
-    liability: caseData.liability ?? 'UNKNOWN',
-  merchantConfirmation: caseData.merchantConfirmation
-    ? {
-        ...caseData.merchantConfirmation,
-        response: normalizeMerchantResponse(
-          caseData.merchantConfirmation.response as MerchantResponse | LegacyMerchantResponse | undefined,
-        ),
-        conversation: Array.isArray(caseData.merchantConfirmation.conversation)
-          ? caseData.merchantConfirmation.conversation
-          : [],
-        followUpCount: caseData.merchantConfirmation.followUpCount ?? 0,
-      }
-    : undefined,
-  conversation: Array.isArray(caseData.conversation)
-    ? caseData.conversation
-    : [{
-        role: 'customer',
-        content: caseData.customerClaim,
-        createdAt: caseData.createdAt,
-      }],
-  evidenceUrls: Array.isArray(caseData.evidenceUrls) ? caseData.evidenceUrls : [],
-  csHistory: Array.isArray(caseData.csHistory) ? caseData.csHistory : [],
-  riskFlags: Array.isArray(caseData.riskFlags) ? caseData.riskFlags : [],
-  history: Array.isArray(caseData.history) ? caseData.history : [],
-  toolHistory: Array.isArray(caseData.toolHistory) ? caseData.toolHistory : [],
-  }
-}
-
 const finalActionForHumanCs = (action: HumanCsAction): FinalAction => {
   if (action === 'approve_refund') return 'mock_refund'
   if (action === 'approve_redelivery') return 'mock_redelivery'
   return 'human_review'
 }
 
-export class LocalCaseStore implements CaseStore {
+export class MemoryCaseStore implements CaseStore {
   private cases = new Map<string, CsCase>()
   private listeners = new Map<string, Set<(caseData: CsCase) => void>>()
-
-  constructor() {
-    this.restore()
-    if (typeof window !== 'undefined') {
-      window.addEventListener('storage', (event) => {
-        if (event.key !== STORAGE_KEY || !event.newValue) return
-        try {
-          const stored = JSON.parse(event.newValue) as unknown
-          if (!isStoredCaseArray(stored)) return
-          this.cases = new Map(stored.map((caseData) => {
-            const normalized = normalizeCase(caseData)
-            return [normalized.caseId, normalized]
-          }))
-          stored.forEach((caseData) => this.notify(caseData.caseId))
-        } catch {
-          // Ignore malformed values written outside this store.
-        }
-      })
-    }
-  }
 
   createCase(input: CreateCaseInput): CsCase {
     const timestamp = nowIso()
@@ -547,41 +443,16 @@ export class LocalCaseStore implements CaseStore {
       this.cases.delete(caseId)
       removed = true
     }
-    if (removed) this.persist()
+    if (removed) this.notifyAll()
     return []
   }
 
-  private restore() {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = window.localStorage.getItem(STORAGE_KEY)
-        if (raw) {
-          const stored = JSON.parse(raw) as unknown
-          if (isStoredCaseArray(stored)) {
-            this.cases = new Map(stored.map((caseData) => {
-              const normalized = normalizeCase(caseData)
-              return [normalized.caseId, normalized]
-            }))
-            return
-          }
-        }
-      } catch {
-        // Fall through to deterministic Demo Data.
-      }
-    }
-
-    this.cases = new Map()
-    this.persist()
-  }
-
-  private persist() {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...this.cases.values()]))
-  }
-
   private persistAndNotify(caseId: string) {
-    this.persist()
     this.notify(caseId)
+  }
+
+  private notifyAll() {
+    this.cases.forEach((_caseData, caseId) => this.notify(caseId))
   }
 
   private notify(caseId: string) {
@@ -613,5 +484,4 @@ export class LocalCaseStore implements CaseStore {
   }
 }
 
-export const caseStore = new LocalCaseStore()
-export { STORAGE_KEY as CASE_STORE_STORAGE_KEY }
+export const caseStore = new MemoryCaseStore()
