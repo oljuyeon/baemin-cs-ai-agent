@@ -183,11 +183,17 @@ export async function understandWithOpenAI(
   hint?: CustomerIssueHint | null,
 ): Promise<MessageUnderstanding | null> {
   try {
-    return await requestJson<MessageUnderstanding>('/api/agent/understand', {
+    const result = await requestJson<Omit<MessageUnderstanding, 'claimedItemName'> & {
+      claimedItemName: string | null
+    }>('/api/agent/understand', {
       message,
       hint: hint ?? null,
       orderItems: orderItems.map(({ name }) => ({ name })),
     })
+    return {
+      ...result,
+      claimedItemName: result.claimedItemName ?? undefined,
+    }
   } catch (error) {
     console.warn('OpenAI 문의 분류를 사용할 수 없어 규칙 기반 분류로 전환합니다.', error)
     return null
@@ -401,6 +407,9 @@ export async function replyWithOpenAI(
       context: toSafeContext(caseData),
       compensation,
       customerMessage,
+      responseLanguage: /[a-z]/i.test(customerMessage) && !/[가-힣]/.test(customerMessage)
+        ? 'en'
+        : caseData.customerLanguage ?? 'ko',
     })
     return result.message.trim() || null
   } catch (error) {

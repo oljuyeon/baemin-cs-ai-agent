@@ -21,6 +21,9 @@ const isTerminal = (caseData: CsCase) =>
   || caseData.status === 'ESCALATED'
   || caseData.status === 'CLOSED'
 
+const customerText = (caseData: CsCase, ko: string, en: string) =>
+  caseData.customerLanguage === 'en' ? en : ko
+
 const buildHumanCsSummary = (caseData: CsCase, failureReason: string) => [
   `caseId=${caseData.caseId}`,
   `customerId=${caseData.customerId}`,
@@ -104,7 +107,7 @@ const escalateAfterLimit = async (caseId: string) => {
     type: 'FINISH',
     decision: 'ESCALATE',
     finalAction: 'human_review',
-    customerMessage: '자동 확인을 완료하지 못해 상담원이 이어서 확인합니다.',
+    customerMessage: customerText(current, '자동 확인을 완료하지 못해 상담원이 이어서 확인합니다.', 'The automatic review could not be completed, so a support agent will continue.'),
   })
 }
 
@@ -134,7 +137,7 @@ export const agentController: AgentController = {
           caseStore.appendConversation(
             caseId,
             'agent',
-            '매장 확인 요청을 전달했고 현재 답변을 기다리고 있습니다. 답변이 오면 바로 이어서 안내할게요.',
+            customerText(current, '매장 확인 요청을 전달했고 현재 답변을 기다리고 있습니다. 답변이 오면 바로 이어서 안내할게요.', 'The confirmation request was sent to the restaurant. I will continue here as soon as it replies.'),
           )
           return requireCase(caseId)
         }
@@ -152,7 +155,7 @@ export const agentController: AgentController = {
           caseStore.appendConversation(
             caseId,
             'agent',
-            '매장에 확인 요청을 보냈습니다. 답변이 오면 이 대화에서 바로 이어서 안내할게요.',
+            customerText(updated, '매장에 확인 요청을 보냈습니다. 답변이 오면 이 대화에서 바로 이어서 안내할게요.', 'I sent a confirmation request to the restaurant. I will continue in this chat when it replies.'),
           )
           return requireCase(caseId)
         }

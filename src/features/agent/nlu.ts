@@ -7,6 +7,7 @@ export interface MessageUnderstanding {
   claimedItemName?: string
   confidence: number
   needsClarification: boolean
+  detectedLanguage: 'ko' | 'en' | 'other'
 }
 
 type IntentRule = {
@@ -47,7 +48,7 @@ const hintMap: Record<CustomerIssueHint, Exclude<IssueType, 'other'>> = {
 const aliasesByItem: Record<string, string[]> = {
   콜라: ['콜라', '코크', '탄산', '음료'],
   사이다: ['사이다', '탄산', '음료'],
-  후라이드치킨: ['후라이드치킨', '후라이드 치킨', '후라이드', '치킨'],
+  후라이드치킨: ['후라이드치킨', '후라이드 치킨', '후라이드'],
   양념치킨: ['양념치킨', '양념 치킨', '양념'],
   공깃밥: ['공깃밥', '공기밥', '밥'],
   튀김세트: ['튀김세트', '튀김 세트', '튀김'],
@@ -55,11 +56,21 @@ const aliasesByItem: Record<string, string[]> = {
 }
 
 const missingCues = ['누락', '빠졌', '빠져', '빼먹', '없', '안왔', '안옴', '못받', '덜왔']
+const receivedCues = ['왔는데', '받았는데', '도착했는데', '있는데']
 
 const normalize = (value: string) => value
   .normalize('NFKC')
   .toLowerCase()
   .replace(/[^0-9a-z가-힣]+/g, '')
+
+const detectLanguageWithRules = (message: string): MessageUnderstanding['detectedLanguage'] => {
+  const hasKorean = /[가-힣]/.test(message)
+  const hasEnglish = /[a-z]/i.test(message)
+  if (hasKorean && !hasEnglish) return 'ko'
+  if (hasEnglish && !hasKorean) return 'en'
+  if (hasKorean) return 'ko'
+  return 'other'
+}
 
 const scoreIntent = (message: string, issueType: Exclude<IssueType, 'other'>) =>
   intentRules[issueType].reduce(
@@ -112,15 +123,17 @@ export function resolveOrderItem(message: string, orderItems: OrderItem[]): stri
 
   const candidates = orderItems.flatMap((item) => {
     const aliases = new Set([item.name, ...(aliasesByItem[item.name] ?? [])].map(normalize))
-    return [...aliases].flatMap((alias) => findAllIndexes(compactMessage, alias).map((index) => {
+    return [...aliases].flatMap((alias) => findAllIndexes(compactMessage, alias).flatMap((index) => {
+      const followingText = compactMessage.slice(index + alias.length, index + alias.length + 10)
+      if (receivedCues.some((cue) => followingText.includes(normalize(cue)))) return []
       const nearestCueDistance = cueIndexes.length > 0
         ? Math.min(...cueIndexes.map((cueIndex) => Math.abs(cueIndex - (index + alias.length))))
         : 20
       const exactNameBonus = alias === normalize(item.name) ? 4 : 2
-      return {
+      return [{
         itemName: item.name,
         score: exactNameBonus + Math.max(0, 12 - nearestCueDistance),
-      }
+      }]
     }))
   })
 
@@ -158,5 +171,6 @@ export function understandCustomerMessage(
     needsClarification:
       issueType === 'other'
       || (issueType === 'missing_item' && !claimedItemName),
+    detectedLanguage: detectLanguageWithRules(message),
   }
 }

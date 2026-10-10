@@ -7,7 +7,6 @@ import { IssueSelector } from '../components/customer/IssueSelector'
 import {
   firstSelectableOrderId,
   OrderSummaryCard,
-  selectableOrders,
 } from '../components/customer/OrderSummaryCard'
 import { TrustPanel } from '../components/customer/TrustPanel'
 import {
@@ -19,6 +18,7 @@ import {
   findOrder,
   type CsCase,
   type CreateCaseInput,
+  type CustomerLanguage,
   type ToolName,
 } from '../features/cs'
 import {
@@ -49,6 +49,8 @@ interface PendingIssueConflict {
   attachment: string | null
   selectedIssue: CustomerIssue
   detectedIssue: CustomerIssue
+  claimedItemName?: string
+  customerLanguage: CustomerLanguage
 }
 
 const mockCaseInput = (
@@ -56,6 +58,7 @@ const mockCaseInput = (
   orderId: string,
   customerClaim: string,
   evidenceUrls: string[],
+  customerLanguage: CustomerLanguage,
 ): CreateCaseInput => {
   const order = findOrder(orderId)
   if (!order) throw new Error(`Order ${orderId} was not found.`)
@@ -70,6 +73,7 @@ const mockCaseInput = (
         ? 'missing_item'
         : 'wrong_delivery',
     ...shared,
+    customerLanguage,
   }
 }
 
@@ -79,8 +83,6 @@ const customerIssueForType = (issueType: CsCase['issueType']): CustomerIssue | n
   if (issueType === 'wrong_delivery') return 'wrong'
   return null
 }
-
-const selectableOrderItems = selectableOrders.flatMap((order) => order.items)
 
 const toCustomerUiState = (caseData: CsCase) => {
   if (caseData.status === 'AUTO_RESOLVED' || caseData.status === 'CLOSED') return 'resolved' as const
@@ -221,6 +223,7 @@ const actionsForCase = (caseData: CsCase): CustomerAgentAction[] => {
 }
 
 const followUpWithRules = (caseData: CsCase, customerMessage: string) => {
+  const text = (ko: string, en: string) => caseData.customerLanguage === 'en' ? en : ko
   if (caseData.issueType === 'delivery_delay') {
     const compensation = evaluateDelayCompensation(caseData)
     const claimedMinutes = customerMessage.match(/(\d+)\s*분/)?.[1]
@@ -230,22 +233,22 @@ const followUpWithRules = (caseData: CsCase, customerMessage: string) => {
       : ''
 
     if (measuredMinutes === null) {
-      return `${difference}현재는 배송 시간 데이터가 없어 지연 시간을 다시 확인하기 어렵습니다.`
+      return text(`${difference}현재는 배송 시간 데이터가 없어 지연 시간을 다시 확인하기 어렵습니다.`, 'Delivery timing data is not available, so I cannot recheck the delay right now.')
     }
     if (compensation.reason === 'already_issued') {
-      return `${difference}시스템 배송 데이터 기준 실제 지연은 ${measuredMinutes}분이며, 이 주문에는 이미 보상 쿠폰이 발급됐습니다.`
+      return text(`${difference}시스템 배송 데이터 기준 실제 지연은 ${measuredMinutes}분이며, 이 주문에는 이미 보상 쿠폰이 발급됐습니다.`, `The system delivery data shows a ${measuredMinutes}-minute delay, and a compensation coupon has already been issued for this order.`)
     }
     if (compensation.eligible) {
-      return `${difference}시스템 배송 데이터 기준 실제 지연은 ${measuredMinutes}분으로 확인돼 ${compensation.amount.toLocaleString('ko-KR')}원 쿠폰 대상입니다.`
+      return text(`${difference}시스템 배송 데이터 기준 실제 지연은 ${measuredMinutes}분으로 확인돼 ${compensation.amount.toLocaleString('ko-KR')}원 쿠폰 대상입니다.`, `The system delivery data shows a ${measuredMinutes}-minute delay, so this order is eligible for a KRW ${compensation.amount.toLocaleString('en-US')} coupon.`)
     }
-    return `${difference}시스템 배송 데이터 기준 실제 지연은 ${measuredMinutes}분입니다. 현재 Mock 정책은 ${compensation.minimumMinutes}분 이상부터 보상합니다.`
+    return text(`${difference}시스템 배송 데이터 기준 실제 지연은 ${measuredMinutes}분입니다. 현재 Mock 정책은 ${compensation.minimumMinutes}분 이상부터 보상합니다.`, `The system delivery data shows a ${measuredMinutes}-minute delay. The current mock policy provides compensation from ${compensation.minimumMinutes} minutes.`)
   }
 
   if (caseData.status === 'ESCALATED') {
-    return '현재 데모의 상담원 연결은 대기열에 Mock 접수하는 단계까지만 구현되어 있어, 기다려도 전화나 실시간 상담이 자동으로 시작되지는 않습니다.'
+    return text('현재 데모의 상담원 연결은 대기열에 Mock 접수하는 단계까지만 구현되어 있어, 기다려도 전화나 실시간 상담이 자동으로 시작되지는 않습니다.', 'In this demo, escalation only adds the case to a mock support queue. Waiting will not automatically start a call or live chat.')
   }
 
-  return '앞서 확인한 주문 정보와 처리 결과를 유지하고 있어요. 궁금한 내용을 조금 더 구체적으로 말씀해 주세요.'
+  return text('앞서 확인한 주문 정보와 처리 결과를 유지하고 있어요. 궁금한 내용을 조금 더 구체적으로 말씀해 주세요.', 'I still have the order details and previous result. Please describe what you would like to know in a little more detail.')
 }
 
 const canRecoverMissingItem = (caseData: CsCase) => {
@@ -264,6 +267,17 @@ const canRecoverMissingItem = (caseData: CsCase) => {
 
 const wantsHumanCs = (message: string) =>
   /(고객센터|상담원|사람.*연결|직원.*연결|상담.*연결)/.test(message.replace(/\s+/g, ''))
+
+const customerTextForCase = (caseData: CsCase, ko: string, en: string) =>
+  caseData.customerLanguage === 'en' ? en : ko
+
+const detectSupportedCustomerLanguage = (message: string): CustomerLanguage | null => {
+  const hasKorean = /[가-힣]/.test(message)
+  const hasEnglish = /[a-z]/i.test(message)
+  if (hasEnglish && !hasKorean) return 'en'
+  if (hasKorean) return 'ko'
+  return null
+}
 
 const escalateFromCustomerChoice = async (caseData: CsCase, reason: string) => {
   await executeTool(caseData.caseId, {
@@ -299,7 +313,7 @@ const escalateFromCustomerChoice = async (caseData: CsCase, reason: string) => {
   return caseStore.appendConversation(
     escalated.caseId,
     'agent',
-    '요청하신 대로 고객센터에 문의 맥락과 매장 답변을 함께 전달했습니다. 같은 내용을 다시 설명하지 않아도 됩니다.',
+    customerTextForCase(caseData, '요청하신 대로 고객센터에 문의 맥락과 매장 답변을 함께 전달했습니다. 같은 내용을 다시 설명하지 않아도 됩니다.', 'I sent the case context and restaurant response to a support agent as requested. You will not need to explain everything again.'),
   )
 }
 
@@ -405,16 +419,19 @@ export function CustomerPage() {
     message: string,
     attachment: string | null,
     confirmedIssue: CustomerIssue,
+    customerLanguage: CustomerLanguage,
+    understoodItemName?: string,
   ) => {
     const baseInput = mockCaseInput(
       confirmedIssue,
       selectedOrderId,
       message,
       attachment ? [attachment] : [],
+      customerLanguage,
     )
     const orderItems = findOrder(baseInput.orderId)?.items ?? []
     const claimedItemName = confirmedIssue === 'missing'
-      ? resolveOrderItem(message, orderItems)
+      ? understoodItemName ?? resolveOrderItem(message, orderItems)
       : undefined
     const caseData = caseStore.createCase({
       ...baseInput,
@@ -447,38 +464,25 @@ export function CustomerPage() {
     try {
       const selectedOrder = findOrder(selectedOrderId)
       const orderItems = selectedOrder?.items ?? []
-      const referencedItemName = resolveOrderItem(message, selectableOrderItems)
-      const itemBelongsToOrder = referencedItemName
-        ? orderItems.some((item) => item.name === referencedItemName)
-        : true
-
-      if (referencedItemName && !itemBelongsToOrder) {
-        appendMessages({
-          id: `order-mismatch-${Date.now()}`,
-          role: 'agent',
-          content: t('chat.itemNotInOrder', {
-            orderId: selectedOrderId,
-            itemName: referencedItemName,
-            orderItems: orderItems.map((item) => item.name).join(', '),
-          }),
-        })
-        if (mounted.current) {
-          setDraft(message)
-          setAttachedFile(attachment)
-          setCaseState('waiting')
-          setHasStarted(false)
-          setFocusRequest((request) => request + 1)
-        }
-        return
-      }
 
       let currentCase: CsCase
       if (!activeCaseId.current) {
         const ruleUnderstanding = understandCustomerMessage(message, orderItems)
-        const remoteUnderstanding = ruleUnderstanding.issueType === 'other'
-          ? await understandWithOpenAI(message, orderItems, null)
-          : null
+        const remoteUnderstanding = await understandWithOpenAI(message, orderItems, issue)
         const firstPass = remoteUnderstanding ?? ruleUnderstanding
+        if (firstPass.detectedLanguage === 'other') {
+          appendMessages({
+            id: `unsupported-language-${Date.now()}`,
+            role: 'agent',
+            content: t('chat.unsupportedLanguage'),
+          })
+          if (mounted.current) {
+            setCaseState('waiting')
+            setHasStarted(true)
+          }
+          return
+        }
+        const customerLanguage: CustomerLanguage = firstPass.detectedLanguage
         const inferredIssue = customerIssueForType(firstPass.issueType)
 
         if (!inferredIssue) {
@@ -501,6 +505,8 @@ export function CustomerPage() {
             attachment,
             selectedIssue: issue,
             detectedIssue: inferredIssue,
+            claimedItemName: firstPass.claimedItemName,
+            customerLanguage,
           })
           appendMessages({
             id: `issue-conflict-${Date.now()}`,
@@ -534,7 +540,13 @@ export function CustomerPage() {
           return
         }
 
-        currentCase = createCaseForIssue(message, attachment, issue ?? inferredIssue)
+        currentCase = createCaseForIssue(
+          message,
+          attachment,
+          issue ?? inferredIssue,
+          customerLanguage,
+          firstPass.claimedItemName,
+        )
       } else {
         const current = caseStore.appendConversation(
           activeCaseId.current,
@@ -547,6 +559,12 @@ export function CustomerPage() {
           })
         }
         currentCase = caseStore.getCase(activeCaseId.current) ?? current
+        const messageLanguage = detectSupportedCustomerLanguage(message)
+        if (messageLanguage && messageLanguage !== currentCase.customerLanguage) {
+          currentCase = caseStore.updateCase(currentCase.caseId, {
+            customerLanguage: messageLanguage,
+          })
+        }
 
         const pendingMerchantRequest = currentCase.status === 'WAITING_EVIDENCE'
           && currentCase.merchantConfirmation?.customerInfoRequest
@@ -569,7 +587,7 @@ export function CustomerPage() {
             currentCase = caseStore.appendConversation(
               currentCase.caseId,
               'agent',
-              '첨부한 사진과 메시지를 매장에 전달했습니다. 매장 답변이 오면 이 대화에서 바로 알려드릴게요.',
+              customerTextForCase(currentCase, '첨부한 사진과 메시지를 매장에 전달했습니다. 매장 답변이 오면 이 대화에서 바로 알려드릴게요.', 'I sent the attached photo and message to the restaurant. I will update you in this chat when it replies.'),
             )
             if (mounted.current) {
               setMessages(conversationToMessages(currentCase))
@@ -588,7 +606,7 @@ export function CustomerPage() {
             : caseStore.appendConversation(
                 currentCase.caseId,
                 'agent',
-                '매장에서 요청한 사진을 첨부해 보내주세요. 사진 제공이 어렵거나 직접 도움을 원하시면 “고객센터 연결”을 선택할 수 있어요.',
+                customerTextForCase(currentCase, '매장에서 요청한 사진을 첨부해 보내주세요. 사진 제공이 어렵거나 직접 도움을 원하시면 “고객센터 연결”을 선택할 수 있어요.', 'Please attach the photo requested by the restaurant. If you cannot provide it or want direct help, you can choose “Contact support.”'),
               )
           if (mounted.current) {
             setMessages(conversationToMessages(currentCase))
@@ -718,6 +736,8 @@ export function CustomerPage() {
           pendingIssueConflict.message,
           pendingIssueConflict.attachment,
           confirmedIssue,
+          pendingIssueConflict.customerLanguage,
+          pendingIssueConflict.claimedItemName,
         )
         const completed = await agentController.runNextStep(created.caseId)
         setMessages(conversationToMessages(completed))

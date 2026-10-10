@@ -61,6 +61,7 @@
     "requiredHint": "오배달 확인을 위해 사진을 첨부해주세요.",
     "savedWithoutAgent": "문의 내용을 케이스에 저장했어요. AI Agent는 아직 연결되지 않아서 조회나 환불 같은 조치는 실행하지 않았어요.",
     "unsupported": "현재 데모에서는 배달 지연, 메뉴 누락, 오배달 문의를 도와드릴 수 있어요. 상황을 조금 더 구체적으로 알려주세요.",
+    "unsupportedLanguage": "현재 데모는 한국어와 영어 문의를 지원합니다. 한국어로 다시 입력하거나 영어 화면을 이용해 주세요.",
     "issueConflict": "빠른 선택은 '{{selected}}'인데 입력한 내용은 '{{detected}}'으로 보여요. 어느 문의로 진행할지 확인해 주세요.",
     "itemNotInOrder": "선택한 {{orderId}} 주문 메뉴에는 '{{itemName}}' 항목이 없어요. 이 주문의 메뉴는 {{orderItems}}입니다. 주문을 다시 선택하거나 메뉴명을 확인해 주세요.",
     "recognized": {

@@ -2,6 +2,8 @@ export type AgentUiState = 'ready' | 'working' | 'waiting' | 'resolved'
 
 export type UserRole = 'customer' | 'merchant' | 'cs'
 
+export type CustomerLanguage = 'ko' | 'en'
+
 export type IssueType =
   | 'delivery_delay'
   | 'missing_item'
@@ -271,6 +273,7 @@ export interface CsCase {
   status: CaseStatus
   decision?: AgentDecision
   customerClaim: string
+  customerLanguage?: CustomerLanguage
   claimedItemName?: string
   receivedItemDescription?: string
   liability: Liability
@@ -395,6 +398,7 @@ export interface CreateCaseInput {
   storeId: string
   issueType: IssueType
   customerClaim: string
+  customerLanguage?: CustomerLanguage
   claimedItemName?: string
   receivedItemDescription?: string
   evidenceUrls?: string[]

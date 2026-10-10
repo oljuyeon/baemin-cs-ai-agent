@@ -177,6 +177,7 @@ export class LocalCaseStore implements CaseStore {
       activeTaskId: taskId,
       status: 'NEW',
       customerClaim: input.customerClaim,
+      customerLanguage: input.customerLanguage,
       claimedItemName: input.claimedItemName,
       receivedItemDescription: input.receivedItemDescription,
       liability: 'UNKNOWN',

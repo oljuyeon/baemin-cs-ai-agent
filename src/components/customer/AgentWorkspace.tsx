@@ -55,7 +55,11 @@ export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, 
 
       <div className="chat-thread chat-thread--live">
         {messages.map((message) => {
-          const content = message.translate ? t(message.content) : message.content
+          const content = message.id === 'intro'
+            ? t('chat.intro')
+            : message.translate
+              ? t(message.content)
+              : message.content
           if (message.role === 'tool') {
             return <div className="agent-tool-event" key={message.id}><span><CheckIcon /></span><div><small>{t('agent.toolLabel')}</small><strong>{content}</strong></div></div>
           }

@@ -112,8 +112,6 @@ h1, h2, h3, p { margin: 0; }
 
 .process-section { background: linear-gradient(180deg, #fff 0, var(--color-primary-pale) 100%); }
 .process-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 90px; align-items: center; }
-.process-section__heading { max-width: 560px; }
-.process-section__heading h2 { font-size: clamp(2rem, 4vw, 2.4rem); word-break: keep-all; }
 .process-card { padding: 34px; border: 1px solid #e3efed; border-radius: 34px; background: #fff; box-shadow: var(--shadow-card); }
 .process-card__agent { display: flex; width: 68px; height: 68px; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-radius: 22px; background: var(--color-primary); color: #fff; font-size: .7rem; font-weight: 900; }
 .process-card__agent svg { width: 28px; height: 28px; }
