@@ -75,6 +75,15 @@
     "choiceMessageLabel": "사장님 · 선택 답변",
     "choiceHint": "선택만으로 답변을 작성할 수 있어요. 필요하면 설명을 덧붙인 뒤 아래 제출 버튼을 눌러 주세요.",
     "choiceReceived": "선택 답변이 저장되었습니다. 추가 내용이나 정정이 있으면 입력한 뒤 아래 제출 버튼을 눌러 주세요.",
+    "conditionalTitle": "사진 확인 후 조건부 조치",
+    "conditionalHint": "고객 사진이 주장을 명확히 뒷받침할 때 Agent가 실행해도 되는 조치를 미리 선택해 주세요.",
+    "conditionalSaved": "사진 확인 후 조건부 조치가 저장되었습니다.",
+    "conditionalActions": {
+      "mock_coupon": "2,000원 쿠폰 지급",
+      "mock_refund": "누락 메뉴 부분 환불",
+      "mock_redelivery": "재배달",
+      "merchant_review": "자동 처리 없이 다시 확인"
+    },
     "messageLabel": "추가 설명 또는 직접 답변 (선택)",
     "messagePlaceholder": "필요할 때만 설명을 덧붙이거나 직접 답변해 주세요.",
     "correctionLabel": "추가 설명 또는 선택 정정",

@@ -37,6 +37,22 @@ const understandingSchema = z.object({
   needsClarification: z.boolean(),
 })
 
+const evidenceRequestSchema = z.object({
+  imageDataUrl: z.string()
+    .max(7_000_000)
+    .regex(/^data:image\/(?:jpeg|png|webp|gif);base64,/),
+  issueType: z.enum(['missing_item', 'wrong_delivery']),
+  customerClaim: z.string().trim().min(1).max(2_000),
+  claimedItemName: z.string().max(200).nullable(),
+  orderItems: z.array(z.string().min(1).max(200)).max(30),
+})
+
+const evidenceAnalysisSchema = z.object({
+  assessment: z.enum(['supports_claim', 'inconclusive', 'contradicts_claim']),
+  observation: z.string().min(1).max(1_000),
+  limitations: z.array(z.string().min(1).max(500)).max(10),
+})
+
 const toolStatusSchema = z.object({
   toolName: z.string().min(1).max(80),
   status: z.enum(['success', 'error']),
@@ -299,7 +315,7 @@ const readJson = async (request: IncomingMessage) => {
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
     size += buffer.length
-    if (size > 64_000) throw new Error('요청 본문이 너무 큽니다.')
+    if (size > 7_500_000) throw new Error('요청 본문이 너무 큽니다.')
     chunks.push(buffer)
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
@@ -367,6 +383,58 @@ export function createAgentApiPlugin({ apiKey, model }: PluginOptions): Plugin {
             parsed.needsClarification = parsed.issueType === 'missing_item'
           }
           return writeJson(response, 200, { ...parsed, provider: 'openai', model })
+        } catch (error) {
+          return writeJson(response, 502, { error: safeError(error) })
+        }
+      })
+
+      server.middlewares.use('/api/agent/evidence', async (request, response) => {
+        if (request.method !== 'POST') return writeJson(response, 405, { error: 'Method not allowed' })
+        if (!openai) return writeJson(response, 503, { error: 'OPENAI_API_KEY가 설정되지 않았습니다.' })
+
+        try {
+          const input = evidenceRequestSchema.parse(await readJson(request))
+          const result = await openai.responses.parse({
+            model,
+            store: false,
+            max_output_tokens: 500,
+            instructions: [
+              '당신은 배달 플랫폼 CS의 사진 증빙 분석기다.',
+              '사진에서 직접 확인되는 시각 정보만 말하고 고객 주장을 사실로 전제하지 않는다.',
+              'supports_claim은 사진이 고객 주장을 명확히 뒷받침할 때만 선택한다.',
+              '메뉴 누락은 포장 전체가 충분히 보이고 주문 메뉴와 비교해 주장 품목이 보이지 않을 때만 supports_claim이다.',
+              '사진 범위 밖에 음식이 있을 수 있거나 포장 전체가 보이지 않으면 inconclusive다.',
+              '오배달은 사진 속 식별 가능한 음식이 주문 메뉴와 명확히 다를 때 supports_claim이다.',
+              '사진이 주장과 명확히 충돌할 때만 contradicts_claim이다.',
+              '사람의 신원, 고의성, 위변조 여부, 법적 책임은 판단하지 않는다.',
+              '한국어로 간결하게 관찰 내용과 한계를 작성한다.',
+            ].join(' '),
+            input: [{
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: JSON.stringify({
+                    issueType: input.issueType,
+                    customerClaim: input.customerClaim,
+                    claimedItemName: input.claimedItemName,
+                    orderedItems: input.orderItems,
+                  }),
+                },
+                {
+                  type: 'input_image',
+                  image_url: input.imageDataUrl,
+                  detail: 'low',
+                },
+              ],
+            }],
+            text: {
+              format: zodTextFormat(evidenceAnalysisSchema, 'customer_evidence_analysis'),
+            },
+          })
+
+          if (!result.output_parsed) throw new Error('구조화된 사진 분석 결과가 없습니다.')
+          return writeJson(response, 200, { ...result.output_parsed, provider: 'openai', model })
         } catch (error) {
           return writeJson(response, 502, { error: safeError(error) })
         }

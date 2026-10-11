@@ -147,6 +147,31 @@ class MockAgentTools implements AgentTools {
     })
   }
 
+  async issueCoupon(input: { caseId: string; orderId: string; amount: number }) {
+    return this.run<MockActionResult>(() => {
+      const current = this.requireCase(input.caseId)
+      if (current.orderId !== input.orderId) {
+        throw new Error('Case와 쿠폰 대상 주문이 일치하지 않습니다.')
+      }
+      if (!Number.isFinite(input.amount) || input.amount <= 0) {
+        throw new Error('쿠폰 금액은 0보다 커야 합니다.')
+      }
+      const idempotencyKey = `coupon:${input.caseId}:${input.orderId}`
+      const alreadyCompleted = current.toolHistory.some((entry) =>
+        entry.toolName === 'issue_coupon'
+        && entry.result.status === 'success'
+        && (entry.result.data as MockActionResult).idempotencyKey === idempotencyKey,
+      )
+      if (alreadyCompleted) throw new Error('동일한 쿠폰 지급 요청이 이미 완료되었습니다.')
+      return {
+        actionId: newId('ACTION'),
+        action: 'mock_coupon',
+        completedAt: nowIso(),
+        idempotencyKey,
+      }
+    })
+  }
+
   async escalateToHuman(input: { caseId: string; reason: string; summary?: string }) {
     return this.run<HumanEscalationResult>(() => {
       this.requireCase(input.caseId)

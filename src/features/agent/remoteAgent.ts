@@ -2,6 +2,7 @@ import { evaluateDelayCompensation } from '../cs'
 import type {
   AgentAction,
   CsCase,
+  EvidenceAnalysis,
   FinalAction,
   HumanHandoffSummary,
   OrderItem,
@@ -12,7 +13,7 @@ import type {
 } from '../cs'
 import type { CustomerIssueHint, MessageUnderstanding } from './nlu'
 
-type RemoteToolName = Exclude<ToolName, 'analyze_evidence' | 'escalate_to_human'>
+type RemoteToolName = Exclude<ToolName, 'analyze_evidence' | 'issue_coupon' | 'escalate_to_human'>
 
 type RemoteDecision = {
   type: 'ASK_CUSTOMER' | 'CALL_TOOL' | 'FINISH'
@@ -125,11 +126,25 @@ const humanHandoffContext = (caseData: CsCase) => {
     } : null,
     delivery: caseData.delivery ?? null,
     csHistory: caseData.csHistory,
-    evidenceAnalysis: caseData.evidenceAnalysis ?? [],
+    evidenceAnalysis: (caseData.evidenceAnalysis ?? []).map((analysis) => ({
+      ...analysis,
+      evidenceUrl: analysis.evidenceUrl.startsWith('data:image/')
+        ? '[customer-image]'
+        : analysis.evidenceUrl,
+    })),
     toolObservations: caseData.toolHistory.map((entry) => ({
       toolName: entry.toolName,
       status: entry.result.status,
-      observation: entry.result.status === 'success' ? entry.result.data : null,
+      observation: entry.result.status === 'success'
+        ? entry.toolName === 'analyze_evidence'
+          ? caseData.evidenceAnalysis?.at(-1)
+            ? {
+                ...caseData.evidenceAnalysis.at(-1),
+                evidenceUrl: '[customer-image]',
+              }
+            : { status: 'analyzed' }
+          : entry.result.data
+        : null,
       error: entry.result.status === 'error' ? entry.result.error : null,
       completedAt: entry.completedAt,
     })),
@@ -190,6 +205,30 @@ export async function understandWithOpenAI(
     })
   } catch (error) {
     console.warn('OpenAI 문의 분류를 사용할 수 없어 규칙 기반 분류로 전환합니다.', error)
+    return null
+  }
+}
+
+export async function analyzeEvidenceWithOpenAI(
+  caseData: CsCase,
+  imageDataUrl: string,
+): Promise<EvidenceAnalysis | null> {
+  if (!imageDataUrl.startsWith('data:image/')) return null
+  try {
+    const result = await requestJson<Omit<EvidenceAnalysis, 'evidenceUrl'>>(
+      '/api/agent/evidence',
+      {
+        imageDataUrl,
+        issueType: caseData.issueType,
+        customerClaim: caseData.customerClaim,
+        claimedItemName: caseData.claimedItemName ?? null,
+        orderItems: caseData.order?.items.map((item) => item.name) ?? [],
+      },
+      60_000,
+    )
+    return { ...result, evidenceUrl: imageDataUrl }
+  } catch (error) {
+    console.warn('OpenAI 사진 분석을 사용할 수 없어 Mock 분석으로 전환합니다.', error)
     return null
   }
 }

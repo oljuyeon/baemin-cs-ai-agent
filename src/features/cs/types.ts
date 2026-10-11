@@ -34,6 +34,12 @@ export type MerchantResponse =
   | 'DENIED'
   | 'UNKNOWN'
 
+export type MerchantConditionalAction =
+  | 'mock_coupon'
+  | 'mock_refund'
+  | 'mock_redelivery'
+  | 'merchant_review'
+
 export type Liability =
   | 'CUSTOMER'
   | 'MERCHANT'
@@ -175,6 +181,9 @@ export interface MerchantConfirmationData {
   customerInfoRequest?: string
   customerInfoRequestedAt?: string
   customerInfoProvidedAt?: string
+  /** 고객 사진이 주장을 뒷받침할 때 매장이 미리 승인한 조치 */
+  conditionalAction?: MerchantConditionalAction
+  conditionalCouponAmount?: number
 }
 
 export interface CaseTask {
@@ -247,6 +256,7 @@ export type ToolName =
   | 'request_merchant_confirmation'
   | 'refund'
   | 'redelivery'
+  | 'issue_coupon'
   | 'escalate_to_human'
 
 export interface ToolCallLog {
@@ -311,7 +321,7 @@ export interface RiskResult {
 
 export interface MockActionResult {
   actionId: string
-  action: 'mock_refund' | 'mock_redelivery'
+  action: 'mock_coupon' | 'mock_refund' | 'mock_redelivery'
   completedAt: string
   idempotencyKey: string
 }
@@ -351,6 +361,11 @@ export interface AgentTools {
   redelivery(input: {
     caseId: string
     orderId: string
+  }): Promise<ToolResult<MockActionResult>>
+  issueCoupon(input: {
+    caseId: string
+    orderId: string
+    amount: number
   }): Promise<ToolResult<MockActionResult>>
   escalateToHuman(input: {
     caseId: string

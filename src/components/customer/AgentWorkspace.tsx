@@ -15,7 +15,7 @@ interface Props {
   focusRequest: number
   hasStarted: boolean
   onDraftChange: (value: string) => void
-  onAttach: (fileName: string) => void
+  onAttach: (file: File) => void
   onSend: () => void
   onAction: (action: AgentAction) => void
   onReset: () => void
@@ -89,7 +89,7 @@ export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, 
           onKeyDown={submitOnEnter}
           placeholder={t('chat.placeholder')}
         />
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(event) => event.target.files?.[0] && onAttach(event.target.files[0].name)} />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={(event) => event.target.files?.[0] && onAttach(event.target.files[0])} />
         <div className="chat-composer__tools">
           <button className={attachedFile ? 'is-attached' : ''} type="button" onClick={() => fileRef.current?.click()}><CameraIcon />{attachedFile ? t('chat.attached') : t('chat.attach')}</button>
           <span className="chat-composer__enter">{t('chat.enterHint')}</span>

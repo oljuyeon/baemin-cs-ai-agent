@@ -75,6 +75,15 @@
     "choiceMessageLabel": "Store · Selected reply",
     "choiceHint": "A choice is enough to compose your response. Add details if needed, then use the submit button below.",
     "choiceReceived": "Your choice was saved. Add details or a correction if needed, then use the submit button below.",
+    "conditionalTitle": "Conditional action after photo review",
+    "conditionalHint": "Pre-approve what the Agent may do only when the customer's photo clearly supports the claim.",
+    "conditionalSaved": "The conditional action was saved.",
+    "conditionalActions": {
+      "mock_coupon": "Issue a ₩2,000 coupon",
+      "mock_refund": "Refund the missing item",
+      "mock_redelivery": "Redeliver",
+      "merchant_review": "Review again without automation"
+    },
     "messageLabel": "Optional explanation or direct answer",
     "messagePlaceholder": "Add details only when needed, or type your own answer.",
     "correctionLabel": "Add details or correct your choice",

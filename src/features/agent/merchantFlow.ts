@@ -2,6 +2,7 @@ import {
   caseStore,
   inferLiability,
   type CsCase,
+  type MerchantConditionalAction,
   type MerchantConversationMessage,
   type MerchantResponse,
 } from '../cs'
@@ -69,9 +70,26 @@ const customerInfoRequestFrom = (caseData: CsCase) => {
   return asksForCustomerMaterial ? latestMerchant : undefined
 }
 
-const customerFacingRequest = (request: string) => [
+const conditionalActionLabel = (
+  action?: MerchantConditionalAction,
+  couponAmount = 2_000,
+) => {
+  if (action === 'mock_coupon') return `${couponAmount.toLocaleString('ko-KR')}원 쿠폰 지급`
+  if (action === 'mock_refund') return '누락 메뉴 부분 환불'
+  if (action === 'mock_redelivery') return '재배달'
+  if (action === 'merchant_review') return '매장 재확인'
+  return '사진 확인 후 매장 재확인'
+}
+
+const customerFacingRequest = (
+  request: string,
+  conditionalAction?: MerchantConditionalAction,
+  couponAmount?: number,
+) => [
   `${CUSTOMER_INFO_PREFIX} 사장님이 추가 확인을 위해 다음 자료를 요청했습니다.`,
   `“${request}”`,
+  `사진이 문의 내용을 명확히 뒷받침할 경우 예정 조치: ${conditionalActionLabel(conditionalAction, couponAmount)}`,
+  '첨부한 사진은 AI 분석을 위해 프로젝트 서버를 통해 OpenAI API로 전송됩니다.',
   '사진을 첨부해 보내주시면 같은 문의에서 매장에 전달할게요. 원하지 않거나 해결이 어렵다면 아래에서 고객센터 연결을 선택할 수 있어요.',
 ].join('\n')
 
@@ -93,7 +111,11 @@ export function surfaceMerchantCustomerRequest(caseId: string): CsCase {
   if (!requestMessage) return current
 
   const request = requestMessage.content.trim()
-  const prompt = customerFacingRequest(request)
+  const prompt = customerFacingRequest(
+    request,
+    confirmation.conditionalAction,
+    confirmation.conditionalCouponAmount,
+  )
   const alreadyForwarded = confirmation.customerInfoRequest === request
     && current.conversation.some((message) => message.content === prompt)
 

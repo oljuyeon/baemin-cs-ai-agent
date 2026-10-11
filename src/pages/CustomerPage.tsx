@@ -23,6 +23,7 @@ import {
 import {
   agentController,
   executeTool,
+  processCustomerEvidence,
   replyWithOpenAI,
   resolveOrderItem,
   surfaceMerchantCustomerRequest,
@@ -386,6 +387,33 @@ export function CustomerPage() {
     if (mounted.current) setMessages((current) => [...current, ...nextMessages])
   }
 
+  const attachImage = (file: File) => {
+    if (file.size > 5_000_000) {
+      appendMessages({
+        id: `photo-too-large-${Date.now()}`,
+        role: 'agent',
+        content: 'chat.photoTooLarge',
+        translate: true,
+      })
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string' && mounted.current) {
+        setAttachedFile(reader.result)
+      }
+    }
+    reader.onerror = () => {
+      appendMessages({
+        id: `photo-read-error-${Date.now()}`,
+        role: 'agent',
+        content: 'chat.photoReadError',
+        translate: true,
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
   const selectIssue = (nextIssue: CustomerIssue) => {
     setIssue(nextIssue)
     setDraft(t(`chat.quickDraft.${nextIssue}`))
@@ -582,16 +610,20 @@ export function CustomerPage() {
               'agent',
               `고객이 요청하신 사진을 첨부했습니다. 고객 메시지: ${message}`,
             )
-            currentCase = caseStore.appendConversation(
+            if (mounted.current) {
+              setIsThinking(true)
+              setCaseState('working')
+            }
+            currentCase = await processCustomerEvidence(
               currentCase.caseId,
-              'agent',
-              '첨부한 사진과 메시지를 매장에 전달했습니다. 매장 답변이 오면 이 대화에서 바로 알려드릴게요.',
+              attachment,
             )
             if (mounted.current) {
               setMessages(conversationToMessages(currentCase))
               setCaseState(toCustomerUiState(currentCase))
               setActions(actionsForCase(currentCase))
               setHasStarted(true)
+              setIsThinking(false)
             }
             return
           }
@@ -979,7 +1011,7 @@ export function CustomerPage() {
               focusRequest={focusRequest}
               hasStarted={hasStarted}
               onDraftChange={setDraft}
-              onAttach={setAttachedFile}
+              onAttach={attachImage}
               onSend={sendMessage}
               onAction={handleAction}
               onReset={resetConversation}

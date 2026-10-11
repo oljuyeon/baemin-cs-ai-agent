@@ -4,6 +4,7 @@ import {
   agentTools,
   caseStore,
   type CsCase,
+  type MerchantConditionalAction,
   type MerchantResponse,
   type OrderData,
 } from '../../features/cs'
@@ -14,6 +15,13 @@ const responses: MerchantResponse[] = [
   'DENIED',
   'POSSIBLE',
   'UNKNOWN',
+]
+
+const conditionalActions: MerchantConditionalAction[] = [
+  'mock_coupon',
+  'mock_refund',
+  'mock_redelivery',
+  'merchant_review',
 ]
 
 const formatWhen = (value: string | undefined, language: string) => {
@@ -159,6 +167,7 @@ export function RequestDetail({
 
   const messages = confirmation?.conversation ?? []
   const selectedResponse = confirmation?.response
+  const selectedConditionalAction = confirmation?.conditionalAction
   const agentUpdate = latestAgentUpdate(caseData)
   const responseLabel = (response: MerchantResponse) => t(
     `issueResponses.${caseData.issueType}.${response}`,
@@ -183,6 +192,25 @@ export function RequestDetail({
       caseStore.recordMerchantResponse(caseData.caseId, choice)
       setFormError(null)
       onSaved(t('detail.choiceSaved'))
+    } catch {
+      const message = t('detail.error')
+      setFormError(message)
+      onError(message)
+    }
+  }
+
+  const chooseConditionalAction = (choice: MerchantConditionalAction) => {
+    if (!confirmation) return
+    try {
+      caseStore.updateCase(caseData.caseId, {
+        merchantConfirmation: {
+          ...confirmation,
+          conditionalAction: choice,
+          conditionalCouponAmount: choice === 'mock_coupon' ? 2_000 : undefined,
+        },
+      })
+      setFormError(null)
+      onSaved(t('detail.conditionalSaved'))
     } catch {
       const message = t('detail.error')
       setFormError(message)
@@ -324,6 +352,26 @@ export function RequestDetail({
             <p className="merchant-choice-note">
               {t(selectedResponse ? 'detail.choiceReceived' : 'detail.choiceHint')}
             </p>
+            <div className="merchant-response__conditional">
+              <strong>{t('detail.conditionalTitle')}</strong>
+              <p>{t('detail.conditionalHint')}</p>
+              <div
+                className="merchant-response__choices"
+                role="group"
+                aria-label={t('detail.conditionalTitle')}
+              >
+                {conditionalActions.map((choice) => (
+                  <button
+                    key={choice}
+                    type="button"
+                    className={selectedConditionalAction === choice ? 'is-selected' : undefined}
+                    onClick={() => chooseConditionalAction(choice)}
+                  >
+                    {t(`detail.conditionalActions.${choice}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
             <label className="merchant-chat__composer">
               {t(selectedResponse ? 'detail.correctionLabel' : 'detail.messageLabel')}
               <span className="merchant-chat__send">

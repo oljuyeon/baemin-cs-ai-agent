@@ -120,6 +120,13 @@ export async function executeTool(caseId: string, action: ToolAction): Promise<C
       if (toolResult.status === 'success') changes.finalActionResult = toolResult.data
       break
     }
+    case 'issue_coupon': {
+      const input = action.input as Parameters<typeof agentTools.issueCoupon>[0]
+      const toolResult = await agentTools.issueCoupon(input)
+      result = toolResult
+      if (toolResult.status === 'success') changes.finalActionResult = toolResult.data
+      break
+    }
     case 'escalate_to_human': {
       const input = action.input as Parameters<typeof agentTools.escalateToHuman>[0]
       result = await agentTools.escalateToHuman(input)
