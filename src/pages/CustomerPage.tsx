@@ -533,7 +533,24 @@ export function CustomerPage() {
           return
         }
 
-        currentCase = createCaseForIssue(message, attachment, issue ?? inferredIssue)
+        const confirmedIssue = issue ?? inferredIssue
+        if (confirmedIssue === 'wrong' && !attachment) {
+          appendMessages({
+            id: `wrong-delivery-photo-${Date.now()}`,
+            role: 'agent',
+            content: 'chat.wrongDeliveryPhotoRequired',
+            translate: true,
+          })
+          if (mounted.current) {
+            setIssue('wrong')
+            setDraft(message)
+            setCaseState('waiting')
+            setHasStarted(false)
+          }
+          return
+        }
+
+        currentCase = createCaseForIssue(message, attachment, confirmedIssue)
       } else {
         const current = caseStore.appendConversation(
           activeCaseId.current,
@@ -709,6 +726,16 @@ export function CustomerPage() {
       const confirmedIssue = action.id === 'confirmDetectedIssue'
         ? pendingIssueConflict.detectedIssue
         : pendingIssueConflict.selectedIssue
+      if (confirmedIssue === 'wrong' && !pendingIssueConflict.attachment) {
+        appendAgentContent(t('chat.wrongDeliveryPhotoRequired'))
+        setIssue('wrong')
+        setDraft(pendingIssueConflict.message)
+        setPendingIssueConflict(null)
+        setActions([])
+        setCaseState('waiting')
+        setHasStarted(false)
+        return
+      }
       setActions([])
       setIsThinking(true)
       setCaseState('working')

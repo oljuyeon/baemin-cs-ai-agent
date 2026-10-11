@@ -146,6 +146,24 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
 
     const policy = latestResult<PolicyResult>(caseData, 'get_policy')
     const risk = latestResult<RiskResult>(caseData, 'check_risk')
+
+    if (!caseData.merchantConfirmation) {
+      return {
+        type: 'CALL_TOOL',
+        toolName: 'request_merchant_confirmation',
+        input: {
+          caseId: caseData.caseId,
+          orderId: caseData.orderId,
+          issueType: caseData.issueType,
+          customerClaim: caseData.customerClaim,
+          evidenceUrl: caseData.evidenceUrls[0],
+        },
+      }
+    }
+
+    const merchantChoice = askCustomerAfterUnapprovedMerchantResponse(caseData)
+    if (merchantChoice) return merchantChoice
+
     const refundAllowed =
       policy?.status === 'success'
       && risk?.status === 'success'
@@ -189,23 +207,6 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
       return finishForHumanReview('증빙 불일치 또는 반복 신고 등 위험 신호가 있어 자동 처리하지 않고 상담원이 전체 맥락을 검토합니다.')
     }
 
-    const merchantChoice = askCustomerAfterUnapprovedMerchantResponse(caseData)
-    if (merchantChoice) return merchantChoice
-
-    if (!caseData.merchantConfirmation) {
-      return {
-        type: 'CALL_TOOL',
-        toolName: 'request_merchant_confirmation',
-        input: {
-          caseId: caseData.caseId,
-          orderId: caseData.orderId,
-          issueType: caseData.issueType,
-          customerClaim: caseData.customerClaim,
-          evidenceUrl: caseData.evidenceUrls[0],
-        },
-      }
-    }
-
     return finishForHumanReview('고객 증빙과 매장 확인 결과만으로 귀책을 확정하기 어려워 상담원이 배송 과정까지 이어서 검토합니다.')
   }
 
@@ -236,6 +237,24 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
       '정책 또는 위험 정보를 확인하지 못해 상담원이 이어서 확인합니다.',
     )
   }
+
+  if (!caseData.merchantConfirmation) {
+    return {
+      type: 'CALL_TOOL',
+      toolName: 'request_merchant_confirmation',
+      input: {
+        caseId: caseData.caseId,
+        orderId: caseData.orderId,
+        issueType: caseData.issueType,
+        itemName: caseData.claimedItemName,
+        customerClaim: caseData.customerClaim,
+        evidenceUrl: caseData.evidenceUrls[0],
+      },
+    }
+  }
+
+  const merchantChoice = askCustomerAfterUnapprovedMerchantResponse(caseData)
+  if (merchantChoice) return merchantChoice
 
   const refundAllowed =
     policy.data.allowedActions.includes('mock_refund')
@@ -288,28 +307,10 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
     )
   }
 
-  const merchantChoice = askCustomerAfterUnapprovedMerchantResponse(caseData)
-  if (merchantChoice) return merchantChoice
-
   if (risk.data.blockedActions.some(
     (action) => action === 'mock_refund' || action === 'mock_redelivery',
   )) {
     return finishForHumanReview('중복 처리, 반복 신고 또는 증빙 불일치 위험 신호가 있어 자동 처리하지 않고 상담원이 검토합니다.')
-  }
-
-  if (!caseData.merchantConfirmation) {
-    return {
-      type: 'CALL_TOOL',
-      toolName: 'request_merchant_confirmation',
-      input: {
-        caseId: caseData.caseId,
-        orderId: caseData.orderId,
-        issueType: caseData.issueType,
-        itemName: caseData.claimedItemName,
-        customerClaim: caseData.customerClaim,
-        evidenceUrl: caseData.evidenceUrls[0],
-      },
-    }
   }
 
   return finishForHumanReview(

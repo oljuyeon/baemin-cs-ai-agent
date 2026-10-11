@@ -2,9 +2,9 @@
 
 배달 지연, 메뉴 누락, 오배달 문의를 Customer, Merchant, Human CS가 하나의 `CsCase`로 이어서 처리하는 모바일 우선 PoC입니다.
 
-현재 공통 데이터·Tool·Policy·Risk·저장 기능과 세 역할 화면은 `main`에 통합되어 있습니다. `OPENAI_API_KEY`가 있으면 OpenAI Responses API가 자연어 문의와 다음 Agent 행동을 구조화해 판단하고, API를 사용할 수 없거나 안전 검증을 통과하지 못하면 규칙 기반 엔진으로 자동 전환합니다. Customer 문의는 공통 Case로 저장되며 메뉴 누락, 배달 지연, 오배달에서 Dynamic Agent Loop를 실행합니다. Merchant 확인 재개와 Human CS 결과의 Customer 반영은 아직 전체 흐름 연결이 남아 있습니다.
+현재 공통 데이터·Tool·Policy·Risk와 세 역할 화면은 `main`에 통합되어 있습니다. `OPENAI_API_KEY`가 있으면 OpenAI Responses API가 고객의 자유 입력을 구조화하고, API를 사용할 수 없으면 규칙 기반 자연어 분류로 전환합니다. 환불·재배달·이관 같은 행동은 LLM이 임의로 정하지 않고 로컬 Policy·Risk와 규칙 기반 Decision Engine이 결정합니다. Customer 문의는 같은 탭의 메모리 Case로 저장되며 Customer → Merchant → Agent → Customer 흐름과 Human CS 이관이 같은 `caseId`로 연결됩니다.
 
-데이터 형식, 상태, Tool 입출력, Policy, Risk, Guardrail의 최종 기준은 [`COMMON_AGENT_CONTRACT`](./README/COMMON_AGENT_CONTRACT.md) `ver4.3`입니다.
+데이터 형식, 상태, Tool 입출력, Policy, Risk, Guardrail의 최종 기준은 [`COMMON_AGENT_CONTRACT`](./README/COMMON_AGENT_CONTRACT.md) `ver5.0`입니다.
 
 앞으로 구현할 기능 범위는 `배달 플랫폼 CS AI Agent PoC 기획서 틀`을 따릅니다. 기획서와 공통 계약이 충돌하면 공통 계약을 우선하고, 기획서의 요구사항은 그 경계 안에서 구현합니다.
 
@@ -14,14 +14,14 @@
 | --- | --- | --- |
 | 공통 계약·타입 | 구현됨 | `CsCase`, 상태, 결정값, Merchant 응답, 엄격한 `ToolResult<T>` |
 | Mock Data·Tool | 부분 구현 | 데이터·Tool은 구현. 고정 날짜·시각 때문에 Demo 시간 판정 보완 필요 |
-| Case Store | 구현됨 | 생성·조회·변경·구독, 역할별 조회, `localStorage` 복원, 이력 저장 |
+| Case Store | 구현됨 | 생성·조회·변경·구독, 역할별 조회, 같은 탭 메모리 유지, 이력 저장 |
 | Policy·Risk | 구현됨 | 허용 Action·제약과 Risk Flag·차단 Action을 분리해 반환 |
 | 가상 로그인·역할 권한 | 부분 구현 | 역할별 진입 화면은 있으나 계정 세션, Route 보호, 역할별 접근 제한은 미구현 |
-| Customer 화면 | 부분 구현 | OpenAI 우선·규칙 fallback 자연어 분류, Case 생성·후속 대화, 세 문의 유형 Agent 실행. 이전 문의 연결은 남음 |
-| Merchant 화면 | 부분 구현 | Queue·응답·이력은 구현. 실제 Agent 요청과 로그인한 사장님의 매장 제한은 남음 |
+| Customer 화면 | 부분 구현 | OpenAI 우선·규칙 fallback 자연어 분류, 주문 선택, Case 생성·후속 대화, 세 문의 유형 Agent 실행과 결과 구독 |
+| Merchant 화면 | 부분 구현 | 실제 Customer Case Queue, 선택·자유 입력 응답, 추가 자료 요청, Agent 재개. 로그인한 사장님의 매장 제한은 남음 |
 | Human CS 화면 | 부분 구현 | 이관 Queue, 상세, Policy, 최종 처리·이력. 전체 Risk 표시 보완 필요 |
-| Dynamic Agent Loop | 부분 구현 | OpenAI 구조화 판단과 로컬 안전 검증, 규칙 fallback, Tool·Observation·Mock Action 연결. Merchant 재개 등 확장 필요 |
-| 전체 화면 연결 | 미완료 | 세 화면은 통합됨. 실제 Agent 요청 대신 일부 Queue를 샘플로 생성 |
+| Dynamic Agent Loop | 부분 구현 | 규칙 기반 Action 결정, Tool·Observation·Mock Action, Merchant 응답 후 재개. 회귀 테스트 보강 필요 |
+| 전체 화면 연결 | 부분 구현 | 같은 탭에서 Customer → Merchant/CS → Customer 대화와 결과가 유지됨. 새로고침·새 탭은 초기화 |
 
 상세 현황과 역할별 완료 기준은 [`구현현황과_역할분담.md`](./README/구현현황과_역할분담.md)에서 확인합니다.
 
@@ -85,7 +85,7 @@ Customer 문의 접수
 → Customer 결과·이력 반영
 ```
 
-현재는 Customer Case 생성, Demo B의 첫 Agent Loop, Merchant·Human CS 화면이 구현되어 있습니다. Merchant 확인과 Human CS 이관까지 같은 Case로 이어 주는 확장이 남아 있습니다.
+Customer Case 생성부터 Merchant 확인·추가 자료 요청·Agent 재개·Human CS 이관과 고객 결과 반영까지 같은 Case로 연결되어 있습니다. 같은 탭의 SPA 화면 이동에서는 이력이 유지되고, 강력 새로고침이나 새 탭 진입 시에는 새 데모 세션으로 초기화됩니다.
 
 ### 고정 Workflow를 만들지 않음
 
@@ -205,12 +205,12 @@ Agent Loop가 아직 없으므로 현재는 샘플 버튼으로 임시 확인 �
 
 ## 저장 방식
 
-- Case와 처리 이력: 브라우저 `localStorage`
+- Case와 처리 이력: 같은 탭의 JavaScript 메모리
 - 언어 선택: 브라우저 `localStorage`
 - 선택한 Merchant 매장: 브라우저 `sessionStorage`
-- 같은 브라우저의 다른 탭: `storage` 이벤트와 주기적 화면 갱신으로 변경 반영
+- Customer·Merchant·Human CS 화면 이동: 같은 탭의 메모리 Case와 구독으로 변경 반영
 
-서버 데이터베이스나 실제 인증은 사용하지 않습니다. 브라우저 저장소를 지우면 PoC 데이터도 사라질 수 있습니다.
+서버 데이터베이스나 실제 인증은 사용하지 않습니다. 페이지를 새로고침하거나 새 탭으로 열면 Case와 대화가 초기화됩니다.
 
 ## 프로젝트 구조
 
@@ -245,7 +245,7 @@ Agent Loop가 아직 없으므로 현재는 샘플 버튼으로 임시 확인 �
 
 | 문서 | 내용 |
 | --- | --- |
-| [`COMMON_AGENT_CONTRACT.md`](./README/COMMON_AGENT_CONTRACT.md) | 모든 구현 판단의 기준이 되는 공통 계약. 현재 문서 버전은 `ver4.3` |
+| [`COMMON_AGENT_CONTRACT.md`](./README/COMMON_AGENT_CONTRACT.md) | 모든 구현 판단의 기준이 되는 공통 계약. 현재 문서 버전은 `ver5.0` |
 | [`POLICY.md`](./README/POLICY.md) | 현재 `policy.ts`에 구현된 Policy·Risk 규칙 |
 | [`구현현황과_역할분담.md`](./README/구현현황과_역할분담.md) | 현재 구현 상태, 역할 경계, 남은 작업의 상세 범위 |
 

@@ -6,7 +6,7 @@
 
 이 문서는 점주 화면에서 저장한 답변을 같은 `CsCase`의 Agent Loop로 다시
 전달하는 연결 흐름을 설명한다. 데이터 형식, 상태값, Tool, Policy, Risk와
-Guardrail은 [`COMMON_AGENT_CONTRACT.md`](./COMMON_AGENT_CONTRACT.md) `ver4.3`을
+Guardrail은 [`COMMON_AGENT_CONTRACT.md`](./COMMON_AGENT_CONTRACT.md) `ver5.0`을
 우선한다. 이 기능은 공통 계약을 변경하지 않는다.
 
 ## 구현 목적

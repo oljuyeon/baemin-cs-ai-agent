@@ -250,20 +250,16 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
       })
     }
 
-    if (supportiveEvidence && !response) {
-      return decide(caseData, {
-        policyId: 'WRONG_DELIVERY_CLEAR_LOW_RISK',
-        allowedActions: ['mock_refund', 'mock_redelivery', 'human_review'],
-        constraints: ['사진 분석은 보조 증빙이며 귀책 주체를 확정하지 않는다.'],
-        reason: '주문과 다른 음식이라는 보조 증빙이 명확해 자동 해결 후보입니다.',
-      })
-    }
-
     return decide(caseData, {
       policyId: 'WRONG_DELIVERY_NEEDS_MERCHANT',
       allowedActions: ['human_review'],
-      constraints: ['불명확한 오배달은 매장 확인 후 처리한다.'],
-      reason: '오배달 증빙이 불명확해 매장 확인이 필요합니다.',
+      constraints: [
+        '사진은 보조 증빙이며 사진만으로 귀책 주체를 확정하지 않는다.',
+        '매장이 오배달을 확인하기 전에는 환불이나 재배달을 실행하지 않는다.',
+      ],
+      reason: supportiveEvidence
+        ? '사진이 고객 주장을 뒷받침하지만 해결 조치 전 매장 확인이 필요합니다.'
+        : '오배달 증빙과 매장 확인이 모두 필요합니다.',
     })
   }
 
@@ -294,22 +290,14 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
       })
     }
 
-    if (!isAutomaticMissingCandidate(caseData)) {
-      return decide(caseData, {
-        policyId: 'MISSING_ITEM_NEEDS_MERCHANT',
-        allowedActions: ['human_review'],
-        constraints: [
-          `자동 처리 기준은 ${LOW_PRICE_LIMIT.toLocaleString('ko-KR')}원 이하이면서 주문 금액의 ${Math.round(PROJECT_SIMULATION_POLICY.autoRefundMaxOrderRatio * 100)}% 이하입니다.`,
-        ],
-        reason: '자동 처리 금액 또는 주문 대비 비율 기준을 초과해 매장 확인이 필요합니다.',
-      })
-    }
-
     return decide(caseData, {
-      policyId: 'MISSING_ITEM_AUTO_CANDIDATE',
-      allowedActions: ['mock_refund', 'mock_redelivery', 'human_review'],
-      constraints: ['고객이 환불 또는 재배달을 명시적으로 선택한 뒤 실행한다.'],
-      reason: '금액·주문 비율 기준을 충족해 자동 해결 후보입니다.',
+      policyId: 'MISSING_ITEM_NEEDS_MERCHANT',
+      allowedActions: ['human_review'],
+      constraints: [
+        '메뉴 금액과 관계없이 매장이 누락을 확인하기 전에는 환불이나 재배달을 실행하지 않는다.',
+        `자동 처리 참고 기준은 ${LOW_PRICE_LIMIT.toLocaleString('ko-KR')}원 이하이면서 주문 금액의 ${Math.round(PROJECT_SIMULATION_POLICY.autoRefundMaxOrderRatio * 100)}% 이하이다.`,
+      ],
+      reason: '모든 메뉴 누락 문의는 해결 조치를 제안하기 전에 매장 확인이 필요합니다.',
     })
   }
 
