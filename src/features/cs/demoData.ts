@@ -9,17 +9,12 @@ import type {
 
 const FIXTURE_NOW = new Date('2026-10-15T10:00:00+09:00').getTime()
 const APP_OPENED_AT = Date.now()
-let appStartedAt = APP_OPENED_AT
 
 const shiftFixtureTime = (value: string) =>
   new Date(new Date(value).getTime() + APP_OPENED_AT - FIXTURE_NOW).toISOString()
 
 const shiftOptionalFixtureTime = (value?: string) =>
   value ? shiftFixtureTime(value) : undefined
-
-export const markAppStarted = () => {
-  appStartedAt = APP_OPENED_AT
-}
 
 export const mockCustomers: CustomerData[] = [
   { customerId: 'C001', name: '김지연', recentOrderCount: 8, refundCount30d: 1 },
@@ -71,7 +66,7 @@ const orderFixtures: OrderData[] = [
   },
   {
     orderId: 'A1002', customerId: 'C002', storeId: 'S002',
-    orderedAt: '2026-10-15T06:12:00+09:00',
+    orderedAt: '2026-10-15T09:05:00+09:00',
     items: [
       { itemId: 'I002', name: '후라이드치킨', price: 20000 },
       { itemId: 'I003', name: '콜라', price: 2000 },
@@ -89,7 +84,7 @@ const orderFixtures: OrderData[] = [
   },
   {
     orderId: 'A1004', customerId: 'C008', storeId: 'S003',
-    orderedAt: '2026-10-15T06:42:00+09:00',
+    orderedAt: '2026-10-15T09:10:00+09:00',
     items: [
       { itemId: 'I006', name: '떡볶이', price: 6000 },
       { itemId: 'I007', name: '튀김세트', price: 6000 },
@@ -231,9 +226,9 @@ const deliveryFixtures: StoredDelivery[] = [
     expectedAt: '2026-10-15T08:55:00+09:00', deliveryStatus: 'picked_up',
   },
   {
-    orderId: 'A1002', riderAssignedAt: '2026-10-15T06:27:00+09:00',
-    pickedUpAt: '2026-10-15T06:42:00+09:00', expectedAt: '2026-10-15T07:02:00+09:00',
-    deliveredAt: '2026-10-15T07:04:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1002', riderAssignedAt: '2026-10-15T09:15:00+09:00',
+    pickedUpAt: '2026-10-15T09:27:00+09:00', expectedAt: '2026-10-15T09:45:00+09:00',
+    deliveredAt: '2026-10-15T09:48:00+09:00', deliveryStatus: 'delivered',
   },
   {
     orderId: 'A1003', riderAssignedAt: '2026-10-15T06:37:00+09:00',
@@ -241,9 +236,9 @@ const deliveryFixtures: StoredDelivery[] = [
     deliveredAt: '2026-10-15T07:15:00+09:00', deliveryStatus: 'delivered',
   },
   {
-    orderId: 'A1004', riderAssignedAt: '2026-10-15T06:54:00+09:00',
-    pickedUpAt: '2026-10-15T07:07:00+09:00', expectedAt: '2026-10-15T07:27:00+09:00',
-    deliveredAt: '2026-10-15T07:25:00+09:00', deliveryStatus: 'delivered',
+    orderId: 'A1004', riderAssignedAt: '2026-10-15T09:20:00+09:00',
+    pickedUpAt: '2026-10-15T09:31:00+09:00', expectedAt: '2026-10-15T09:50:00+09:00',
+    deliveredAt: '2026-10-15T09:48:00+09:00', deliveryStatus: 'delivered',
   },
   {
     orderId: 'A1005', riderAssignedAt: '2026-10-15T07:07:00+09:00',
@@ -325,10 +320,10 @@ export const mockDeliveries: StoredDelivery[] = deliveryFixtures.map((delivery) 
   deliveredAt: shiftOptionalFixtureTime(delivery.deliveredAt),
 }))
 
-/** 배달 완료 시각이 있으면 그 시각, 없으면 앱을 연 시각을 고정된 예상 도착 시각과 비교한다. */
+/** 배달 완료 시각이 있으면 그 시각, 진행 중이면 현재 시각을 예상 도착 시각과 비교한다. */
 export const calculateDelayMinutes = (
   delivery: Pick<DeliveryData, 'expectedAt' | 'deliveredAt'>,
-  now = appStartedAt,
+  now = Date.now(),
 ) => {
   const reference = delivery.deliveredAt ? new Date(delivery.deliveredAt).getTime() : now
   return Math.floor((reference - new Date(delivery.expectedAt).getTime()) / 60_000)
@@ -401,10 +396,10 @@ export const findCustomer = (customerId: string) =>
 export const findOrder = (orderId: string) =>
   clone(mockOrders.find((order) => order.orderId === orderId))
 
-export const findDelivery = (orderId: string) => {
+export const findDelivery = (orderId: string, now = Date.now()) => {
   const delivery = clone(mockDeliveries.find((item) => item.orderId === orderId))
   if (!delivery) return undefined
-  return { ...delivery, delayMinutes: calculateDelayMinutes(delivery) }
+  return { ...delivery, delayMinutes: calculateDelayMinutes(delivery, now) }
 }
 
 export const findCsHistory = (customerId: string, orderId?: string) =>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   findDelivery,
@@ -21,10 +22,16 @@ export function OrderSummaryCard({
   onOrderChange: (orderId: string) => void
 }) {
   const { t, i18n } = useTranslation('customer')
+  const [clockNow, setClockNow] = useState(() => Date.now())
   const order = findOrder(orderId)
-  const delivery = order ? findDelivery(order.orderId) : undefined
+  const delivery = order ? findDelivery(order.orderId, clockNow) : undefined
   const merchant = order ? findMerchant(order.storeId) : undefined
   const locale = i18n.language === 'en' ? 'en-US' : 'ko-KR'
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(Date.now()), 30_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   if (!order) return null
 
@@ -52,7 +59,14 @@ export function OrderSummaryCard({
       <article className="order-summary-card">
         <div className="order-summary-card__meta">
           <span>{t('order.recent')}</span>
-          <small>{new Date(order.orderedAt).toLocaleString(locale)}</small>
+          <small>
+            {t('order.orderedAtLabel')} {new Date(order.orderedAt).toLocaleString(locale, {
+              month: 'numeric',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </small>
         </div>
         <div className="order-summary-card__title">
           <div><h3>{merchant?.storeName ?? order.storeId}</h3><span>{order.orderId}</span></div>
@@ -61,7 +75,21 @@ export function OrderSummaryCard({
         <p>{order.items.map((item) => item.name).join(' · ')}</p>
         <div className="order-summary-card__status">
           <div><span>{t('order.statusLabel')}</span><strong><i />{delivery?.deliveryStatus ?? order.orderStatus}</strong></div>
-          <div><span>{t('order.etaLabel')}</span><strong>{delivery?.expectedAt ? new Date(delivery.expectedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-'}</strong></div>
+          <div>
+            <span>{t('order.etaLabel')}</span>
+            <strong>{delivery?.expectedAt ? new Date(delivery.expectedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-'}</strong>
+            {delivery && (
+              <small>
+                {delivery.deliveredAt
+                  ? t('order.deliveredAt', {
+                    time: new Date(delivery.deliveredAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
+                  })
+                  : delivery.delayMinutes > 0
+                    ? t('order.delayedBy', { minutes: delivery.delayMinutes })
+                    : t('order.arrivingIn', { minutes: Math.abs(delivery.delayMinutes) })}
+              </small>
+            )}
+          </div>
         </div>
       </article>
     </section>

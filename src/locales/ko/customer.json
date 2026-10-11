@@ -11,7 +11,7 @@
   },
   "order": {
     "sectionTitle": "문의할 주문",
-    "recent": "가장 최근 주문",
+    "recent": "선택한 주문",
     "change": "다른 주문 선택",
     "store": "행복치킨 성수점",
     "orderNumber": "주문번호 A1024",
@@ -19,7 +19,11 @@
     "price": "28,500원",
     "statusLabel": "배달 상태",
     "status": "배달 중",
+    "orderedAtLabel": "주문 시각",
     "etaLabel": "예상 도착",
+    "deliveredAt": "실제 도착 {{time}}",
+    "delayedBy": "현재 {{minutes}}분 지연",
+    "arrivingIn": "약 {{minutes}}분 후 도착 예정",
     "eta": "오후 7:35",
     "orderedAt": "오늘 오후 6:42 주문"
   },

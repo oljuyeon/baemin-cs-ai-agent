@@ -11,7 +11,7 @@
   },
   "order": {
     "sectionTitle": "Order for this inquiry",
-    "recent": "Most recent order",
+    "recent": "Selected order",
     "change": "Choose another order",
     "store": "Happy Chicken Seongsu",
     "orderNumber": "Order A1024",
@@ -19,7 +19,11 @@
     "price": "₩28,500",
     "statusLabel": "Delivery",
     "status": "On the way",
+    "orderedAtLabel": "Ordered",
     "etaLabel": "Estimated arrival",
+    "deliveredAt": "Actually arrived {{time}}",
+    "delayedBy": "Currently {{minutes}} min late",
+    "arrivingIn": "About {{minutes}} min remaining",
     "eta": "7:35 PM",
     "orderedAt": "Ordered today at 6:42 PM"
   },
