@@ -23,12 +23,20 @@ import {
 } from '../features/cs'
 import {
   agentController,
+  correctCaseIssue,
   executeTool,
+  hasPotentialIssueUpdate,
+  issueChangeLocked,
+  issueClassificationStatus,
+  latestOrderItemStatement,
+  reassessCustomerIssueWithRules,
+  reassessIssueWithOpenAI,
   replyWithOpenAI,
   resolveOrderItem,
   surfaceMerchantCustomerRequest,
   understandCustomerMessage,
   understandWithOpenAI,
+  type MessageUnderstanding,
 } from '../features/agent'
 import type {
   AgentAction as CustomerAgentAction,
@@ -51,6 +59,17 @@ interface PendingIssueConflict {
   detectedIssue: CustomerIssue
   claimedItemName?: string
   customerLanguage: CustomerLanguage
+  confidence: number
+  clarificationQuestion?: string
+}
+
+interface PendingIssueReclassification {
+  caseId: string
+  currentIssue: CustomerIssue
+  proposedIssue: CustomerIssue
+  claimedItemName?: string
+  confidence: number
+  customerClaim: string
 }
 
 const mockCaseInput = (
@@ -84,6 +103,31 @@ const customerIssueForType = (issueType: CsCase['issueType']): CustomerIssue | n
   return null
 }
 
+const issueTypeForCustomerIssue = (issue: CustomerIssue): CsCase['issueType'] => {
+  if (issue === 'delay') return 'delivery_delay'
+  if (issue === 'missing') return 'missing_item'
+  return 'wrong_delivery'
+}
+
+const fallbackClarification = (language: CustomerLanguage) => language === 'en'
+  ? 'Please clarify whether the delivery has not arrived, an item is missing, or you received a different order.'
+  : '배달이 아직 도착하지 않은 건지, 일부 메뉴가 빠진 건지, 다른 음식이 도착한 건지 조금 더 알려주세요.'
+
+const askedArrivalOrMissingClarification = (caseData: CsCase) => {
+  if (caseData.issueClassificationStatus !== 'PROVISIONAL') return false
+  const latestAgentMessage = [...caseData.conversation]
+    .reverse()
+    .find((message) => message.role === 'agent')?.content ?? ''
+  return (
+    /(배달|주문)/.test(latestAgentMessage)
+    && /(일부|메뉴)/.test(latestAgentMessage)
+    && /(도착|누락|빠지|빠졌|안\s*왔)/.test(latestAgentMessage)
+  ) || (
+    /(delivery|order)/i.test(latestAgentMessage)
+    && /(items?|menu).{0,16}missing/i.test(latestAgentMessage)
+  )
+}
+
 const toCustomerUiState = (caseData: CsCase) => {
   if (caseData.status === 'AUTO_RESOLVED' || caseData.status === 'CLOSED') return 'resolved' as const
   if (
@@ -98,12 +142,6 @@ const toCustomerUiState = (caseData: CsCase) => {
 }
 
 const toolMessageKeys: Partial<Record<ToolName, string>> = {
-  get_order: 'agent.toolEvents.getOrder',
-  get_delivery: 'agent.toolEvents.getDelivery',
-  get_cs_history: 'agent.toolEvents.getCsHistory',
-  get_policy: 'agent.toolEvents.getPolicy',
-  check_risk: 'agent.toolEvents.checkRisk',
-  analyze_evidence: 'agent.toolEvents.analyzeEvidence',
   request_merchant_confirmation: 'agent.toolEvents.requestMerchant',
   refund: 'agent.toolEvents.refund',
   redelivery: 'agent.toolEvents.redelivery',
@@ -141,6 +179,16 @@ const delayActions: CustomerAgentAction[] = [
   { id: 'trackDelivery', labelKey: 'agent.actions.trackDelivery', primary: true },
   { id: 'checkCompensation', labelKey: 'agent.actions.checkCompensation' },
 ]
+
+const claimedItemConflictsWithCustomerStatement = (caseData: CsCase) => Boolean(
+  caseData.claimedItemName
+  && ['received', 'conflict'].includes(latestOrderItemStatement(
+    caseData.conversation
+      .filter((message) => message.role === 'customer')
+      .map((message) => message.content),
+    caseData.claimedItemName,
+  )),
+)
 
 const actionsForCase = (caseData: CsCase): CustomerAgentAction[] => {
   if (
@@ -183,6 +231,11 @@ const actionsForCase = (caseData: CsCase): CustomerAgentAction[] => {
   }
 
   if (caseData.status === 'ACTION_READY' && caseData.order) {
+    if (
+      caseData.issueType === 'missing_item'
+      && claimedItemConflictsWithCustomerStatement(caseData)
+    ) return []
+
     const policy = evaluatePolicy(caseData)
     const risk = assessRisk(caseData)
     const item = caseData.order.items.find((candidate) =>
@@ -241,11 +294,11 @@ const followUpWithRules = (caseData: CsCase, customerMessage: string) => {
     if (compensation.eligible) {
       return text(`${difference}시스템 배송 데이터 기준 실제 지연은 ${measuredMinutes}분으로 확인돼 ${compensation.amount.toLocaleString('ko-KR')}원 쿠폰 대상입니다.`, `The system delivery data shows a ${measuredMinutes}-minute delay, so this order is eligible for a KRW ${compensation.amount.toLocaleString('en-US')} coupon.`)
     }
-    return text(`${difference}시스템 배송 데이터 기준 실제 지연은 ${measuredMinutes}분입니다. 현재 Mock 정책은 ${compensation.minimumMinutes}분 이상부터 보상합니다.`, `The system delivery data shows a ${measuredMinutes}-minute delay. The current mock policy provides compensation from ${compensation.minimumMinutes} minutes.`)
+    return text(`${difference}시스템 배송 데이터 기준 실제 지연은 ${measuredMinutes}분입니다. 현재 보상 기준은 ${compensation.minimumMinutes}분 이상입니다.`, `The system delivery data shows a ${measuredMinutes}-minute delay. Compensation is available from ${compensation.minimumMinutes} minutes.`)
   }
 
   if (caseData.status === 'ESCALATED') {
-    return text('현재 데모의 상담원 연결은 대기열에 Mock 접수하는 단계까지만 구현되어 있어, 기다려도 전화나 실시간 상담이 자동으로 시작되지는 않습니다.', 'In this demo, escalation only adds the case to a mock support queue. Waiting will not automatically start a call or live chat.')
+    return text('현재 데모의 상담원 연결은 상담원 대기열에 접수하는 단계까지만 구현되어 있어, 기다려도 전화나 실시간 상담이 자동으로 시작되지는 않습니다.', 'In this demo, escalation only adds the case to the support queue. Waiting will not automatically start a call or live chat.')
   }
 
   return text('앞서 확인한 주문 정보와 처리 결과를 유지하고 있어요. 궁금한 내용을 조금 더 구체적으로 말씀해 주세요.', 'I still have the order details and previous result. Please describe what you would like to know in a little more detail.')
@@ -270,6 +323,63 @@ const wantsHumanCs = (message: string) =>
 
 const customerTextForCase = (caseData: CsCase, ko: string, en: string) =>
   caseData.customerLanguage === 'en' ? en : ko
+
+const issueLabelForLanguage = (issue: CustomerIssue, language: CustomerLanguage) => {
+  const labels: Record<CustomerIssue, Record<CustomerLanguage, string>> = {
+    delay: { ko: '배달 지연', en: 'delivery delay' },
+    missing: { ko: '메뉴 누락', en: 'missing item' },
+    wrong: { ko: '오배달', en: 'wrong delivery' },
+  }
+  return labels[issue][language]
+}
+
+const issueConfirmationQuestion = (
+  issue: CustomerIssue,
+  language: CustomerLanguage,
+) => {
+  const questions: Record<CustomerIssue, Record<CustomerLanguage, string>> = {
+    delay: {
+      ko: '주문 전체가 아직 도착하지 않은 상황인가요?',
+      en: 'Has the order itself still not arrived?',
+    },
+    missing: {
+      ko: '주문은 도착했지만 일부 메뉴만 빠진 상황인가요?',
+      en: 'Did the order arrive with only some of the items missing?',
+    },
+    wrong: {
+      ko: '주문은 도착했지만 주문하신 것과 다른 음식이 온 상황인가요?',
+      en: 'Did your order arrive, but with food different from what you ordered?',
+    },
+  }
+  return questions[issue][language]
+}
+
+const issueCorrectionAcknowledgement = (
+  issue: CustomerIssue,
+  language: CustomerLanguage,
+  claimedItemName?: string,
+) => {
+  const messages: Record<CustomerIssue, Record<CustomerLanguage, string>> = {
+    delay: {
+      ko: '주문 전체가 아직 도착하지 않았다는 말씀이시군요. 현재 배달 상태를 이어서 확인할게요.',
+      en: 'I understand that the order itself has not arrived yet. I will continue by checking its delivery status.',
+    },
+    missing: {
+      ko: '주문은 도착했지만 일부 메뉴가 빠졌다는 말씀이시군요. 누락된 내용을 이어서 확인할게요.',
+      en: 'I understand that the order arrived with an item missing. I will continue by checking the missing item.',
+    },
+    wrong: {
+      ko: '주문한 것과 다른 음식이 도착했다는 말씀이시군요. 받은 음식을 이어서 확인할게요.',
+      en: 'I understand that food different from your order arrived. I will continue by checking what you received.',
+    },
+  }
+  if (issue === 'missing' && claimedItemName) {
+    return language === 'en'
+      ? `I understand that the missing item is ${claimedItemName}. I will check the order details now.`
+      : `누락된 메뉴는 ${claimedItemName}이라는 말씀이시군요. 주문 내역을 확인해볼게요.`
+  }
+  return messages[issue][language]
+}
 
 const detectSupportedCustomerLanguage = (message: string): CustomerLanguage | null => {
   const hasKorean = /[가-힣]/.test(message)
@@ -330,6 +440,7 @@ export function CustomerPage() {
   const [hasStarted, setHasStarted] = useState(false)
   const [focusRequest, setFocusRequest] = useState(0)
   const [pendingIssueConflict, setPendingIssueConflict] = useState<PendingIssueConflict | null>(null)
+  const [pendingIssueReclassification, setPendingIssueReclassification] = useState<PendingIssueReclassification | null>(null)
   const activeCaseId = useRef<string | null>(null)
   const [activeCaseKey, setActiveCaseKey] = useState<string | null>(null)
   const sendingRef = useRef(false)
@@ -408,6 +519,7 @@ export function CustomerPage() {
     setMessages(initialMessages)
     setActions([])
     setPendingIssueConflict(null)
+    setPendingIssueReclassification(null)
     setIsThinking(false)
     setHasStarted(false)
     setCaseState('ready')
@@ -421,6 +533,8 @@ export function CustomerPage() {
     confirmedIssue: CustomerIssue,
     customerLanguage: CustomerLanguage,
     understoodItemName?: string,
+    understanding?: Pick<MessageUnderstanding, 'confidence' | 'issueAmbiguous' | 'clarificationQuestion'>,
+    explicitlyConfirmed = false,
   ) => {
     const baseInput = mockCaseInput(
       confirmedIssue,
@@ -436,18 +550,28 @@ export function CustomerPage() {
     const caseData = caseStore.createCase({
       ...baseInput,
       claimedItemName,
+      issueClassificationStatus: understanding
+        ? issueClassificationStatus(understanding, explicitlyConfirmed)
+        : 'CONFIRMED',
+      issueConfidence: understanding?.confidence ?? 1,
+      issueClarificationQuestion: understanding
+        && issueClassificationStatus(understanding, explicitlyConfirmed) === 'PROVISIONAL'
+        ? understanding.clarificationQuestion ?? fallbackClarification(customerLanguage)
+        : undefined,
     })
     activeCaseId.current = caseData.caseId
     setActiveCaseKey(caseData.caseId)
     window.localStorage.setItem(ACTIVE_CUSTOMER_CASE_KEY, caseData.caseId)
     setIssue(confirmedIssue)
     setPendingIssueConflict(null)
+    setPendingIssueReclassification(null)
     return caseData
   }
 
   const sendMessage = async () => {
     const attachment = attachedFile
-    const message = draft.trim() || (attachment ? t('chat.photoReply') : '')
+    const typedMessage = draft.trim()
+    const message = typedMessage || (attachment ? t('chat.photoReply') : '')
     if (!message || isThinking || sendingRef.current) return
     sendingRef.current = true
     setActions([])
@@ -507,30 +631,38 @@ export function CustomerPage() {
             detectedIssue: inferredIssue,
             claimedItemName: firstPass.claimedItemName,
             customerLanguage,
+            confidence: firstPass.confidence,
+            clarificationQuestion: firstPass.clarificationQuestion,
           })
           appendMessages({
             id: `issue-conflict-${Date.now()}`,
             role: 'agent',
-            content: t('chat.issueConflict', {
-              selected: t(`issues.${issue}.short`),
-              detected: t(`issues.${inferredIssue}.short`),
-            }),
+            content: customerLanguage === 'en'
+              ? `Your quick selection was ${issueLabelForLanguage(issue, 'en')}, but the message looks like ${issueLabelForLanguage(inferredIssue, 'en')}. Please confirm which issue you want to continue with.`
+              : t('chat.issueConflict', {
+                  selected: t(`issues.${issue}.short`),
+                  detected: t(`issues.${inferredIssue}.short`),
+                }),
           })
           setActions([
             {
               id: 'confirmDetectedIssue',
               labelKey: 'agent.actions.confirmDetectedIssue',
-              label: t('agent.actions.confirmDetectedIssue', {
-                issue: t(`issues.${inferredIssue}.short`),
-              }),
+              label: customerLanguage === 'en'
+                ? `Continue as ${issueLabelForLanguage(inferredIssue, 'en')}`
+                : t('agent.actions.confirmDetectedIssue', {
+                    issue: t(`issues.${inferredIssue}.short`),
+                  }),
               primary: true,
             },
             {
               id: 'keepSelectedIssue',
               labelKey: 'agent.actions.keepSelectedIssue',
-              label: t('agent.actions.keepSelectedIssue', {
-                issue: t(`issues.${issue}.short`),
-              }),
+              label: customerLanguage === 'en'
+                ? `Keep ${issueLabelForLanguage(issue, 'en')}`
+                : t('agent.actions.keepSelectedIssue', {
+                    issue: t(`issues.${issue}.short`),
+                  }),
             },
           ])
           if (mounted.current) {
@@ -546,6 +678,8 @@ export function CustomerPage() {
           issue ?? inferredIssue,
           customerLanguage,
           firstPass.claimedItemName,
+          firstPass,
+          Boolean(issue),
         )
       } else {
         const current = caseStore.appendConversation(
@@ -559,11 +693,195 @@ export function CustomerPage() {
           })
         }
         currentCase = caseStore.getCase(activeCaseId.current) ?? current
+        if (
+          currentCase.customerDetailRequestedAt
+          && !currentCase.customerDetailProvidedAt
+        ) {
+          currentCase = caseStore.updateCase(currentCase.caseId, {
+            customerDetailProvidedAt: new Date().toISOString(),
+          })
+        }
         const messageLanguage = detectSupportedCustomerLanguage(message)
         if (messageLanguage && messageLanguage !== currentCase.customerLanguage) {
           currentCase = caseStore.updateCase(currentCase.caseId, {
             customerLanguage: messageLanguage,
           })
+        }
+
+        if (typedMessage && hasPotentialIssueUpdate(typedMessage)) {
+          const customerMessages = currentCase.conversation
+            .filter((entry) => entry.role === 'customer')
+            .map((entry) => entry.content)
+          const hasAskedArrivalClarification = askedArrivalOrMissingClarification(currentCase)
+          const ruleReassessment = reassessCustomerIssueWithRules(
+            customerMessages,
+            currentCase.issueType,
+            orderItems,
+            hasAskedArrivalClarification,
+          )
+          const remoteReassessment = await reassessIssueWithOpenAI(currentCase, orderItems)
+          const clarificationWasResolvedByRules = hasAskedArrivalClarification
+            && ruleReassessment.hasNewFacts
+            && !ruleReassessment.requiresConfirmation
+            && (
+              (
+                ruleReassessment.confidence >= 0.9
+                && ruleReassessment.issueType === 'delivery_delay'
+              )
+              || (
+                ruleReassessment.confidence >= 0.9
+                &&
+                ruleReassessment.issueType === 'missing_item'
+                && Boolean(ruleReassessment.claimedItemName)
+              )
+              || (
+                ruleReassessment.action === 'CLARIFY'
+                && ruleReassessment.issueType === 'missing_item'
+                && Boolean(ruleReassessment.clarificationQuestion)
+              )
+            )
+          const reassessment = clarificationWasResolvedByRules
+            ? ruleReassessment
+            : remoteReassessment ?? ruleReassessment
+
+          if (reassessment.hasNewFacts) {
+            const proposedIssue = customerIssueForType(reassessment.issueType)
+            const currentIssue = customerIssueForType(currentCase.issueType)
+            const needsClarification = reassessment.action === 'CLARIFY'
+              || reassessment.issueType === 'other'
+              || reassessment.confidence < 0.72
+
+            if (issueChangeLocked(currentCase) && reassessment.action !== 'KEEP') {
+              currentCase = caseStore.appendConversation(
+                currentCase.caseId,
+                'agent',
+                customerTextForCase(
+                  currentCase,
+                  '이 문의는 이미 매장 요청이나 최종 조치가 진행되어 유형을 자동으로 변경할 수 없어요. 다른 문제가 생겼다면 새 문의로 시작해 주세요.',
+                  'This case already has a restaurant request or completed action, so its issue type cannot be changed automatically. Please start a new inquiry for the additional problem.',
+                ),
+              )
+              if (mounted.current) {
+                setMessages(conversationToMessages(currentCase))
+                setCaseState(toCustomerUiState(currentCase))
+                setActions(actionsForCase(currentCase))
+              }
+              return
+            }
+
+            if (needsClarification) {
+              const question = reassessment.clarificationQuestion
+                ?? fallbackClarification(currentCase.customerLanguage ?? 'ko')
+              currentCase = caseStore.commitCase(currentCase.caseId, {
+                changes: {
+                  issueClassificationStatus: 'PROVISIONAL',
+                  issueConfidence: reassessment.confidence,
+                  issueClarificationQuestion: question,
+                  claimedItemName: reassessment.issueType === 'missing_item'
+                    && !reassessment.claimedItemName
+                    ? undefined
+                    : currentCase.claimedItemName,
+                  status: 'COLLECTING_INFO',
+                  decision: 'NEED_MORE_INFO',
+                },
+              })
+              currentCase = caseStore.appendConversation(currentCase.caseId, 'agent', question)
+              if (mounted.current) {
+                setMessages(conversationToMessages(currentCase))
+                setCaseState('waiting')
+                setActions([])
+              }
+              return
+            }
+
+            if (
+              reassessment.action === 'CORRECT'
+              && proposedIssue
+              && currentIssue
+              && proposedIssue !== currentIssue
+            ) {
+              const canCorrectAutomatically = !reassessment.requiresConfirmation
+                && reassessment.confidence >= 0.85
+                && reassessment.evidence.length > 0
+
+              if (canCorrectAutomatically) {
+                currentCase = correctCaseIssue(
+                  currentCase,
+                  reassessment,
+                  typedMessage,
+                  'automatic',
+                )
+                currentCase = caseStore.appendConversation(
+                  currentCase.caseId,
+                  'agent',
+                  issueCorrectionAcknowledgement(
+                    proposedIssue,
+                    currentCase.customerLanguage ?? 'ko',
+                    reassessment.claimedItemName,
+                  ),
+                )
+                setIssue(proposedIssue)
+              } else {
+                const question = reassessment.clarificationQuestion
+                  ?? issueConfirmationQuestion(
+                    proposedIssue,
+                    currentCase.customerLanguage ?? 'ko',
+                  )
+                currentCase = caseStore.commitCase(currentCase.caseId, {
+                  changes: {
+                    issueClassificationStatus: 'PROVISIONAL',
+                    issueConfidence: reassessment.confidence,
+                    issueClarificationQuestion: question,
+                    status: 'COLLECTING_INFO',
+                    decision: 'NEED_MORE_INFO',
+                  },
+                })
+                currentCase = caseStore.appendConversation(
+                  currentCase.caseId,
+                  'agent',
+                  question,
+                )
+                setPendingIssueReclassification({
+                  caseId: currentCase.caseId,
+                  currentIssue,
+                  proposedIssue,
+                  claimedItemName: reassessment.claimedItemName,
+                  confidence: reassessment.confidence,
+                  customerClaim: typedMessage,
+                })
+                if (mounted.current) {
+                  setMessages(conversationToMessages(currentCase))
+                  setActions([
+                    {
+                      id: 'confirmIssueChange',
+                      labelKey: 'agent.actions.confirmIssueChange',
+                      primary: true,
+                    },
+                    {
+                      id: 'rejectIssueChange',
+                      labelKey: 'agent.actions.rejectIssueChange',
+                    },
+                  ])
+                  setCaseState('waiting')
+                }
+                return
+              }
+            }
+
+            const wasProvisional = currentCase.issueClassificationStatus === 'PROVISIONAL'
+            currentCase = caseStore.updateCase(currentCase.caseId, {
+              issueClassificationStatus: 'CONFIRMED',
+              issueConfidence: reassessment.confidence,
+              issueClarificationQuestion: undefined,
+              claimedItemName: currentCase.issueType === 'missing_item'
+                ? reassessment.claimedItemName ?? currentCase.claimedItemName
+                : undefined,
+              status: wasProvisional && currentCase.status === 'COLLECTING_INFO'
+                ? 'CHECKING_DATA'
+                : currentCase.status,
+              decision: wasProvisional ? undefined : currentCase.decision,
+            })
+          }
         }
 
         const pendingMerchantRequest = currentCase.status === 'WAITING_EVIDENCE'
@@ -699,6 +1017,7 @@ export function CustomerPage() {
     setMessages(initialMessages)
     setActions([])
     setPendingIssueConflict(null)
+    setPendingIssueReclassification(null)
     setCaseState('ready')
     setIsThinking(false)
     setHasStarted(false)
@@ -721,6 +1040,77 @@ export function CustomerPage() {
     }
 
     if (
+      (action.id === 'confirmIssueChange' || action.id === 'rejectIssueChange')
+      && pendingIssueReclassification
+      && currentCase?.caseId === pendingIssueReclassification.caseId
+      && !isThinking
+    ) {
+      setActions([])
+      setIsThinking(true)
+      setCaseState('working')
+      try {
+        let updated: CsCase
+        if (action.id === 'confirmIssueChange') {
+          const proposedIssueType = issueTypeForCustomerIssue(
+            pendingIssueReclassification.proposedIssue,
+          )
+          updated = correctCaseIssue(currentCase, {
+            action: 'CORRECT',
+            issueType: proposedIssueType,
+            claimedItemName: pendingIssueReclassification.claimedItemName,
+            confidence: Math.max(0.9, pendingIssueReclassification.confidence),
+            hasNewFacts: true,
+            evidence: [pendingIssueReclassification.customerClaim],
+            requiresConfirmation: false,
+            detectedLanguage: currentCase.customerLanguage ?? 'ko',
+          }, pendingIssueReclassification.customerClaim)
+          updated = caseStore.appendConversation(
+            updated.caseId,
+            'agent',
+            issueCorrectionAcknowledgement(
+              pendingIssueReclassification.proposedIssue,
+              updated.customerLanguage ?? 'ko',
+              pendingIssueReclassification.claimedItemName,
+            ),
+          )
+          setIssue(pendingIssueReclassification.proposedIssue)
+          updated = await agentController.runNextStep(updated.caseId)
+        } else {
+          const question = fallbackClarification(currentCase.customerLanguage ?? 'ko')
+          updated = caseStore.updateCase(currentCase.caseId, {
+            issueClassificationStatus: 'PROVISIONAL',
+            issueConfidence: 0,
+            issueClarificationQuestion: question,
+            status: 'COLLECTING_INFO',
+            decision: 'NEED_MORE_INFO',
+          })
+          updated = caseStore.appendConversation(
+            updated.caseId,
+            'agent',
+            customerTextForCase(
+              updated,
+              '알겠습니다. 어떤 상황인지 조금 더 자세히 알려주세요. 주문이 아직 도착하지 않은 건지, 일부 메뉴가 빠진 건지, 다른 음식이 온 건지 말씀해 주세요.',
+              'Got it. Please tell me a little more about what happened—whether the order has not arrived, an item is missing, or different food arrived.',
+            ),
+          )
+        }
+        setPendingIssueReclassification(null)
+        setMessages(conversationToMessages(updated))
+        setCaseState(toCustomerUiState(updated))
+        setActions(actionsForCase(updated))
+        setHasStarted(true)
+      } catch (error) {
+        appendAgentContent(error instanceof Error
+          ? `문의 유형 변경 중 오류가 발생했습니다: ${error.message}`
+          : '문의 유형 변경 중 알 수 없는 오류가 발생했습니다.')
+        setCaseState('waiting')
+      } finally {
+        setIsThinking(false)
+      }
+      return
+    }
+
+    if (
       (action.id === 'confirmDetectedIssue' || action.id === 'keepSelectedIssue')
       && pendingIssueConflict
       && !isThinking
@@ -738,6 +1128,12 @@ export function CustomerPage() {
           confirmedIssue,
           pendingIssueConflict.customerLanguage,
           pendingIssueConflict.claimedItemName,
+          {
+            confidence: pendingIssueConflict.confidence,
+            issueAmbiguous: false,
+            clarificationQuestion: pendingIssueConflict.clarificationQuestion,
+          },
+          true,
         )
         const completed = await agentController.runNextStep(created.caseId)
         setMessages(conversationToMessages(completed))
@@ -781,6 +1177,29 @@ export function CustomerPage() {
       const item = currentCase.order?.items.find((candidate) =>
         candidate.name === currentCase.claimedItemName,
       )
+      if (item && claimedItemConflictsWithCustomerStatement(currentCase)) {
+        let corrected = caseStore.updateCase(currentCase.caseId, {
+          claimedItemName: undefined,
+          issueClassificationStatus: 'PROVISIONAL',
+          issueConfidence: 0,
+          issueClarificationQuestion: customerTextForCase(
+            currentCase,
+            `주문 메뉴는 ${currentCase.order?.items.map((candidate) => candidate.name).join(', ')}입니다. 이 중 받지 못한 메뉴를 다시 알려주세요.`,
+            `Your order includes ${currentCase.order?.items.map((candidate) => candidate.name).join(', ')}. Please tell me which item you did not receive.`,
+          ),
+          status: 'COLLECTING_INFO',
+          decision: 'NEED_MORE_INFO',
+        })
+        corrected = caseStore.appendConversation(
+          corrected.caseId,
+          'agent',
+          corrected.issueClarificationQuestion!,
+        )
+        setMessages(conversationToMessages(corrected))
+        setActions([])
+        setCaseState('waiting')
+        return
+      }
       const amount = currentCase.issueType === 'missing_item'
         ? item?.price
         : currentCase.order?.totalAmount

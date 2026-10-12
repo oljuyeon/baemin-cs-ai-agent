@@ -7,6 +7,20 @@ export interface MessageUnderstanding {
   claimedItemName?: string
   confidence: number
   needsClarification: boolean
+  issueAmbiguous: boolean
+  clarificationQuestion?: string
+  detectedLanguage: 'ko' | 'en' | 'other'
+}
+
+export interface IssueReassessment {
+  action: 'KEEP' | 'CORRECT' | 'CLARIFY'
+  issueType: IssueType
+  claimedItemName?: string
+  confidence: number
+  hasNewFacts: boolean
+  evidence: string[]
+  requiresConfirmation: boolean
+  clarificationQuestion?: string
   detectedLanguage: 'ko' | 'en' | 'other'
 }
 
@@ -18,6 +32,7 @@ type IntentRule = {
 const intentRules: Record<Exclude<IssueType, 'other'>, IntentRule[]> = {
   delivery_delay: [
     { pattern: /배달.{0,10}(늦|지연|안\s*와|안\s*옴|어디)/i, weight: 5 },
+    { pattern: /(언제\s*(?:와|와요|오|오나|오냐|도착)|도착.{0,8}언제|몇\s*시.{0,8}(?:와|오|도착))/i, weight: 6 },
     { pattern: /(주문|음식|치킨|피자)(이|가|은|는)?\s*(아직\s*)?(안\s*와|안\s*왔|안\s*옴|못\s*받)/i, weight: 6 },
     { pattern: /아직.{0,12}(도착하지\s*않|도착\s*안|안\s*도착|못\s*받)/i, weight: 5 },
     { pattern: /(도착|예정).{0,12}(시간|시각)?.{0,8}(지났|넘었|늦)/i, weight: 4 },
@@ -57,11 +72,61 @@ const aliasesByItem: Record<string, string[]> = {
 
 const missingCues = ['누락', '빠졌', '빠져', '빼먹', '없', '안왔', '안옴', '못받', '덜왔']
 const receivedCues = ['왔는데', '받았는데', '도착했는데', '있는데']
+const arrivalClarification = {
+  ko: '배달 전체가 아직 도착하지 않았나요, 아니면 배달은 받았지만 일부 메뉴가 빠졌나요?',
+  en: 'Has the delivery not arrived at all, or did it arrive with some items missing?',
+}
+const missingItemClarification = {
+  ko: '어떤 메뉴가 빠졌는지 알려주세요.',
+  en: 'Please tell me which item was missing.',
+}
 
 const normalize = (value: string) => value
   .normalize('NFKC')
   .toLowerCase()
   .replace(/[^0-9a-z가-힣]+/g, '')
+
+const receivedSuffixPattern = /^(?:은|는|이|가|도|만|은요|는요)?(?:잘)?(?:왔|도착했|받았|있었|포함됐)/
+const missingSuffixPattern = /^(?:은|는|이|가|도|만|은요|는요)?(?:안|못|없|누락|빠졌|빠져)/
+
+/**
+ * 고객이 특정 주문 상품을 받았다고 명시한 경우를 찾는다.
+ * 상품별 고정 문구가 아니라 실제 주문 상품명과 그 별칭 뒤의 수령 표현을 검사한다.
+ */
+export function isOrderItemExplicitlyReceived(message: string, itemName: string) {
+  const compactMessage = normalize(message)
+  const aliases = new Set([itemName, ...(aliasesByItem[itemName] ?? [])].map(normalize))
+
+  return [...aliases].some((alias) => findAllIndexes(compactMessage, alias).some((index) => {
+    const followingText = compactMessage.slice(index + alias.length, index + alias.length + 16)
+    if (missingSuffixPattern.test(followingText)) return false
+    return receivedSuffixPattern.test(followingText)
+  }))
+}
+
+export function isOrderItemExplicitlyMissing(message: string, itemName: string) {
+  const compactMessage = normalize(message)
+  const aliases = new Set([itemName, ...(aliasesByItem[itemName] ?? [])].map(normalize))
+
+  return [...aliases].some((alias) => findAllIndexes(compactMessage, alias).some((index) => {
+    const followingText = compactMessage.slice(index + alias.length, index + alias.length + 16)
+    return missingSuffixPattern.test(followingText)
+  }))
+}
+
+export function latestOrderItemStatement(
+  messages: string[],
+  itemName: string,
+): 'received' | 'missing' | 'conflict' | 'unknown' {
+  for (const message of [...messages].reverse()) {
+    const received = isOrderItemExplicitlyReceived(message, itemName)
+    const missing = isOrderItemExplicitlyMissing(message, itemName)
+    if (received && missing) return 'conflict'
+    if (received) return 'received'
+    if (missing) return 'missing'
+  }
+  return 'unknown'
+}
 
 const detectLanguageWithRules = (message: string): MessageUnderstanding['detectedLanguage'] => {
   const hasKorean = /[가-힣]/.test(message)
@@ -70,6 +135,13 @@ const detectLanguageWithRules = (message: string): MessageUnderstanding['detecte
   if (hasEnglish && !hasKorean) return 'en'
   if (hasKorean) return 'ko'
   return 'other'
+}
+
+const noNewIssueFactPattern = /^(네|넵|예|응|알겠(?:어|어요|습니다)?|확인했(?:어|어요|습니다)?|고마워(?:요)?|감사(?:해요|합니다)?|사진(?:을)?\s*(?:보냈|첨부했)(?:어|어요|습니다)?|ok(?:ay)?|yes|got it|thanks?|thank you)[.!?\s]*$/i
+
+export const hasPotentialIssueUpdate = (message: string) => {
+  const trimmed = message.trim()
+  return trimmed.length > 0 && !noNewIssueFactPattern.test(trimmed)
 }
 
 const scoreIntent = (message: string, issueType: Exclude<IssueType, 'other'>) =>
@@ -122,10 +194,9 @@ export function resolveOrderItem(message: string, orderItems: OrderItem[]): stri
   const cueIndexes = missingCues.flatMap((cue) => findAllIndexes(compactMessage, normalize(cue)))
 
   const candidates = orderItems.flatMap((item) => {
+    if (isOrderItemExplicitlyReceived(message, item.name)) return []
     const aliases = new Set([item.name, ...(aliasesByItem[item.name] ?? [])].map(normalize))
     return [...aliases].flatMap((alias) => findAllIndexes(compactMessage, alias).flatMap((index) => {
-      const followingText = compactMessage.slice(index + alias.length, index + alias.length + 10)
-      if (receivedCues.some((cue) => followingText.includes(normalize(cue)))) return []
       const nearestCueDistance = cueIndexes.length > 0
         ? Math.min(...cueIndexes.map((cueIndex) => Math.abs(cueIndex - (index + alias.length))))
         : 20
@@ -161,6 +232,14 @@ export function understandCustomerMessage(
   const claimedItemName = issueType === 'missing_item'
     ? referencedItemName
     : undefined
+  const explicitlyPartial = /(누락|빠졌|빠져|빼먹|덜\s*왔|일부만)/i.test(message)
+    || receivedCues.some((cue) => compactMessage.includes(normalize(cue)))
+  const mentionsGenericMainItem = /(치킨|피자|버거|햄버거|메뉴)/i.test(message)
+  const ambiguousMainItemArrival = orderItems.length > 1
+    && (Boolean(referencedItemName) || mentionsGenericMainItem)
+    && /(안\s*와|안\s*왔|안\s*옴|못\s*받)/i.test(message)
+    && !explicitlyPartial
+  const issueAmbiguous = issueType === 'other' || ambiguousMainItemArrival
 
   return {
     issueType,
@@ -169,8 +248,142 @@ export function understandCustomerMessage(
       : intent.confidence,
     claimedItemName,
     needsClarification:
-      issueType === 'other'
+      issueAmbiguous
       || (issueType === 'missing_item' && !claimedItemName),
+    issueAmbiguous,
+    clarificationQuestion: issueAmbiguous
+      ? arrivalClarification[detectLanguageWithRules(message) === 'en' ? 'en' : 'ko']
+      : issueType === 'missing_item' && !claimedItemName
+        ? missingItemClarification[detectLanguageWithRules(message) === 'en' ? 'en' : 'ko']
+        : undefined,
     detectedLanguage: detectLanguageWithRules(message),
+  }
+}
+
+export function reassessCustomerIssueWithRules(
+  messages: string[],
+  currentIssueType: IssueType,
+  orderItems: OrderItem[] = [],
+  hasAskedArrivalClarification = false,
+): IssueReassessment {
+  const latestMessage = messages.at(-1) ?? ''
+  const detectedLanguage = detectLanguageWithRules(latestMessage)
+  if (!hasPotentialIssueUpdate(latestMessage)) {
+    return {
+      action: 'KEEP',
+      issueType: currentIssueType,
+      confidence: 1,
+      hasNewFacts: false,
+      evidence: [],
+      requiresConfirmation: false,
+      detectedLanguage,
+    }
+  }
+
+  const hint = currentIssueType === 'delivery_delay'
+    ? 'delay'
+    : currentIssueType === 'missing_item'
+      ? 'missing'
+      : currentIssueType === 'wrong_delivery'
+        ? 'wrong'
+        : null
+  const latest = understandCustomerMessage(latestMessage, orderItems, hint)
+  const combined = understandCustomerMessage(messages.join(' '), orderItems, hint)
+
+  if (hasAskedArrivalClarification) {
+    const normalizedLatest = normalize(latestMessage)
+    const namesAMissingItem = Boolean(latest.claimedItemName)
+      && (
+        missingCues.some((cue) => normalizedLatest.includes(normalize(cue)))
+        || /(missing|didn'?t\s*(?:arrive|come)|not\s*(?:included|delivered))/i.test(latestMessage)
+      )
+    const saysSomeItemsAreMissing = /(일부|메뉴|하나|한\s*개).{0,12}(누락|빠졌|없|안\s*왔|못\s*받)/i.test(latestMessage)
+      || /(some|one|an?)\s+(?:item|menu).{0,16}(?:missing|didn'?t\s*(?:arrive|come))/i.test(latestMessage)
+    const saysWholeDeliveryIsMissing = /(배달|주문|음식)(?:이|가|은|는)?(?:.{0,10}(전체|전부|자체|아무것도))?.{0,12}(안\s*왔|안\s*와|못\s*받|도착하지\s*않)/i.test(latestMessage)
+      || /(?:entire|whole)\s+(?:delivery|order).{0,16}(?:not\s*(?:arrived|here)|didn'?t\s*(?:arrive|come))/i.test(latestMessage)
+
+    if (namesAMissingItem) {
+      return {
+        action: currentIssueType === 'missing_item' ? 'KEEP' : 'CORRECT',
+        issueType: 'missing_item',
+        claimedItemName: latest.claimedItemName,
+        confidence: Math.max(0.92, latest.confidence),
+        hasNewFacts: true,
+        evidence: [`고객이 제공한 누락 메뉴명: ${latest.claimedItemName}`],
+        requiresConfirmation: false,
+        detectedLanguage,
+      }
+    }
+
+    if (saysWholeDeliveryIsMissing) {
+      return {
+        action: currentIssueType === 'delivery_delay' ? 'KEEP' : 'CORRECT',
+        issueType: 'delivery_delay',
+        confidence: 0.94,
+        hasNewFacts: true,
+        evidence: ['고객이 주문 배달 전체를 받지 못했다고 명시함'],
+        requiresConfirmation: false,
+        detectedLanguage,
+      }
+    }
+
+    if (saysSomeItemsAreMissing) {
+      return {
+        action: 'CLARIFY',
+        issueType: 'missing_item',
+        confidence: 0.82,
+        hasNewFacts: true,
+        evidence: ['고객이 배달은 받았지만 일부 메뉴가 빠졌다고 설명함'],
+        requiresConfirmation: false,
+        clarificationQuestion: missingItemClarification[detectedLanguage === 'en' ? 'en' : 'ko'],
+        detectedLanguage,
+      }
+    }
+  }
+
+  const candidate = latest.issueType !== 'other' && latest.confidence >= 0.8
+    ? latest
+    : combined
+
+  if (candidate.issueType === 'other' || candidate.confidence < 0.72) {
+    return {
+      action: 'CLARIFY',
+      issueType: currentIssueType,
+      confidence: candidate.confidence,
+      hasNewFacts: true,
+      evidence: latestMessage ? [`고객의 최신 설명: ${latestMessage.slice(0, 200)}`] : [],
+      requiresConfirmation: false,
+      clarificationQuestion: detectedLanguage === 'en'
+        ? 'Please clarify whether the delivery has not arrived, an item is missing, or you received a different order.'
+        : '배달이 아직 도착하지 않은 건지, 일부 메뉴가 빠진 건지, 다른 음식이 도착한 건지 조금 더 알려주세요.',
+      detectedLanguage,
+    }
+  }
+
+  return {
+    action: candidate.issueType === currentIssueType ? 'KEEP' : 'CORRECT',
+    issueType: candidate.issueType,
+    claimedItemName: candidate.claimedItemName,
+    confidence: candidate.confidence,
+    hasNewFacts: true,
+    evidence: latestMessage ? [`고객의 최신 설명: ${latestMessage.slice(0, 200)}`] : [],
+    // API를 쓸 수 없을 때의 규칙 판정은 자동 정정하지 않고 보수적으로 확인한다.
+    requiresConfirmation: candidate.issueType !== currentIssueType,
+    clarificationQuestion: candidate.needsClarification
+      ? candidate.clarificationQuestion
+      : candidate.issueType !== currentIssueType
+        ? candidate.issueType === 'wrong_delivery'
+          ? (detectedLanguage === 'en'
+              ? 'Did your order arrive, but with food different from what you ordered?'
+              : '주문은 도착했지만 주문하신 것과 다른 음식이 온 상황인가요?')
+          : candidate.issueType === 'missing_item'
+            ? (detectedLanguage === 'en'
+                ? 'Did the order arrive with only some of the items missing?'
+                : '주문은 도착했지만 일부 메뉴만 빠진 상황인가요?')
+            : (detectedLanguage === 'en'
+                ? 'Has the order itself still not arrived?'
+                : '주문 전체가 아직 도착하지 않은 상황인가요?')
+        : undefined,
+    detectedLanguage,
   }
 }

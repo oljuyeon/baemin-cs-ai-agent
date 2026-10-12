@@ -131,6 +131,7 @@ export async function executeTool(caseId: string, action: ToolAction): Promise<C
   return caseStore.commitCase(caseId, {
     changes,
     toolHistory: [{
+      issueVersion: current.issueVersion,
       toolName: action.toolName,
       input: action.input,
       result,

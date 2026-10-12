@@ -163,10 +163,16 @@ export const agentController: AgentController = {
       }
 
       if (action.type === 'ASK_CUSTOMER') {
+        const detailRequestedAt = action.purpose === 'ISSUE_DETAIL'
+          ? new Date().toISOString()
+          : undefined
         caseStore.commitCase(caseId, {
           changes: {
             status: action.waitStatus ?? 'COLLECTING_INFO',
             decision: 'NEED_MORE_INFO',
+            ...(detailRequestedAt
+              ? { customerDetailRequestedAt: detailRequestedAt }
+              : {}),
           },
         })
         caseStore.appendConversation(caseId, 'agent', action.question)

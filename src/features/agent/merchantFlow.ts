@@ -33,6 +33,13 @@ const customerUpdateByResponse: Record<MerchantResponse, string> = {
   UNKNOWN: '매장에서 현재 포장 여부를 확정하기 어렵다고 답변했습니다. 이 답변을 확인하고 문의를 마치거나 고객센터에 직접 도움을 요청할 수 있어요.',
 }
 
+const merchantCompletionByResponse: Record<MerchantResponse, string> = {
+  CONFIRMED: '확인해 주셔서 감사합니다. 누락 또는 오배송 확인과 해결 동의 내용을 반영해 고객 안내와 후속 처리를 이어가겠습니다. 매장 확인은 여기서 마무리됩니다.',
+  DENIED: '확인해 주셔서 감사합니다. 정상 포장했다는 매장 답변을 고객 주장과 함께 검토해 후속 처리를 이어가겠습니다. 추가 확인이 필요하면 다시 요청드리겠습니다.',
+  POSSIBLE: '확인해 주셔서 감사합니다. 문제 발생 가능성이 있다는 답변을 반영해 추가 검토와 고객 안내를 이어가겠습니다. 추가 확인이 필요하면 다시 요청드리겠습니다.',
+  UNKNOWN: '답변해 주셔서 감사합니다. 현재 확인이 어렵다는 내용을 반영해 확보된 정보로 후속 처리를 이어가겠습니다. 추가 확인이 필요하면 다시 요청드리겠습니다.',
+}
+
 const normalize = (value: string) => value.replace(/\s+/g, '').toLowerCase()
 
 const inferMerchantResponse = (content: string): MerchantResponse | undefined => {
@@ -290,6 +297,15 @@ export async function processMerchantResponse(
 
   const detailChecked = requireSupportingDetail(conflictChecked)
   if (isHandoffResult(detailChecked)) return detailChecked
+
+  const responseForCompletion = detailChecked.merchantConfirmation?.response
+  if (responseForCompletion) {
+    caseStore.appendMerchantConversation(
+      caseId,
+      'agent',
+      merchantCompletionByResponse[responseForCompletion],
+    )
+  }
 
   const completedConfirmation = caseStore.completeMerchantConfirmation(caseId)
   const confirmed = caseStore.updateCase(caseId, {

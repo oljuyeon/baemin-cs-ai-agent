@@ -94,6 +94,9 @@ const normalizeCase = (caseData: CsCase): CsCase => {
     ...caseData,
     tasks,
     activeTaskId: taskId,
+    issueClassificationStatus: caseData.issueClassificationStatus ?? 'CONFIRMED',
+    issueConfidence: caseData.issueConfidence ?? 1,
+    issueVersion: caseData.issueVersion ?? 1,
     liability: caseData.liability ?? 'UNKNOWN',
   merchantConfirmation: caseData.merchantConfirmation
     ? {
@@ -164,6 +167,10 @@ export class LocalCaseStore implements CaseStore {
       orderId: input.orderId,
       storeId: input.storeId,
       issueType: input.issueType,
+      issueClassificationStatus: input.issueClassificationStatus ?? 'CONFIRMED',
+      issueConfidence: input.issueConfidence ?? 1,
+      issueVersion: 1,
+      issueClarificationQuestion: input.issueClarificationQuestion,
       tasks: [{
         taskId,
         issueType: input.issueType,
@@ -271,6 +278,7 @@ export class LocalCaseStore implements CaseStore {
           ...task,
           issueType: next.issueType,
           status: taskStatusForCaseStatus(next.status),
+          customerClaim: next.customerClaim,
           claimedItemName: next.claimedItemName,
           liability: next.liability,
           resolutionPreference: next.resolutionPreference,

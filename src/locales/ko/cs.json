@@ -295,9 +295,9 @@
   },
   "finalAction": {
     "guide_customer": "고객 안내",
-    "mock_coupon": "가상 쿠폰",
-    "mock_refund": "가상 환불",
-    "mock_redelivery": "가상 재배달",
+    "mock_coupon": "쿠폰",
+    "mock_refund": "환불",
+    "mock_redelivery": "재배달",
     "human_review": "상담원 검토",
     "no_action": "조치 없음"
   }

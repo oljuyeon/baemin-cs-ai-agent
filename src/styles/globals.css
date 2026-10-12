@@ -11,6 +11,9 @@ h1, h2, h3, p { margin: 0; }
 .api-connection-status[data-state="connected"] .api-connection-status__dot { background: var(--color-primary); }
 .api-connection-status[data-state="disconnected"] { color: #a94339; }
 .api-connection-status[data-state="disconnected"] .api-connection-status__dot { background: #d9584c; }
+@media (max-width: 820px) {
+  .api-connection-status { bottom: calc(78px + env(safe-area-inset-bottom)); }
+}
 .shell { width: min(calc(100% - 40px), var(--shell)); margin-inline: auto; }
 .page { overflow: clip; background: var(--color-surface); }
 .section { padding: 90px 0; }

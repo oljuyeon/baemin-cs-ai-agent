@@ -68,8 +68,8 @@ class MockAgentTools implements AgentTools {
       return {
         evidenceUrl: input.evidenceUrl,
         assessment: 'inconclusive',
-        observation: '첨부 이미지를 받았지만 Mock 분석 데이터와 일치하는 결과가 없습니다.',
-        limitations: ['실제 Vision API가 아닌 PoC Mock 분석입니다.'],
+        observation: '첨부 이미지를 받았지만 등록된 분석 데이터와 일치하는 결과가 없습니다.',
+        limitations: ['현재 데모에서는 사전 정의된 증빙 분석 결과를 사용합니다.'],
       }
     })
   }

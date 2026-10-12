@@ -8,9 +8,17 @@ import type {
   PolicyResult,
   RiskResult,
   ToolName,
-  ToolResult,
 } from '../cs'
-import type { CustomerIssueHint, MessageUnderstanding } from './nlu'
+import type {
+  CustomerIssueHint,
+  IssueReassessment,
+  MessageUnderstanding,
+} from './nlu'
+import {
+  currentIssueToolHistory,
+  latestToolResult,
+  wasToolCalled,
+} from './toolHistory'
 
 type RemoteToolName = Exclude<ToolName, 'analyze_evidence' | 'escalate_to_human'>
 
@@ -20,6 +28,12 @@ type RemoteDecision = {
   message: string
   decision: 'AUTO_RESOLVE' | 'ESCALATE' | null
   finalAction: Exclude<FinalAction, 'mock_coupon'> | null
+}
+
+export type PreMerchantInformationDecision = {
+  nextAction: 'ASK_CUSTOMER' | 'ASK_MERCHANT'
+  question: string | null
+  reason: string
 }
 
 const requestJson = async <T>(path: string, body: unknown, timeoutMs = 20_000): Promise<T> => {
@@ -45,7 +59,10 @@ type HumanHandoffSummaryResponse = Pick<
 >
 
 const handoffRequests = new Map<string, Promise<HumanHandoffSummary>>()
+const merchantClaimRequests = new Map<string, Promise<string>>()
+const merchantClaimCache = new Map<string, string>()
 const HUMAN_HANDOFF_SUMMARY_VERSION = 'v3'
+const MERCHANT_CLAIM_SUMMARY_VERSION = 'v1'
 
 type OptionalHandoffTask = {
   issueType?: unknown
@@ -137,18 +154,58 @@ const humanHandoffContext = (caseData: CsCase) => {
   }
 }
 
-const fingerprint = (value: unknown) => {
+const merchantClaimContext = (caseData: CsCase) => ({
+  issueType: caseData.issueType,
+  initialClaim: caseData.customerClaim,
+  claimedItemName: caseData.claimedItemName ?? null,
+  conversation: caseData.conversation.map(({ role, content }) => ({ role, content })),
+  order: caseData.order ? {
+    items: caseData.order.items.map(({ name, price }) => ({ name, price })),
+    totalAmount: caseData.order.totalAmount,
+    orderStatus: caseData.order.orderStatus,
+  } : null,
+})
+
+const fingerprint = (value: unknown, version = HUMAN_HANDOFF_SUMMARY_VERSION) => {
   const text = JSON.stringify(value)
   let hash = 2166136261
   for (let index = 0; index < text.length; index += 1) {
     hash ^= text.charCodeAt(index)
     hash = Math.imul(hash, 16777619)
   }
-  return `${HUMAN_HANDOFF_SUMMARY_VERSION}-${(hash >>> 0).toString(16)}`
+  return `${version}-${(hash >>> 0).toString(16)}`
 }
 
 export const getHumanHandoffSourceFingerprint = (caseData: CsCase) =>
   fingerprint(humanHandoffContext(caseData))
+
+export async function summarizeMerchantClaimWithOpenAI(
+  caseData: CsCase,
+  language: string,
+): Promise<string> {
+  const context = merchantClaimContext(caseData)
+  const sourceFingerprint = fingerprint(context, MERCHANT_CLAIM_SUMMARY_VERSION)
+  const requestKey = `${caseData.caseId}:${sourceFingerprint}:${language}`
+  const cached = merchantClaimCache.get(requestKey)
+  if (cached) return cached
+
+  const existing = merchantClaimRequests.get(requestKey)
+  if (existing) return existing
+
+  const request = requestJson<{ summary: string }>(
+    '/api/agent/merchant-claim-summary',
+    { language, context },
+    30_000,
+  ).then((result) => {
+    merchantClaimCache.set(requestKey, result.summary)
+    return result.summary
+  }).finally(() => {
+    merchantClaimRequests.delete(requestKey)
+  })
+
+  merchantClaimRequests.set(requestKey, request)
+  return request
+}
 
 export async function summarizeHumanHandoffWithOpenAI(
   caseData: CsCase,
@@ -183,8 +240,9 @@ export async function understandWithOpenAI(
   hint?: CustomerIssueHint | null,
 ): Promise<MessageUnderstanding | null> {
   try {
-    const result = await requestJson<Omit<MessageUnderstanding, 'claimedItemName'> & {
+    const result = await requestJson<Omit<MessageUnderstanding, 'claimedItemName' | 'clarificationQuestion'> & {
       claimedItemName: string | null
+      clarificationQuestion: string | null
     }>('/api/agent/understand', {
       message,
       hint: hint ?? null,
@@ -193,6 +251,7 @@ export async function understandWithOpenAI(
     return {
       ...result,
       claimedItemName: result.claimedItemName ?? undefined,
+      clarificationQuestion: result.clarificationQuestion ?? undefined,
     }
   } catch (error) {
     console.warn('OpenAI 문의 분류를 사용할 수 없어 규칙 기반 분류로 전환합니다.', error)
@@ -200,14 +259,38 @@ export async function understandWithOpenAI(
   }
 }
 
-const latestResult = <T>(caseData: CsCase, toolName: ToolName) =>
-  [...caseData.toolHistory]
-    .reverse()
-    .find((entry) => entry.toolName === toolName)
-    ?.result as ToolResult<T> | undefined
+export async function reassessIssueWithOpenAI(
+  caseData: CsCase,
+  orderItems: OrderItem[] = [],
+): Promise<IssueReassessment | null> {
+  try {
+    const result = await requestJson<Omit<IssueReassessment, 'claimedItemName' | 'clarificationQuestion'> & {
+      claimedItemName: string | null
+      clarificationQuestion: string | null
+    }>('/api/agent/reassess-issue', {
+      currentIssueType: caseData.issueType,
+      currentClaimedItemName: caseData.claimedItemName ?? null,
+      conversation: caseData.conversation.slice(-30).map(({ role, content }) => ({
+        role,
+        content,
+      })),
+      orderItems: orderItems.map(({ name }) => ({ name })),
+      orderStatus: caseData.order?.orderStatus ?? null,
+      deliveryStatus: caseData.delivery?.deliveryStatus ?? null,
+    })
+    return {
+      ...result,
+      claimedItemName: result.claimedItemName ?? undefined,
+      clarificationQuestion: result.clarificationQuestion ?? undefined,
+    }
+  } catch (error) {
+    console.warn('OpenAI 문의 유형 재검토를 사용할 수 없어 보수적인 규칙 판단으로 전환합니다.', error)
+    return null
+  }
+}
 
-const wasCalled = (caseData: CsCase, toolName: ToolName) =>
-  caseData.toolHistory.some((entry) => entry.toolName === toolName)
+const latestResult = latestToolResult
+const wasCalled = wasToolCalled
 
 const toSafeContext = (caseData: CsCase) => {
   const policy = latestResult<PolicyResult>(caseData, 'get_policy')
@@ -230,10 +313,45 @@ const toSafeContext = (caseData: CsCase) => {
     } : null,
     policyAllowedActions: policy?.status === 'success' ? policy.data.allowedActions : [],
     riskBlockedActions: risk?.status === 'success' ? risk.data.blockedActions : [],
-    toolHistory: caseData.toolHistory.map((entry) => ({
+    toolHistory: currentIssueToolHistory(caseData).map((entry) => ({
       toolName: entry.toolName,
       status: entry.result.status,
     })),
+  }
+}
+
+export async function decidePreMerchantInformationWithOpenAI(
+  caseData: CsCase,
+): Promise<PreMerchantInformationDecision | null> {
+  try {
+    return await requestJson<PreMerchantInformationDecision>(
+      '/api/agent/pre-merchant-information',
+      {
+        context: {
+          issueType: caseData.issueType,
+          language: caseData.customerLanguage ?? 'ko',
+          claimedItemName: caseData.claimedItemName ?? null,
+          customerDetailAlreadyRequested: Boolean(caseData.customerDetailRequestedAt),
+          customerDetailResponseReceived: Boolean(caseData.customerDetailProvidedAt),
+          customerConversation: caseData.conversation.slice(-20).map(({ role, content }) => ({
+            role,
+            content,
+          })),
+          order: caseData.order ? {
+            items: caseData.order.items.map(({ name }) => ({ name })),
+            orderStatus: caseData.order.orderStatus,
+          } : null,
+          delivery: caseData.delivery ? {
+            deliveryStatus: caseData.delivery.deliveryStatus,
+          } : null,
+          evidenceCount: caseData.evidenceUrls.length,
+        },
+      },
+      20_000,
+    )
+  } catch (error) {
+    console.warn('OpenAI 고객 정보 충분성 판단을 사용할 수 없어 안전한 기본 흐름으로 전환합니다.', error)
+    return null
   }
 }
 

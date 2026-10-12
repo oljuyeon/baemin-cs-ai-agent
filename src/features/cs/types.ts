@@ -10,6 +10,8 @@ export type IssueType =
   | 'wrong_delivery'
   | 'other'
 
+export type IssueClassificationStatus = 'PROVISIONAL' | 'CONFIRMED'
+
 export type CaseStatus =
   | 'NEW'
   | 'COLLECTING_INFO'
@@ -221,6 +223,7 @@ export type CaseActor = 'customer' | 'agent' | 'merchant' | 'cs'
 
 export type CaseEvent =
   | 'CASE_CREATED'
+  | 'ISSUE_TYPE_CHANGED'
   | 'STATUS_CHANGED'
   | 'EVIDENCE_ADDED'
   | 'MERCHANT_REQUESTED'
@@ -254,6 +257,8 @@ export type ToolName =
 export interface ToolCallLog {
   id: string
   step: number
+  /** 문의 유형이 정정돼도 이전 Policy/Risk 결과를 감사 기록으로 보존하기 위한 버전 */
+  issueVersion?: number
   toolName: ToolName
   input: unknown
   result: ToolResult<unknown>
@@ -268,12 +273,20 @@ export interface CsCase {
   orderId: string
   storeId: string
   issueType: IssueType
+  issueClassificationStatus: IssueClassificationStatus
+  issueConfidence: number
+  issueVersion: number
+  issueClarificationQuestion?: string
   tasks: CaseTask[]
   activeTaskId: string
   status: CaseStatus
   decision?: AgentDecision
   customerClaim: string
   customerLanguage?: CustomerLanguage
+  /** 매장 확인 전에 고객에게 사건의 구체적인 상황을 한 번 더 요청한 시각 */
+  customerDetailRequestedAt?: string
+  /** 위 요청 이후 고객이 추가 설명 또는 증빙을 보낸 시각 */
+  customerDetailProvidedAt?: string
   claimedItemName?: string
   receivedItemDescription?: string
   liability: Liability
@@ -367,6 +380,7 @@ export type AgentAction =
       type: 'ASK_CUSTOMER'
       question: string
       waitStatus?: 'COLLECTING_INFO' | 'WAITING_EVIDENCE' | 'ACTION_READY'
+      purpose?: 'ISSUE_DETAIL'
     }
   | {
       type: 'ASK_MERCHANT'
@@ -397,6 +411,9 @@ export interface CreateCaseInput {
   orderId: string
   storeId: string
   issueType: IssueType
+  issueClassificationStatus?: IssueClassificationStatus
+  issueConfidence?: number
+  issueClarificationQuestion?: string
   customerClaim: string
   customerLanguage?: CustomerLanguage
   claimedItemName?: string

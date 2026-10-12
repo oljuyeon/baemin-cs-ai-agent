@@ -295,9 +295,9 @@
   },
   "finalAction": {
     "guide_customer": "Guide customer",
-    "mock_coupon": "Mock coupon",
-    "mock_refund": "Mock refund",
-    "mock_redelivery": "Mock redelivery",
+    "mock_coupon": "Coupon",
+    "mock_refund": "Refund",
+    "mock_redelivery": "Redelivery",
     "human_review": "Human review",
     "no_action": "No action"
   }

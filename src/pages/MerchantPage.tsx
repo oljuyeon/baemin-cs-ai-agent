@@ -108,7 +108,7 @@ export function MerchantPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const submitToAgent = async (caseId: string) => {
+  const processMerchantReply = async (caseId: string) => {
     const result = await processMerchantResponse(caseId)
     refresh()
     return result.outcome
@@ -161,7 +161,7 @@ export function MerchantPage() {
                 refresh()
               }}
               onError={(message) => setFlash(message)}
-              onSubmitToAgent={submitToAgent}
+              onMerchantReply={processMerchantReply}
             />
           )}
         </div>
