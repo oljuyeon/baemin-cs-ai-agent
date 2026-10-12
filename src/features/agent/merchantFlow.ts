@@ -9,6 +9,7 @@ import {
   type MerchantResponse,
 } from '../cs'
 import { agentController } from './controller'
+import { interpretMerchantResponseWithOpenAI } from './remoteAgent'
 import { executeTool } from './toolExecutor'
 
 export type MerchantHandoffOutcome = 'completed' | 'follow_up' | 'customer_input'
@@ -20,7 +21,6 @@ export interface MerchantHandoffResult {
 
 const CHANGE_CONFIRMATION_PREFIX = '선택 확인:'
 const MORE_DETAIL_PREFIX = '추가 확인:'
-const CUSTOMER_INFO_PREFIX = '매장 추가 요청:'
 
 const responseDescription: Record<MerchantResponse, string> = {
   CONFIRMED: '누락 또는 오배달을 인정한다는 답변',
@@ -34,6 +34,13 @@ const customerUpdateByResponse: Record<MerchantResponse, string> = {
   DENIED: '매장에서는 주문대로 포장했다고 답변해 해결 조치를 승인하지 않았습니다. 이 답변을 확인하고 문의를 마치거나 고객센터에 직접 도움을 요청할 수 있어요.',
   POSSIBLE: '매장은 문제 가능성은 인정했지만 아직 환불·재배달을 승인하지 않았습니다. 추가 확인을 원하면 고객센터에 직접 도움을 요청할 수 있어요.',
   UNKNOWN: '매장에서 현재 포장 여부를 확정하기 어렵다고 답변했습니다. 이 답변을 확인하고 문의를 마치거나 고객센터에 직접 도움을 요청할 수 있어요.',
+}
+
+const merchantCompletionByResponse: Record<MerchantResponse, string> = {
+  CONFIRMED: '확인해 주셔서 감사합니다. 누락 또는 오배송 확인과 해결 동의 내용을 반영해 고객 안내와 후속 처리를 이어가겠습니다. 매장 확인은 여기서 마무리됩니다.',
+  DENIED: '확인해 주셔서 감사합니다. 정상 포장했다는 매장 답변을 고객 주장과 함께 검토해 후속 처리를 이어가겠습니다. 추가 확인이 필요하면 다시 요청드리겠습니다.',
+  POSSIBLE: '확인해 주셔서 감사합니다. 문제 발생 가능성이 있다는 답변을 반영해 추가 검토와 고객 안내를 이어가겠습니다. 추가 확인이 필요하면 다시 요청드리겠습니다.',
+  UNKNOWN: '답변해 주셔서 감사합니다. 현재 확인이 어렵다는 내용을 반영해 확보된 정보로 후속 처리를 이어가겠습니다. 추가 확인이 필요하면 다시 요청드리겠습니다.',
 }
 
 const normalize = (value: string) => value.replace(/\s+/g, '').toLowerCase()
@@ -60,18 +67,6 @@ const inferMerchantResponse = (content: string): MerchantResponse | undefined =>
 const merchantMessages = (conversation: MerchantConversationMessage[]) =>
   conversation.filter((message) => message.role === 'merchant')
 
-const customerInfoRequestFrom = (caseData: CsCase) => {
-  const latestMerchant = merchantMessages(
-    caseData.merchantConfirmation?.conversation ?? [],
-  ).at(-1)
-  if (!latestMerchant) return undefined
-
-  const content = latestMerchant.content.trim()
-  const asksForCustomerMaterial = /(사진|이미지|영수증|포장지|증빙|추가\s*(정보|설명|내용))/.test(content)
-    && /(첨부|보내|전달|요청|필요|희망|확인)/.test(content)
-  return asksForCustomerMaterial ? latestMerchant : undefined
-}
-
 const conditionalActionLabel = (
   action?: MerchantConditionalAction,
   couponAmount = 2_000,
@@ -83,74 +78,47 @@ const conditionalActionLabel = (
   return '사진 확인 후 매장 재확인'
 }
 
-const customerFacingRequest = (
+const asksForCustomerMaterial = (content: string) =>
+  /(사진|이미지|영수증|포장지|증빙|추가\s*(정보|설명|내용))/.test(content)
+  && /(첨부|보내|전달|요청|필요|희망|확인)/.test(content)
+
+const requestCustomerInformation = (
+  caseData: CsCase,
   request: string,
-  conditionalAction?: MerchantConditionalAction,
-  couponAmount?: number,
-) => [
-  `${CUSTOMER_INFO_PREFIX} 사장님이 추가 확인을 위해 다음 자료를 요청했습니다.`,
-  `“${request}”`,
-  `사진이 문의 내용을 명확히 뒷받침할 경우 예정 조치: ${conditionalActionLabel(conditionalAction, couponAmount)}`,
-  '첨부한 사진은 AI 분석을 위해 프로젝트 서버를 통해 OpenAI API로 전송됩니다.',
-  '사진을 첨부해 보내주시면 같은 문의에서 매장에 전달할게요. 원하지 않거나 해결이 어렵다면 아래에서 고객센터 연결을 선택할 수 있어요.',
-].join('\n')
+): MerchantHandoffResult => {
+  const confirmation = caseData.merchantConfirmation
+  if (!confirmation) return { outcome: 'follow_up', caseData }
 
-/**
- * 매장의 자유 입력에서 고객 자료 요청을 감지해 같은 Case를 고객 차례로 전환한다.
- * 이미 Human CS로 넘어간 기존 저장 Case도 새 정책에 맞게 다시 열 수 있다.
- */
-export function surfaceMerchantCustomerRequest(caseId: string): CsCase {
-  const current = caseStore.getCase(caseId)
-  if (!current?.merchantConfirmation) {
-    if (!current) throw new Error(`Case ${caseId} was not found.`)
-    return current
-  }
+  const prompt = [
+    '상황을 더 정확히 확인하려면 다음 자료가 필요합니다.',
+    `“${request}”`,
+    `사진이 문의 내용을 명확히 뒷받침할 경우 매장이 미리 선택한 조치: ${conditionalActionLabel(confirmation.conditionalAction, confirmation.conditionalCouponAmount)}`,
+    '첨부한 사진은 AI 분석을 위해 프로젝트 서버를 통해 OpenAI API로 전송됩니다.',
+    '사진이나 설명을 보내주시면 같은 문의에서 확인을 이어갈게요. 제공이 어렵다면 상담원에게 도움을 요청할 수 있어요.',
+  ].join('\n')
 
-  const confirmation = current.merchantConfirmation
-  if (confirmation.customerInfoProvidedAt) return current
-
-  const requestMessage = customerInfoRequestFrom(current)
-  if (!requestMessage) return current
-
-  const request = requestMessage.content.trim()
-  const prompt = customerFacingRequest(
-    request,
-    confirmation.conditionalAction,
-    confirmation.conditionalCouponAmount,
-  )
-  const alreadyForwarded = confirmation.customerInfoRequest === request
-    && current.conversation.some((message) => message.content === prompt)
-
-  if (
-    alreadyForwarded
-    && current.status === 'WAITING_EVIDENCE'
-    && confirmation.status === 'waiting'
-  ) return current
-
-  let next = caseStore.updateCase(caseId, {
+  let next = caseStore.updateCase(caseData.caseId, {
     status: 'WAITING_EVIDENCE',
     decision: 'NEED_MORE_INFO',
     finalAction: undefined,
+    escalationCode: undefined,
     escalationReason: undefined,
     agentSummary: undefined,
     merchantConfirmation: {
       ...confirmation,
       status: 'waiting',
       customerInfoRequest: request,
-      customerInfoRequestedAt: confirmation.customerInfoRequestedAt
-        ?? requestMessage.createdAt,
+      customerInfoRequestedAt: new Date().toISOString(),
+      pendingIntent: undefined,
     },
   })
-
-  if (!alreadyForwarded) {
-    next = caseStore.appendConversation(caseId, 'agent', prompt)
-  }
-  return next
+  next = caseStore.appendConversation(caseData.caseId, 'agent', prompt)
+  return { outcome: 'customer_input', caseData: next }
 }
 
 const latestAgentMessageIndex = (conversation: MerchantConversationMessage[]) => {
   for (let index = conversation.length - 1; index >= 0; index -= 1) {
-    if (conversation[index].role === 'agent') return index
+    if (conversation[index].role === 'agent' || conversation[index].role === 'human_cs') return index
   }
   return -1
 }
@@ -200,24 +168,55 @@ const resolvePendingChangeConfirmation = (
   )
 }
 
-const ensureStructuredResponse = (caseData: CsCase): MerchantHandoffResult | CsCase => {
+const ensureStructuredResponse = async (
+  caseData: CsCase,
+): Promise<MerchantHandoffResult | CsCase> => {
   const confirmation = caseData.merchantConfirmation
   if (!confirmation) return caseData
   if (confirmation.response) return caseData
 
   const directAnswer = merchantMessages(confirmation.conversation ?? []).at(-1)
-  const inferred = directAnswer
-    ? inferMerchantResponse(directAnswer.content)
-    : undefined
+  if (!directAnswer) return { outcome: 'follow_up', caseData }
 
-  if (!inferred) {
+  const interpretation = await interpretMerchantResponseWithOpenAI(
+    caseData,
+    caseData.customerLanguage ?? 'ko',
+  )
+  const fallbackCustomerRequest = !interpretation && asksForCustomerMaterial(directAnswer.content)
+    ? directAnswer.content.trim()
+    : null
+  const customerRequest = interpretation?.requestCustomerInfo
+    ? interpretation.customerInfoRequest
+    : fallbackCustomerRequest
+  if (customerRequest) {
+    return requestCustomerInformation(caseData, customerRequest)
+  }
+  const inferred = interpretation?.response
+    ?? inferMerchantResponse(directAnswer.content)
+  const followUpCount = confirmation.followUpCount ?? 0
+
+  if (
+    followUpCount < 1
+    && (interpretation?.needsFollowUp || !inferred)
+  ) {
+    caseStore.updateCase(caseData.caseId, {
+      merchantConfirmation: {
+        ...confirmation,
+        followUpCount: followUpCount + 1,
+      },
+    })
     return appendAgentQuestion(
       caseData.caseId,
-      `${MORE_DETAIL_PREFIX} 답변의 의미를 확정하기 어렵습니다. 빠른 답변을 선택하거나 누락·정상 포장·발생 가능성·확인 어려움 중 어디에 해당하는지 알려 주세요.`,
+      `${MORE_DETAIL_PREFIX} ${interpretation?.followUpQuestion
+        ?? '말씀하신 내용이 고객이 받은 상품과 어떤 관계인지 한 번만 더 설명해 주세요.'}`,
     )
   }
 
-  return caseStore.recordMerchantResponse(caseData.caseId, inferred)
+  return caseStore.recordMerchantResponse(
+    caseData.caseId,
+    inferred ?? 'UNKNOWN',
+    interpretation?.summary ?? directAnswer.content,
+  )
 }
 
 const checkResponseConflict = (caseData: CsCase): MerchantHandoffResult | CsCase => {
@@ -291,22 +290,13 @@ export async function processMerchantResponse(
     throw new Error(`Case ${caseId} is not waiting for a Merchant response.`)
   }
   if (original.merchantConfirmation.status === 'completed') {
-    const reopened = surfaceMerchantCustomerRequest(caseId)
-    if (reopened.status === 'WAITING_EVIDENCE') {
-      return { outcome: 'customer_input', caseData: reopened }
-    }
     return { outcome: 'completed', caseData: original }
   }
 
-  const customerRequest = surfaceMerchantCustomerRequest(caseId)
-  if (customerRequest.status === 'WAITING_EVIDENCE') {
-    return { outcome: 'customer_input', caseData: customerRequest }
-  }
-
-  const pendingChange = resolvePendingChangeConfirmation(customerRequest)
+  const pendingChange = resolvePendingChangeConfirmation(original)
   if (isHandoffResult(pendingChange)) return pendingChange
 
-  const structured = ensureStructuredResponse(pendingChange)
+  const structured = await ensureStructuredResponse(pendingChange)
   if (isHandoffResult(structured)) return structured
 
   const conflictChecked = checkResponseConflict(structured)
@@ -315,12 +305,40 @@ export async function processMerchantResponse(
   const detailChecked = requireSupportingDetail(conflictChecked)
   if (isHandoffResult(detailChecked)) return detailChecked
 
+  const responseForCompletion = detailChecked.merchantConfirmation?.response
+  if (responseForCompletion) {
+    caseStore.appendMerchantConversation(
+      caseId,
+      'agent',
+      merchantCompletionByResponse[responseForCompletion],
+    )
+  }
+
   const completedConfirmation = caseStore.completeMerchantConfirmation(caseId)
   const confirmed = caseStore.updateCase(caseId, {
     liability: inferLiability(completedConfirmation),
   })
+
+  if ((confirmed.merchantConfirmation?.requestedBy ?? 'agent') === 'human_cs') {
+    const returned = caseStore.commitCase(caseId, {
+      changes: {
+        status: 'ESCALATED',
+        decision: 'ESCALATE',
+        finalAction: 'human_review',
+        escalationReason: '상담원이 요청한 매장 추가 확인 답변이 도착함',
+      },
+      history: [{
+        actor: 'merchant',
+        event: 'ESCALATED',
+        fromStatus: 'WAITING_MERCHANT',
+        toStatus: 'ESCALATED',
+        detail: '매장 추가 확인 답변을 상담원 검토 대기열로 복귀',
+      }],
+    })
+    return { outcome: 'completed', caseData: returned }
+  }
   const confirmedResponse = confirmed.merchantConfirmation?.response
-  if (confirmedResponse) {
+  if (confirmedResponse === 'CONFIRMED') {
     const customerUpdate = requiresHumanCsBeforeMerchant(assessRisk(confirmed))
       ? '매장 답변이 접수되었습니다. 위험 신호가 있는 문의이므로 환불이나 재배달을 바로 확정하지 않고 상담원이 매장 답변과 전체 맥락을 다시 검토합니다.'
       : customerUpdateByResponse[confirmedResponse]

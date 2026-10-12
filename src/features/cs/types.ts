@@ -2,11 +2,15 @@ export type AgentUiState = 'ready' | 'working' | 'waiting' | 'resolved'
 
 export type UserRole = 'customer' | 'merchant' | 'cs'
 
+export type CustomerLanguage = 'ko' | 'en'
+
 export type IssueType =
   | 'delivery_delay'
   | 'missing_item'
   | 'wrong_delivery'
   | 'other'
+
+export type IssueClassificationStatus = 'PROVISIONAL' | 'CONFIRMED'
 
 export type CaseStatus =
   | 'NEW'
@@ -85,7 +89,7 @@ export interface ConversationMessage {
 }
 
 export interface MerchantConversationMessage {
-  role: 'merchant' | 'agent'
+  role: 'merchant' | 'agent' | 'human_cs'
   content: string
   createdAt: string
 }
@@ -175,8 +179,12 @@ export interface MerchantConfirmationData {
   comment?: string
   status: 'waiting' | 'completed'
   requestedAt: string
+  /** 매장 확인을 요청한 주체. 회신 후 복귀할 흐름을 결정한다. */
+  requestedBy?: 'agent' | 'human_cs'
   respondedAt?: string
   followUpCount?: number
+  /** 점주가 고객에게 추가 정보·사진을 요청하려고 선택한 상태 */
+  pendingIntent?: 'request_customer_info'
   /** 매장이 고객에게 요청한 추가 자료 또는 설명 */
   customerInfoRequest?: string
   customerInfoRequestedAt?: string
@@ -228,6 +236,7 @@ export type CaseActor = 'customer' | 'agent' | 'merchant' | 'cs'
 
 export type CaseEvent =
   | 'CASE_CREATED'
+  | 'ISSUE_TYPE_CHANGED'
   | 'STATUS_CHANGED'
   | 'EVIDENCE_ADDED'
   | 'MERCHANT_REQUESTED'
@@ -262,6 +271,8 @@ export type ToolName =
 export interface ToolCallLog {
   id: string
   step: number
+  /** 문의 유형이 정정돼도 이전 Policy/Risk 결과를 감사 기록으로 보존하기 위한 버전 */
+  issueVersion?: number
   toolName: ToolName
   input: unknown
   result: ToolResult<unknown>
@@ -276,11 +287,20 @@ export interface CsCase {
   orderId: string
   storeId: string
   issueType: IssueType
+  issueClassificationStatus: IssueClassificationStatus
+  issueConfidence: number
+  issueVersion: number
+  issueClarificationQuestion?: string
   tasks: CaseTask[]
   activeTaskId: string
   status: CaseStatus
   decision?: AgentDecision
   customerClaim: string
+  customerLanguage?: CustomerLanguage
+  /** 매장 확인 전에 고객에게 사건의 구체적인 상황을 한 번 더 요청한 시각 */
+  customerDetailRequestedAt?: string
+  /** 위 요청 이후 고객이 추가 설명 또는 증빙을 보낸 시각 */
+  customerDetailProvidedAt?: string
   claimedItemName?: string
   receivedItemDescription?: string
   liability: Liability
@@ -296,6 +316,7 @@ export interface CsCase {
   appliedPolicy?: string
   riskFlags: RiskFlag[]
   agentSummary?: string
+  escalationCode?: 'MERCHANT_TIMEOUT'
   escalationReason?: string
   humanHandoffSummary?: HumanHandoffSummary
   finalAction?: FinalAction
@@ -379,6 +400,7 @@ export type AgentAction =
       type: 'ASK_CUSTOMER'
       question: string
       waitStatus?: 'COLLECTING_INFO' | 'WAITING_EVIDENCE' | 'ACTION_READY'
+      purpose?: 'ISSUE_DETAIL'
     }
   | {
       type: 'ASK_MERCHANT'
@@ -394,6 +416,8 @@ export type AgentAction =
       decision: AgentDecision
       finalAction: FinalAction
       customerMessage: string
+      /** 상담원 인수인계에만 쓰며 고객에게 그대로 노출하지 않는 내부 이관 근거 */
+      escalationReason?: string
     }
 
 export interface AgentController {
@@ -409,7 +433,11 @@ export interface CreateCaseInput {
   orderId: string
   storeId: string
   issueType: IssueType
+  issueClassificationStatus?: IssueClassificationStatus
+  issueConfidence?: number
+  issueClarificationQuestion?: string
   customerClaim: string
+  customerLanguage?: CustomerLanguage
   claimedItemName?: string
   receivedItemDescription?: string
   evidenceUrls?: string[]

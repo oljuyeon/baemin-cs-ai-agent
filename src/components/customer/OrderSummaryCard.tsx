@@ -5,10 +5,13 @@ import {
   findMerchant,
   findOrder,
   mockOrders,
+  type DeliveryData,
+  type OrderData,
 } from '../../features/cs'
 
-const selectableOrderIds = new Set(['A1001', 'A1002', 'A1004'])
-export const selectableOrders = mockOrders.filter((order) => selectableOrderIds.has(order.orderId))
+export const selectableOrders = [...mockOrders].sort((left, right) =>
+  left.orderId.localeCompare(right.orderId, undefined, { numeric: true }),
+)
 
 export const firstSelectableOrderId = selectableOrders[0]?.orderId ?? ''
 
@@ -16,17 +19,30 @@ export function OrderSummaryCard({
   orderId,
   locked,
   onOrderChange,
+  orderSnapshot,
+  deliverySnapshot,
 }: {
   orderId: string
   locked: boolean
   onOrderChange: (orderId: string) => void
+  orderSnapshot?: OrderData
+  deliverySnapshot?: DeliveryData
 }) {
   const { t, i18n } = useTranslation('customer')
   const [clockNow, setClockNow] = useState(() => Date.now())
-  const order = findOrder(orderId)
-  const delivery = order ? findDelivery(order.orderId, clockNow) : undefined
+  const order = orderSnapshot?.orderId === orderId ? orderSnapshot : findOrder(orderId)
+  const delivery = deliverySnapshot?.orderId === orderId
+    ? deliverySnapshot
+    : order
+      ? findDelivery(order.orderId, clockNow)
+      : undefined
   const merchant = order ? findMerchant(order.storeId) : undefined
   const locale = i18n.language === 'en' ? 'en-US' : 'ko-KR'
+  const deliveryCompletedAt = delivery?.deliveryStatus === 'delivered'
+    ? delivery.deliveredAt
+    : undefined
+  const deliveryTime = deliveryCompletedAt ?? delivery?.expectedAt
+  const deliveryStatus = delivery?.deliveryStatus ?? order?.orderStatus
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockNow(Date.now()), 30_000)
@@ -74,10 +90,10 @@ export function OrderSummaryCard({
         </div>
         <p>{order.items.map((item) => item.name).join(' · ')}</p>
         <div className="order-summary-card__status">
-          <div><span>{t('order.statusLabel')}</span><strong><i />{delivery?.deliveryStatus ?? order.orderStatus}</strong></div>
+          <div><span>{t('order.statusLabel')}</span><strong><i />{deliveryStatus ? t(`order.statuses.${deliveryStatus}`, { defaultValue: deliveryStatus }) : '-'}</strong></div>
           <div>
-            <span>{t('order.etaLabel')}</span>
-            <strong>{delivery?.expectedAt ? new Date(delivery.expectedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-'}</strong>
+            <span>{t(deliveryCompletedAt ? 'order.deliveredAtLabel' : 'order.etaLabel')}</span>
+            <strong>{deliveryTime ? new Date(deliveryTime).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '-'}</strong>
             {delivery && (
               <small>
                 {delivery.deliveredAt

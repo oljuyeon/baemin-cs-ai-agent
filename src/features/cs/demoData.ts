@@ -8,14 +8,24 @@ import type {
 } from './types'
 
 const FIXTURE_NOW = new Date('2026-10-15T10:00:00+09:00').getTime()
-const APP_OPENED_AT = Date.now()
+const DEMO_REFERENCE_NOW = Date.now()
+let demoReferenceNow = DEMO_REFERENCE_NOW
+
+const FIXED_ACTIVE_DELAYS: Record<string, number> = {
+  A1001: 18,
+  A1006: 32,
+  A1007: 65,
+}
 
 const shiftFixtureTime = (value: string) =>
-  new Date(new Date(value).getTime() + APP_OPENED_AT - FIXTURE_NOW).toISOString()
+  new Date(new Date(value).getTime() + DEMO_REFERENCE_NOW - FIXTURE_NOW).toISOString()
 
 const shiftOptionalFixtureTime = (value?: string) =>
   value ? shiftFixtureTime(value) : undefined
 
+export const markAppStarted = () => {
+  demoReferenceNow = DEMO_REFERENCE_NOW
+}
 export const mockCustomers: CustomerData[] = [
   { customerId: 'C001', name: '김지연', recentOrderCount: 8, refundCount30d: 1 },
   { customerId: 'C002', name: '정누락', recentOrderCount: 3, refundCount30d: 0 },
@@ -201,13 +211,13 @@ const orderFixtures: OrderData[] = [
   },
 ]
 
-/** 고정 Fixture의 시간 간격은 유지하고, 날짜는 앱을 연 시각 기준으로 이동한다. */
+/** 고정 Fixture의 시간 간격은 유지하고, 날짜는 Demo 데이터 생성 시점 기준으로 이동한다. */
 export const mockOrders: OrderData[] = orderFixtures.map((order) => ({
   ...order,
   orderedAt: shiftFixtureTime(order.orderedAt),
 }))
 
-type StoredDelivery = Omit<DeliveryData, 'delayMinutes'>
+type StoredDelivery = Omit<DeliveryData, 'delayMinutes'> & Partial<Pick<DeliveryData, 'delayMinutes'>>
 
 const deliveryFixtures: StoredDelivery[] = [
   {
@@ -312,19 +322,36 @@ const deliveryFixtures: StoredDelivery[] = [
   },
 ]
 
-export const mockDeliveries: StoredDelivery[] = deliveryFixtures.map((delivery) => ({
-  ...delivery,
-  riderAssignedAt: shiftOptionalFixtureTime(delivery.riderAssignedAt),
-  pickedUpAt: shiftOptionalFixtureTime(delivery.pickedUpAt),
-  expectedAt: shiftFixtureTime(delivery.expectedAt),
-  deliveredAt: shiftOptionalFixtureTime(delivery.deliveredAt),
-}))
+export const mockDeliveries: StoredDelivery[] = deliveryFixtures.map((delivery) => {
+  const configuredDelay = FIXED_ACTIVE_DELAYS[delivery.orderId]
+  const deliveredAt = shiftOptionalFixtureTime(delivery.deliveredAt)
+  const shiftedExpectedAt = configuredDelay === undefined
+    ? shiftFixtureTime(delivery.expectedAt)
+    : new Date(DEMO_REFERENCE_NOW - configuredDelay * 60_000).toISOString()
+  const expectedAt = delivery.deliveryStatus === 'delivered'
+    && deliveredAt
+    && new Date(deliveredAt).getTime() > new Date(shiftedExpectedAt).getTime()
+    ? deliveredAt
+    : shiftedExpectedAt
 
-/** 배달 완료 시각이 있으면 그 시각, 진행 중이면 현재 시각을 예상 도착 시각과 비교한다. */
+  return {
+    ...delivery,
+    riderAssignedAt: shiftOptionalFixtureTime(delivery.riderAssignedAt),
+    pickedUpAt: shiftOptionalFixtureTime(delivery.pickedUpAt),
+    expectedAt,
+    deliveredAt,
+    delayMinutes: delivery.deliveryStatus === 'delivered' ? undefined : configuredDelay,
+  }
+})
+
+/** Case에 저장된 지연값을 우선 사용하고, 새 Demo 배송만 생성 기준 시각으로 계산한다. */
 export const calculateDelayMinutes = (
-  delivery: Pick<DeliveryData, 'expectedAt' | 'deliveredAt'>,
-  now = Date.now(),
+  delivery: Pick<DeliveryData, 'expectedAt' | 'deliveredAt'> & Partial<Pick<DeliveryData, 'delayMinutes'>>,
+  now = demoReferenceNow,
 ) => {
+  if (typeof delivery.delayMinutes === 'number' && Number.isFinite(delivery.delayMinutes)) {
+    return delivery.delayMinutes
+  }
   const reference = delivery.deliveredAt ? new Date(delivery.deliveredAt).getTime() : now
   return Math.floor((reference - new Date(delivery.expectedAt).getTime()) / 60_000)
 }

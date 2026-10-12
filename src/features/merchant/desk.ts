@@ -53,7 +53,7 @@ export const isAwaitingMerchantReply = (caseData: CsCase) => {
   const latestAgentRequest = latestTimestamp([
     confirmation.requestedAt,
     ...confirmation.conversation
-      .filter((message) => message.role === 'agent')
+      .filter((message) => message.role === 'agent' || message.role === 'human_cs')
       .map((message) => message.createdAt),
   ])
   const latestMerchantAnswer = latestTimestamp([
@@ -75,7 +75,7 @@ export const isOverdueRequest = (caseData: CsCase, now = Date.now()) => {
   const waitingSince = latestTimestamp([
     confirmation.requestedAt,
     ...confirmation.conversation
-      .filter((message) => message.role === 'agent')
+      .filter((message) => message.role === 'agent' || message.role === 'human_cs')
       .map((message) => message.createdAt),
   ])
   return waitingSince > 0 && now - waitingSince >= REMINDER_AFTER_MS

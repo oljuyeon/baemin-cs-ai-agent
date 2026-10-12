@@ -65,6 +65,14 @@
 .merchant-claim-item { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #fff8ee; font-size: .86rem; }
 .merchant-claim-item span { color: #9a6230; font-size: .72rem; font-weight: 800; }
 .merchant-detail blockquote { margin: 0; padding: 14px 16px; border-radius: 16px; background: #f4fbfa; color: var(--color-text); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .9rem; line-height: 1.55; }
+.merchant-customer-summary { margin: 0; padding: 13px 15px; border-radius: 15px; background: #f4fbfa; color: var(--color-text); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .88rem; line-height: 1.55; }
+.merchant-customer-conversation { margin-top: 8px; font-family: Pretendard, "Noto Sans KR", sans-serif; }
+.merchant-customer-conversation > summary { width: fit-content; color: var(--color-muted); cursor: pointer; font-size: .72rem; font-weight: 800; }
+.merchant-customer-conversation__thread { display: grid; gap: 7px; max-height: 220px; margin-top: 9px; overflow: auto; padding: 10px; border: 1px solid var(--color-line); border-radius: 14px; background: #fbfdfd; }
+.merchant-customer-conversation__message { width: fit-content; max-width: 86%; padding: 8px 10px; border-radius: 12px; background: #fff; color: var(--color-text); font-size: .78rem; line-height: 1.45; }
+.merchant-customer-conversation__message.is-customer { justify-self: end; background: #eaf8f6; }
+.merchant-customer-conversation__message strong { display: block; margin-bottom: 2px; font-size: .64rem; }
+.merchant-customer-conversation__message p { margin: 0; }
 .merchant-evidence-row { display: flex; gap: 10px; }
 .merchant-evidence { width: 140px; margin: 0; overflow: hidden; border-radius: 16px; background: #fff8ee; }
 .merchant-evidence img { display: block; width: 100%; height: 110px; object-fit: cover; }
@@ -78,6 +86,7 @@
 .merchant-chat__messages { display: grid; gap: 8px; max-height: 280px; overflow: auto; }
 .merchant-chat__message { max-width: 86%; padding: 10px 12px; border-radius: 14px; font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .86rem; line-height: 1.5; }
 .merchant-chat__message--agent { justify-self: start; border: 1px solid var(--color-line); background: #fff; }
+.merchant-chat__message--human_cs { justify-self: start; border: 1px solid #8e7be8; background: #f3f0ff; color: #4d3da1; }
 .merchant-chat__message--merchant { justify-self: end; background: #fff4e8; color: #6b3d12; }
 .merchant-chat__message--choice { border: 1px solid #e2a15a; box-shadow: 0 6px 16px rgba(197,106,34,.08); }
 .merchant-chat__message small { display: block; margin-bottom: 4px; font-size: .68rem; font-weight: 800; }
@@ -86,21 +95,26 @@
 .merchant-chat__send textarea { flex: 1; min-height: 46px; margin: 0; }
 .merchant-chat__send button { width: auto; min-height: 46px; margin-top: 0; padding: 0 16px; }
 .merchant-follow-up { margin: 8px 0 0; color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .75rem; line-height: 1.45; }
-.merchant-agent-submit { display: grid; gap: 8px; margin-top: 4px; padding: 12px; border: 1px solid #b9ddd5; border-radius: 14px; background: #effaf7; }
-.merchant-agent-submit p { margin: 0; color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .76rem; line-height: 1.45; }
-.merchant-agent-submit__button { width: 100%; min-height: 46px; border: 0; border-radius: var(--radius-pill); background: var(--color-primary); color: #fff; cursor: pointer; font-weight: 800; }
-.merchant-agent-submit__button:disabled { cursor: default; opacity: .5; }
 .merchant-response--chat { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--color-line); }
 .merchant-response__choices { display: grid; grid-template-columns: 1fr; gap: 8px; }
 .merchant-response__choices button { min-width: 0; min-height: 44px; padding: 0 15px; border: 1px solid var(--color-line); border-radius: 14px; background: #fff; text-align: left; white-space: nowrap; cursor: pointer; font-size: .84rem; font-weight: 800; letter-spacing: -.035em; }
 .merchant-response__choices button.is-selected { border-color: var(--color-primary); background: var(--color-primary-pale); color: var(--color-primary-dark); }
+.merchant-response__section { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--color-line); border-radius: 16px; background: #fff; }
+.merchant-response__section > strong { font-size: 1rem; }
+.merchant-response__section > p { margin: 0; color: var(--color-muted); font-size: .82rem; line-height: 1.5; }
+.merchant-response__conditional { background: #f5fbfa; }
+.merchant-response__result { background: #fffaf4; }
+.merchant-response__confirm { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: #fff3df; }
+.merchant-response__confirm p { margin: 0; font-size: .84rem; font-weight: 750; line-height: 1.5; }
+.merchant-response__confirm > div { display: flex; gap: 8px; }
+.merchant-response__confirm button { min-height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--color-primary); color: #fff; font-weight: 800; cursor: pointer; }
+.merchant-response__confirm button.is-secondary { border: 1px solid var(--color-line); background: #fff; color: var(--color-text); }
 .merchant-choice-note { margin: 0; color: var(--color-muted); font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .75rem; line-height: 1.45; }
 .merchant-response label { display: grid; gap: 8px; font-size: .82rem; font-weight: 800; }
 .merchant-response textarea { min-height: 84px; padding: 12px; border: 1px solid var(--color-line); border-radius: 14px; resize: vertical; font: inherit; font-weight: 500; font-family: Pretendard, "Noto Sans KR", sans-serif; }
 .merchant-response--saved { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--color-line); }
 .merchant-response--saved h3 { margin: 10px 0 0; }
 .merchant-response--saved h3:first-child { margin-top: 0; }
-.merchant-response--saved .merchant-agent-update { padding: 12px 14px; border: 1px solid #d9ebe8; border-radius: 14px; background: #f4fbfa; color: var(--color-text); }
 .merchant-form-error { margin: 8px 0 0; color: #a14b3c; font-family: Pretendard, "Noto Sans KR", sans-serif; font-size: .78rem; }
 .merchant-detail__back { display: none; align-items: center; gap: 6px; margin-bottom: 12px; padding: 0; border: 0; background: none; color: var(--color-muted); cursor: pointer; font-size: .8rem; }
 .merchant-detail__back svg { width: 16px; height: 16px; }

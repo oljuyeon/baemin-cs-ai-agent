@@ -13,7 +13,6 @@ export function HeroSection() {
           <p>{t('hero.description')}</p>
           <div className="hero__actions">
             <Button to="/login">{t('hero.primaryCta')}<ArrowIcon /></Button>
-            <a className="text-link" href="#roles">{t('hero.secondaryCta')}<ArrowIcon /></a>
           </div>
           <span className="hero__time"><CheckIcon />{t('hero.time')}</span>
         </div>

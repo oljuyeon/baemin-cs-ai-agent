@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   agentTools,
   caseStore,
+  isAutomaticMissingCandidate,
+  resolvePersistedEvidenceUrl,
   type CsCase,
   type MerchantConditionalAction,
   type MerchantResponse,
   type OrderData,
 } from '../../features/cs'
+import { summarizeMerchantClaimWithOpenAI } from '../../features/agent'
 import { BackIcon } from '../customer/CustomerIcons'
 
 const responses: MerchantResponse[] = [
@@ -17,8 +20,7 @@ const responses: MerchantResponse[] = [
   'UNKNOWN',
 ]
 
-const conditionalActions: MerchantConditionalAction[] = [
-  'mock_coupon',
+const standardConditionalActions: MerchantConditionalAction[] = [
   'mock_refund',
   'mock_redelivery',
   'merchant_review',
@@ -36,20 +38,6 @@ const formatWhen = (value: string | undefined, language: string) => {
 
 const formatPrice = (price: number, language: string) =>
   new Intl.NumberFormat(language === 'en' ? 'en-US' : 'ko-KR').format(price)
-
-const latestAgentUpdate = (caseData: CsCase) => {
-  const respondedAt = caseData.merchantConfirmation?.respondedAt
-  if (!respondedAt) return undefined
-
-  return [
-    ...caseData.conversation.filter((message) =>
-      message.role === 'agent' && message.createdAt >= respondedAt,
-    ),
-    ...(caseData.merchantConfirmation?.conversation ?? []).filter((message) =>
-      message.role === 'agent' && message.createdAt >= respondedAt,
-    ),
-  ].sort((left, right) => left.createdAt.localeCompare(right.createdAt)).at(-1)?.content
-}
 
 const progressKey = (caseData: CsCase) => {
   switch (caseData.status) {
@@ -81,15 +69,25 @@ const pendingActionKey = (caseData: CsCase) => {
 
 function EvidenceCard({ url }: { url: string }) {
   const { t } = useTranslation('merchant')
-  const displayable = /^(https?:|blob:|data:)/.test(url)
+  const [resolvedUrl, setResolvedUrl] = useState(url)
+  useEffect(() => {
+    let cancelled = false
+    void resolvePersistedEvidenceUrl(url).then((value) => {
+      if (!cancelled) setResolvedUrl(value)
+    })
+    return () => { cancelled = true }
+  }, [url])
+  const displayable = /^(https?:|blob:|data:)/.test(resolvedUrl)
   if (displayable) {
     return (
       <figure className="merchant-evidence">
-        <img src={url} alt={t('detail.photoCaption')} />
+        <img src={resolvedUrl} alt={t('detail.photoCaption')} />
       </figure>
     )
   }
-  const label = url.split('/').pop() ?? url
+  const label = resolvedUrl.startsWith('saved-image://')
+    ? t('detail.photoReloadUnavailable')
+    : resolvedUrl.split('/').pop() ?? resolvedUrl
   return (
     <figure className="merchant-evidence merchant-evidence--mock">
       <span aria-hidden="true" />
@@ -107,29 +105,37 @@ export function RequestDetail({
   onBack,
   onSaved,
   onError,
-  onSubmitToAgent,
+  onMerchantReply,
 }: {
   caseData: CsCase | null
   showBack: boolean
   onBack: () => void
   onSaved: (message: string) => void
   onError: (message: string) => void
-  onSubmitToAgent: (caseId: string) => Promise<'completed' | 'follow_up' | 'customer_input'>
+  onMerchantReply: (caseId: string) => Promise<'completed' | 'follow_up' | 'customer_input'>
 }) {
   const { t, i18n } = useTranslation('merchant')
   const [order, setOrder] = useState<OrderData | null>(caseData?.order ?? null)
   const [draft, setDraft] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [submittingToAgent, setSubmittingToAgent] = useState(false)
+  const [pendingResponse, setPendingResponse] = useState<MerchantResponse | null>(null)
+  const [claimSummary, setClaimSummary] = useState<string>()
+  const [claimSummaryState, setClaimSummaryState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const submittingRef = useRef(false)
 
   const caseId = caseData?.caseId
   const orderId = caseData?.orderId
   const storedOrder = caseData?.order
+  const caseUpdatedAt = caseData?.updatedAt
+  const summaryLanguage = i18n.resolvedLanguage || i18n.language || 'ko'
 
   useEffect(() => {
     setDraft('')
     setFormError(null)
     setSubmittingToAgent(false)
+    setPendingResponse(null)
+    submittingRef.current = false
     if (!caseId || !orderId) {
       setOrder(null)
       return
@@ -147,6 +153,34 @@ export function RequestDetail({
       cancelled = true
     }
   }, [caseId, orderId])
+
+  useEffect(() => {
+    if (!caseData) {
+      setClaimSummary(undefined)
+      setClaimSummaryState('idle')
+      return
+    }
+
+    let cancelled = false
+    const current = caseData
+    setClaimSummary(undefined)
+    setClaimSummaryState('loading')
+    void summarizeMerchantClaimWithOpenAI(current, summaryLanguage)
+      .then((summary) => {
+        if (cancelled) return
+        setClaimSummary(summary)
+        setClaimSummaryState('ready')
+      })
+      .catch((summaryError) => {
+        if (cancelled) return
+        console.warn('사장님 화면의 고객 주장 요약을 생성하지 못했습니다.', summaryError)
+        setClaimSummaryState('error')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [caseId, caseUpdatedAt, summaryLanguage])
 
   if (!caseData) {
     return (
@@ -168,7 +202,14 @@ export function RequestDetail({
   const messages = confirmation?.conversation ?? []
   const selectedResponse = confirmation?.response
   const selectedConditionalAction = confirmation?.conditionalAction
-  const agentUpdate = latestAgentUpdate(caseData)
+  const lowPriceMissing = caseData.issueType === 'missing_item'
+    && isAutomaticMissingCandidate({
+      ...caseData,
+      order: caseData.order ?? order ?? undefined,
+    })
+  const conditionalActions: MerchantConditionalAction[] = lowPriceMissing
+    ? ['mock_coupon', ...standardConditionalActions]
+    : standardConditionalActions
   const responseLabel = (response: MerchantResponse) => t(
     `issueResponses.${caseData.issueType}.${response}`,
     { defaultValue: t(`responses.${response}`) },
@@ -184,23 +225,9 @@ export function RequestDetail({
         }]
       : []),
   ].sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-  const canSubmitToAgent = Boolean(
-    selectedResponse || messages.some((message) => message.role === 'merchant'),
-  )
-  const choose = (choice: MerchantResponse) => {
-    try {
-      caseStore.recordMerchantResponse(caseData.caseId, choice)
-      setFormError(null)
-      onSaved(t('detail.choiceSaved'))
-    } catch {
-      const message = t('detail.error')
-      setFormError(message)
-      onError(message)
-    }
-  }
-
   const chooseConditionalAction = (choice: MerchantConditionalAction) => {
     if (!confirmation) return
+    if (choice === 'mock_coupon' && !lowPriceMissing) return
     try {
       caseStore.updateCase(caseData.caseId, {
         merchantConfirmation: {
@@ -218,27 +245,13 @@ export function RequestDetail({
     }
   }
 
-  const sendMessage = () => {
-    const content = draft.trim()
-    if (!content) return
-    try {
-      caseStore.appendMerchantConversation(caseData.caseId, 'merchant', content)
-      setDraft('')
-      setFormError(null)
-      onSaved(t('detail.messageSaved'))
-    } catch {
-      const message = t('detail.error')
-      setFormError(message)
-      onError(message)
-    }
-  }
-
-  const submitToAgent = async () => {
-    if (submittingToAgent) return
+  const continueWithAgent = async () => {
+    if (submittingRef.current) return
+    submittingRef.current = true
     setSubmittingToAgent(true)
     setFormError(null)
     try {
-      const outcome = await onSubmitToAgent(caseData.caseId)
+      const outcome = await onMerchantReply(caseData.caseId)
       onSaved(t(
         outcome === 'completed'
           ? 'detail.agentCompleted'
@@ -251,7 +264,45 @@ export function RequestDetail({
       setFormError(message)
       onError(message)
     } finally {
+      submittingRef.current = false
       setSubmittingToAgent(false)
+    }
+  }
+
+  const choose = (choice: MerchantResponse) => {
+    if (submittingRef.current) return
+    setPendingResponse(choice)
+    setFormError(null)
+  }
+
+  const confirmChoice = async () => {
+    if (!pendingResponse || submittingRef.current) return
+    try {
+      caseStore.recordMerchantResponse(caseData.caseId, pendingResponse)
+      setPendingResponse(null)
+      setFormError(null)
+      onSaved(t('detail.choiceSaved'))
+      await continueWithAgent()
+    } catch {
+      const message = t('detail.error')
+      setFormError(message)
+      onError(message)
+    }
+  }
+
+  const sendMessage = async () => {
+    const content = draft.trim()
+    if (!content || submittingRef.current) return
+    try {
+      caseStore.appendMerchantConversation(caseData.caseId, 'merchant', content)
+      setDraft('')
+      setFormError(null)
+      onSaved(t('detail.messageSaved'))
+      await continueWithAgent()
+    } catch {
+      const message = t('detail.error')
+      setFormError(message)
+      onError(message)
     }
   }
 
@@ -290,7 +341,28 @@ export function RequestDetail({
         <p className="merchant-claim-item"><span>{t('detail.item')}</span>{confirmation.itemName}</p>
       )}
       <h3>{t('detail.claim')}</h3>
-      <blockquote>{caseData.customerClaim}</blockquote>
+      <p className="merchant-customer-summary" aria-live="polite">
+        {claimSummary
+          ?? (claimSummaryState === 'loading'
+            ? t('detail.claimSummaryLoading')
+            : caseData.customerClaim)}
+      </p>
+      {caseData.conversation.length > 0 && (
+        <details className="merchant-customer-conversation">
+          <summary>{t('detail.customerConversation')}</summary>
+          <div className="merchant-customer-conversation__thread">
+            {caseData.conversation.map((message, index) => (
+              <article
+                key={`${message.createdAt}-${message.role}-${index}`}
+                className={`merchant-customer-conversation__message is-${message.role}`}
+              >
+                <strong>{t(message.role === 'customer' ? 'detail.customerName' : 'detail.agentName')}</strong>
+                <p>{message.content}</p>
+              </article>
+            ))}
+          </div>
+        </details>
+      )}
       <h3>{t('detail.photos')}</h3>
       {photos.length === 0 ? (
         <p className="merchant-muted">{t('detail.noPhoto')}</p>
@@ -318,7 +390,11 @@ export function RequestDetail({
               <small>
                 {message.kind === 'choice'
                   ? t('detail.choiceMessageLabel')
-                  : t(message.role === 'agent' ? 'detail.agentName' : 'detail.merchantName')}
+                  : t(message.role === 'human_cs'
+                    ? 'detail.humanCsName'
+                    : message.role === 'agent'
+                      ? 'detail.agentName'
+                      : 'detail.merchantName')}
               </small>
               {message.content}
             </p>
@@ -329,55 +405,89 @@ export function RequestDetail({
             className="merchant-response merchant-response--chat"
             onSubmit={(event) => {
               event.preventDefault()
-              sendMessage()
+              void sendMessage()
             }}
           >
-            <div
-              className="merchant-response__choices"
-              role="group"
-              aria-label={t('detail.choiceLabel')}
-            >
-              {responses.map((choice) => (
-                <button
-                  key={choice}
-                  type="button"
-                  className={selectedResponse === choice ? 'is-selected' : undefined}
-                  title={responseLabel(choice)}
-                  onClick={() => choose(choice)}
+            {photos.length > 0 && (
+              <section className="merchant-response__section merchant-response__conditional">
+                <strong>{t('detail.conditionalTitle')}</strong>
+                <p>{t('detail.conditionalHint')}</p>
+                <div
+                  className="merchant-response__choices"
+                  role="group"
+                  aria-label={t('detail.conditionalTitle')}
                 >
-                  {responseLabel(choice)}
-                </button>
-              ))}
-            </div>
-            <p className="merchant-choice-note">
-              {t(selectedResponse ? 'detail.choiceReceived' : 'detail.choiceHint')}
-            </p>
-            <div className="merchant-response__conditional">
-              <strong>{t('detail.conditionalTitle')}</strong>
-              <p>{t('detail.conditionalHint')}</p>
+                  {conditionalActions.map((choice) => (
+                    <button
+                      key={choice}
+                      type="button"
+                      className={selectedConditionalAction === choice ? 'is-selected' : undefined}
+                      disabled={submittingToAgent}
+                      onClick={() => chooseConditionalAction(choice)}
+                    >
+                      {t(`detail.conditionalActions.${choice}`)}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+            <section className="merchant-response__section merchant-response__result">
+              <strong>{t('detail.resultTitle')}</strong>
+              <p>{t('detail.resultHint')}</p>
               <div
                 className="merchant-response__choices"
                 role="group"
-                aria-label={t('detail.conditionalTitle')}
+                aria-label={t('detail.choiceLabel')}
               >
-                {conditionalActions.map((choice) => (
+                {responses.map((choice) => (
                   <button
                     key={choice}
                     type="button"
-                    className={selectedConditionalAction === choice ? 'is-selected' : undefined}
-                    onClick={() => chooseConditionalAction(choice)}
+                    className={(pendingResponse ?? selectedResponse) === choice ? 'is-selected' : undefined}
+                    title={responseLabel(choice)}
+                    disabled={submittingToAgent}
+                    onClick={() => choose(choice)}
                   >
-                    {t(`detail.conditionalActions.${choice}`)}
+                    {responseLabel(choice)}
                   </button>
                 ))}
               </div>
-            </div>
+              {pendingResponse ? (
+                <div className="merchant-response__confirm" role="status">
+                  <p>{t('detail.confirmChoice', { choice: responseLabel(pendingResponse) })}</p>
+                  <div>
+                    <button type="button" onClick={() => void confirmChoice()} disabled={submittingToAgent}>
+                      {t('detail.confirmChoiceAction')}
+                    </button>
+                    <button type="button" className="is-secondary" onClick={() => setPendingResponse(null)} disabled={submittingToAgent}>
+                      {t('detail.changeChoice')}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="merchant-choice-note">
+                  {t(selectedResponse ? 'detail.choiceReceived' : 'detail.choiceHint')}
+                </p>
+              )}
+            </section>
+            <p className="merchant-choice-note">{t('detail.customerInfoAgentHint')}</p>
             <label className="merchant-chat__composer">
               {t(selectedResponse ? 'detail.correctionLabel' : 'detail.messageLabel')}
               <span className="merchant-chat__send">
                 <textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === 'Enter'
+                      && !event.shiftKey
+                      && !event.nativeEvent.isComposing
+                    ) {
+                      event.preventDefault()
+                      void sendMessage()
+                    }
+                  }}
+                  disabled={submittingToAgent}
                   placeholder={t(
                     selectedResponse
                       ? `detail.responsePlaceholder.${caseData.issueType}.${selectedResponse}`
@@ -391,22 +501,11 @@ export function RequestDetail({
                       : undefined,
                   )}
                 />
-                <button type="submit" className="merchant-submit">{t('detail.send')}</button>
+                <button type="submit" className="merchant-submit" disabled={submittingToAgent || !draft.trim()}>
+                  {t(submittingToAgent ? 'detail.submittingToAgent' : 'detail.send')}
+                </button>
               </span>
             </label>
-            <div className="merchant-agent-submit">
-              <p>{t('detail.submitHint')}</p>
-              <button
-                type="button"
-                className="merchant-agent-submit__button"
-                disabled={!canSubmitToAgent || submittingToAgent}
-                onClick={() => { void submitToAgent() }}
-              >
-                {t(submittingToAgent
-                  ? 'detail.submittingToAgent'
-                  : 'detail.submitToAgent')}
-              </button>
-            </div>
             {formError && <p className="merchant-form-error">{formError}</p>}
             <p className="merchant-follow-up">{t('detail.followUpNote')}</p>
           </form>
@@ -414,10 +513,6 @@ export function RequestDetail({
           <div className="merchant-response merchant-response--saved">
             <h3>{t('history.responded')}</h3>
             <p>{selectedResponse ? responseLabel(selectedResponse) : ''}</p>
-            <h3>{t('history.agentReply')}</h3>
-            <p className="merchant-agent-update">
-              {agentUpdate ?? t('history.noAgentReply')}
-            </p>
             <h3>{t('history.status')}</h3>
             <p>{t(progressKey(caseData))}</p>
             <h3>{t('history.finalAction')}</h3>

@@ -3,6 +3,7 @@ import {
   caseStore,
   evaluatePolicy,
   inferLiability,
+  isAutomaticMissingCandidate,
   type CsCase,
   type EvidenceAnalysis,
   type FinalAction,
@@ -71,6 +72,13 @@ const plannedActionIsSafe = (
 ) => {
   const confirmation = caseData.merchantConfirmation
   if (!confirmation) return false
+  if (
+    action === 'mock_coupon'
+    && (
+      caseData.issueType !== 'missing_item'
+      || !isAutomaticMissingCandidate(caseData)
+    )
+  ) return false
   const approvedCase: CsCase = {
     ...caseData,
     merchantConfirmation: {
@@ -170,10 +178,10 @@ const executeApprovedAction = async (
         : caseData.order?.totalAmount
       : undefined
   const customerMessage = action === 'mock_coupon'
-    ? `첨부 사진이 문의 내용을 뒷받침하는 것으로 확인됐습니다. 매장이 미리 승인한 ${amount?.toLocaleString('ko-KR')}원 Mock 쿠폰을 지급했습니다.`
+    ? `첨부 사진이 문의 내용을 뒷받침하는 것으로 확인됐습니다. 매장이 미리 승인한 ${amount?.toLocaleString('ko-KR')}원 쿠폰을 지급했습니다.`
     : action === 'mock_refund'
-      ? `첨부 사진이 문의 내용을 뒷받침하는 것으로 확인됐습니다. 매장이 미리 승인한 ${amount?.toLocaleString('ko-KR')}원 Mock 환불을 처리했습니다.`
-      : '첨부 사진이 문의 내용을 뒷받침하는 것으로 확인됐습니다. 매장이 미리 승인한 Mock 재배달을 요청했습니다.'
+      ? `첨부 사진이 문의 내용을 뒷받침하는 것으로 확인됐습니다. 매장이 미리 승인한 ${amount?.toLocaleString('ko-KR')}원 환불을 처리했습니다.`
+      : '첨부 사진이 문의 내용을 뒷받침하는 것으로 확인됐습니다. 매장이 미리 승인한 재배달을 요청했습니다.'
 
   caseStore.commitCase(caseData.caseId, {
     changes: {

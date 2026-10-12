@@ -68,8 +68,8 @@ class MockAgentTools implements AgentTools {
       return {
         evidenceUrl: input.evidenceUrl,
         assessment: 'inconclusive',
-        observation: '첨부 이미지를 받았지만 Mock 분석 데이터와 일치하는 결과가 없습니다.',
-        limitations: ['실제 Vision API가 아닌 PoC Mock 분석입니다.'],
+        observation: '첨부 이미지는 받았지만 자동 사진 판정을 완료하지 못했습니다.',
+        limitations: ['매장 또는 상담원이 사진과 실제 포장·전달 상황을 추가로 확인해야 합니다.'],
       }
     })
   }
@@ -92,6 +92,7 @@ class MockAgentTools implements AgentTools {
       conversation: [],
       status: 'waiting',
       requestedAt: nowIso(),
+      requestedBy: 'agent',
     }))
   }
 

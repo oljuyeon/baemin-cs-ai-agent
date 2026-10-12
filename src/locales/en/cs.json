@@ -70,6 +70,10 @@
     "item": "Claimed item",
     "order": "Order items",
     "evidence": "Evidence",
+    "evidenceAgentAnalysis": "Agent photo analysis",
+    "evidenceAnalysisPending": "The photo is attached, but no Agent analysis is available yet.",
+    "evidenceAnalysisNotice": "This is the Agent's view of what can be observed in the photo; it does not establish what actually happened during packing or delivery.",
+    "photoReloadUnavailable": "The saved photo could not be loaded.",
     "photo": "Photo",
     "photoMock": "Sample photo",
     "merchant": "Store reply",
@@ -84,6 +88,9 @@
     "noSummary": "Review guidance has not been generated.",
     "summaryGenerating": "AI is generating a handoff summary from the current case.",
     "summaryUnavailable": "The AI summary could not be generated. Check the source information in the review trace below.",
+    "summaryFallbackNotice": "The AI summary could not be loaded, so a temporary source-based summary is shown.",
+    "summaryRetry": "Retry AI summary",
+    "humanCsName": "Support agent",
     "guidance": {
       "caution": "① Caution",
       "verification": "② What to verify",
@@ -194,7 +201,7 @@
     "mockNote": "The store approves refunds or redelivery. Platform support only gathers more information and mediates when the customer requests help.",
     "timeoutDecisionNote": "The store did not respond within three minutes. Support decides the refund from the order, evidence, and policy, informs the customer, and sends the store an after-the-fact notice.",
     "refundAmountMissing": "The order or item amount for the refund is unavailable.",
-    "refundFailed": "The Mock refund failed.",
+    "refundFailed": "The refund failed.",
     "comment": "Comment",
     "needAction": "Choose a decision.",
     "submit": "Save decision",
@@ -302,9 +309,9 @@
   },
   "finalAction": {
     "guide_customer": "Guide customer",
-    "mock_coupon": "Mock coupon",
-    "mock_refund": "Mock refund",
-    "mock_redelivery": "Mock redelivery",
+    "mock_coupon": "Coupon",
+    "mock_refund": "Refund",
+    "mock_redelivery": "Redelivery",
     "human_review": "Human review",
     "no_action": "No action"
   }

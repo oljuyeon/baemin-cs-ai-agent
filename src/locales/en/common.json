@@ -1,16 +1,15 @@
 {
   "brand": {
-    "name": "RightNow AI",
+    "name": "이음이",
     "tagline": "Your delivery issue assistant"
   },
   "meta": {
-    "title": "RightNow AI",
+    "title": "이음이",
     "description": "AI support that resolves delivery issues faster"
   },
   "nav": {
     "service": "About",
-    "roles": "Choose a role",
-    "login": "Log in"
+    "roles": "Choose a role"
   },
   "actions": {
     "start": "Get started",
@@ -22,6 +21,12 @@
     "label": "Select language",
     "ko": "한국어",
     "en": "English"
+  },
+  "apiStatus": {
+    "checking": "Checking AI API",
+    "connected": "AI API connected · {{model}}",
+    "disconnected": "AI API disconnected",
+    "unknownModel": "Unknown model"
   },
   "accessibility": {
     "mainNav": "Main navigation",

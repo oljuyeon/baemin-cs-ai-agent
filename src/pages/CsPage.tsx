@@ -11,6 +11,7 @@ import { ResolutionHistory } from '../components/cs/ResolutionHistory'
 import '../styles/cs.css'
 
 const narrowQuery = '(max-width: 820px)'
+const SELECTED_CASE_KEY = 'delivery-cs-agent:cs-selected-case'
 
 function useNarrowLayout() {
   const [narrow, setNarrow] = useState(() => window.matchMedia(narrowQuery).matches)
@@ -27,7 +28,7 @@ export function CsPage() {
   const { t } = useTranslation('cs')
   const [queue, setQueue] = useState<CsCase[]>([])
   const [history, setHistory] = useState<CsCase[]>([])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(() => window.localStorage.getItem(SELECTED_CASE_KEY))
   const [panel, setPanel] = useState<'queue' | 'history'>('queue')
   const [mobileDetail, setMobileDetail] = useState(false)
   const [showNew, setShowNew] = useState(false)
@@ -59,6 +60,7 @@ export function CsPage() {
     if (!inQueue && !inHistory) return
     appliedLink.current = linkedCaseId
     setSelectedId(linkedCaseId)
+    window.localStorage.setItem(SELECTED_CASE_KEY, linkedCaseId)
     setPanel(inQueue ? 'queue' : 'history')
     setMobileDetail(true)
   }, [linkedCaseId, queue, history])
@@ -93,6 +95,7 @@ export function CsPage() {
   const selectCase = (caseId: string, nextPanel: 'queue' | 'history') => {
     if (nextPanel === 'queue') markCsInProgress(caseId)
     setSelectedId(caseId)
+    window.localStorage.setItem(SELECTED_CASE_KEY, caseId)
     setPanel(nextPanel)
     setMobileDetail(true)
   }

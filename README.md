@@ -1,4 +1,4 @@
-# 바로해결 AI — 배달 플랫폼 CS AI Agent PoC
+# 이음이 — 배달 플랫폼 CS AI Agent PoC
 
 배달 지연, 메뉴 누락, 오배달 문의를 Customer, Merchant, Human CS가 하나의 `CsCase`로 이어서 처리하는 모바일 우선 PoC입니다.
 

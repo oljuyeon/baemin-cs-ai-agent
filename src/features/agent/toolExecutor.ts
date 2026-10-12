@@ -100,7 +100,14 @@ export async function executeTool(caseId: string, action: ToolAction): Promise<C
       const toolResult = await agentTools.requestMerchantConfirmation(input)
       result = toolResult
       if (toolResult.status === 'success') {
-        changes.merchantConfirmation = toolResult.data
+        changes.merchantConfirmation = {
+          ...toolResult.data,
+          requestedBy: 'agent',
+          conversation: [
+            ...(current.merchantConfirmation?.conversation ?? []),
+            ...toolResult.data.conversation,
+          ],
+        }
         changes.status = 'WAITING_MERCHANT'
         changes.decision = 'WAITING_MERCHANT'
       }
@@ -138,6 +145,7 @@ export async function executeTool(caseId: string, action: ToolAction): Promise<C
   return caseStore.commitCase(caseId, {
     changes,
     toolHistory: [{
+      issueVersion: current.issueVersion,
       toolName: action.toolName,
       input: action.input,
       result,

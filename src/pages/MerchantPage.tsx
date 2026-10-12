@@ -18,6 +18,7 @@ import { StoreSwitcher } from '../components/merchant/StoreSwitcher'
 import '../styles/merchant.css'
 
 const narrowQuery = '(max-width: 820px)'
+const SELECTED_CASE_KEY = 'delivery-cs-agent:merchant-selected-case'
 
 function useNarrowLayout() {
   const [narrow, setNarrow] = useState(() => window.matchMedia(narrowQuery).matches)
@@ -35,7 +36,7 @@ export function MerchantPage() {
   const [storeId, setStoreId] = useState(readSelectedStoreId)
   const [queue, setQueue] = useState<CsCase[]>([])
   const [history, setHistory] = useState<CsCase[]>([])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(() => window.localStorage.getItem(SELECTED_CASE_KEY))
   const [panel, setPanel] = useState<'queue' | 'history'>('queue')
   const [mobileDetail, setMobileDetail] = useState(false)
   const [showNew, setShowNew] = useState(false)
@@ -90,6 +91,7 @@ export function MerchantPage() {
     setShowNew(false)
     setFlash(null)
     setSelectedId(null)
+    window.localStorage.removeItem(SELECTED_CASE_KEY)
     setMobileDetail(false)
     setPanel('queue')
     writeSelectedStoreId(nextStoreId)
@@ -98,6 +100,7 @@ export function MerchantPage() {
 
   const selectCase = (caseId: string, nextPanel: 'queue' | 'history') => {
     setSelectedId(caseId)
+    window.localStorage.setItem(SELECTED_CASE_KEY, caseId)
     setPanel(nextPanel)
     setMobileDetail(true)
   }
@@ -108,7 +111,7 @@ export function MerchantPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const submitToAgent = async (caseId: string) => {
+  const processMerchantReply = async (caseId: string) => {
     const result = await processMerchantResponse(caseId)
     refresh()
     return result.outcome
@@ -161,7 +164,7 @@ export function MerchantPage() {
                 refresh()
               }}
               onError={(message) => setFlash(message)}
-              onSubmitToAgent={submitToAgent}
+              onMerchantReply={processMerchantReply}
             />
           )}
         </div>

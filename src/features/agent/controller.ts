@@ -21,6 +21,9 @@ const isTerminal = (caseData: CsCase) =>
   || caseData.status === 'ESCALATED'
   || caseData.status === 'CLOSED'
 
+const customerText = (caseData: CsCase, ko: string, en: string) =>
+  caseData.customerLanguage === 'en' ? en : ko
+
 const buildHumanCsSummary = (caseData: CsCase, failureReason: string) => [
   `caseId=${caseData.caseId}`,
   `customerId=${caseData.customerId}`,
@@ -42,7 +45,7 @@ const buildHumanCsSummary = (caseData: CsCase, failureReason: string) => [
   `실행 Tool=${caseData.toolHistory.map((item) => `${item.toolName}:${item.result.status}`).join(', ') || '없음'}`,
   `완료 Action=${caseData.finalActionResult?.action ?? '없음'}`,
   `자동 처리 실패 이유=${failureReason}`,
-  'Human CS 결정 필요=환불·재배달·추가 확인 중 적절한 최종 조치',
+  '상담원 결정 필요=환불·재배달·추가 확인 중 적절한 최종 조치',
 ].join('\n')
 
 const enrichClaimedItem = (caseData: CsCase) => {
@@ -60,6 +63,7 @@ const enrichClaimedItem = (caseData: CsCase) => {
 const finish = (caseId: string, action: Extract<AgentAction, { type: 'FINISH' }>) => {
   const current = requireCase(caseId)
   const status = action.decision === 'AUTO_RESOLVE' ? 'AUTO_RESOLVED' : 'ESCALATED'
+  const escalationReason = action.escalationReason ?? action.customerMessage
 
   caseStore.commitCase(caseId, {
     changes: {
@@ -67,10 +71,10 @@ const finish = (caseId: string, action: Extract<AgentAction, { type: 'FINISH' }>
       decision: action.decision,
       finalAction: action.finalAction,
       escalationReason: action.decision === 'ESCALATE'
-        ? action.customerMessage
+        ? escalationReason
         : current.escalationReason,
       agentSummary: action.decision === 'ESCALATE'
-        ? buildHumanCsSummary(current, action.customerMessage)
+        ? buildHumanCsSummary(current, escalationReason)
         : current.agentSummary,
     },
     history: [{
@@ -104,7 +108,7 @@ const escalateAfterLimit = async (caseId: string) => {
     type: 'FINISH',
     decision: 'ESCALATE',
     finalAction: 'human_review',
-    customerMessage: '자동 확인을 완료하지 못해 상담원이 이어서 확인합니다.',
+    customerMessage: customerText(current, '자동 확인을 완료하지 못해 상담원이 이어서 확인합니다.', 'The automatic review could not be completed, so a support agent will continue.'),
   })
 }
 
@@ -134,7 +138,7 @@ export const agentController: AgentController = {
           caseStore.appendConversation(
             caseId,
             'agent',
-            '매장 확인 요청을 전달했고 현재 답변을 기다리고 있습니다. 답변이 오면 바로 이어서 안내할게요.',
+            customerText(current, '매장 확인 요청을 전달했고 현재 답변을 기다리고 있습니다. 답변이 오면 바로 이어서 안내할게요.', 'The confirmation request was sent to the restaurant. I will continue here as soon as it replies.'),
           )
           return requireCase(caseId)
         }
@@ -152,7 +156,7 @@ export const agentController: AgentController = {
           caseStore.appendConversation(
             caseId,
             'agent',
-            '매장에 확인 요청을 보냈습니다. 답변이 오면 이 대화에서 바로 이어서 안내할게요.',
+            customerText(updated, '매장에 확인 요청을 보냈습니다. 답변이 오면 이 대화에서 바로 이어서 안내할게요.', 'I sent a confirmation request to the restaurant. I will continue in this chat when it replies.'),
           )
           return requireCase(caseId)
         }
@@ -160,10 +164,16 @@ export const agentController: AgentController = {
       }
 
       if (action.type === 'ASK_CUSTOMER') {
+        const detailRequestedAt = action.purpose === 'ISSUE_DETAIL'
+          ? new Date().toISOString()
+          : undefined
         caseStore.commitCase(caseId, {
           changes: {
             status: action.waitStatus ?? 'COLLECTING_INFO',
             decision: 'NEED_MORE_INFO',
+            ...(detailRequestedAt
+              ? { customerDetailRequestedAt: detailRequestedAt }
+              : {}),
           },
         })
         caseStore.appendConversation(caseId, 'agent', action.question)
@@ -176,13 +186,14 @@ export const agentController: AgentController = {
       }
 
       if (action.decision === 'ESCALATE') {
+        const escalationReason = action.escalationReason ?? action.customerMessage
         await executeTool(caseId, {
           type: 'CALL_TOOL',
           toolName: 'escalate_to_human',
           input: {
             caseId,
-          reason: action.customerMessage,
-            summary: buildHumanCsSummary(current, action.customerMessage),
+            reason: escalationReason,
+            summary: buildHumanCsSummary(current, escalationReason),
           },
         })
       }

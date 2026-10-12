@@ -7,9 +7,11 @@ import {
   findCustomer,
   findMerchant,
   isMerchantTimeoutEscalation,
+  resolvePersistedEvidenceUrl,
   type CsCase,
   type DeliveryData,
   type HumanCsAction,
+  type HumanHandoffSummary,
   type OrderData,
 } from '../../features/cs'
 import {
@@ -22,7 +24,7 @@ import { BackIcon } from '../customer/CustomerIcons'
 import { AgentReviewTrace, HumanReviewGuidanceCard } from './AgentReviewTrace'
 
 type ConversationEntry = {
-  role: 'customer' | 'merchant' | 'agent'
+  role: 'customer' | 'merchant' | 'agent' | 'human_cs'
   content: string
   createdAt: string
 }
@@ -62,15 +64,92 @@ const formatTime = (value: string, language: string) =>
     minute: '2-digit',
   }).format(new Date(value))
 
+const sourceFallbackSummary = (
+  caseData: CsCase,
+  language: string,
+): Pick<HumanHandoffSummary, 'customerClaimSummary' | 'merchantResponseSummary' | 'escalationReasonSummary' | 'reviewGuidance'> => {
+  const isEnglish = language.startsWith('en')
+  const itemNames = caseData.order?.items.map((item) => item.name).join(', ')
+  const merchantMessages = caseData.merchantConfirmation?.conversation
+    .filter((message) => message.role === 'merchant') ?? []
+  const merchantStatement = caseData.merchantConfirmation?.comment
+    || merchantMessages.at(-1)?.content
+  const frequentRefund = caseData.riskFlags.includes('frequent_refund')
+  const merchantConflict = caseData.merchantConfirmation?.response === 'DENIED'
+  const merchantTimeout = isMerchantTimeoutEscalation(caseData)
+
+  if (isEnglish) {
+    return {
+      customerClaimSummary: `The customer states that ${caseData.customerClaim}${itemNames ? ` The confirmed order contains ${itemNames}.` : ''}`,
+      merchantResponseSummary: merchantStatement
+        ? `The store states that ${merchantStatement}`
+        : 'The store has not provided a confirmation yet.',
+      escalationReasonSummary: merchantTimeout
+        ? 'The store did not respond within the confirmation window, so automated processing stopped and the case was handed to a support agent.'
+        : frequentRefund
+          ? 'Automatic refund and redelivery are restricted due to the recent repeat-refund history, so the case was handed to a support agent.'
+          : merchantConflict
+            ? 'The customer and store statements do not agree, so automated processing stopped and the case was handed to a support agent.'
+            : `${caseData.escalationReason || 'The available information was not sufficient for automated processing'}, so the case was handed to a support agent.`,
+      reviewGuidance: {
+        caution: frequentRefund
+          ? 'Automatic refund and redelivery are restricted because the recent repeat-refund threshold was exceeded. This alone does not establish customer misconduct.'
+          : merchantConflict
+            ? 'The customer and store statements conflict; neither statement has been treated as a confirmed fact.'
+            : 'Unverified statements and system-confirmed information must remain separate.',
+        verification: merchantStatement
+          ? 'Review the customer statement, the store response, and any available evidence for unresolved differences.'
+          : 'The store has not confirmed the packing and handoff details yet.',
+        nextAction: 'Decide the appropriate refund, redelivery, or additional verification only after the unresolved facts are checked.',
+      },
+    }
+  }
+
+  return {
+    customerClaimSummary: `고객은 “${caseData.customerClaim}”라고 주장하고 있습니다.${itemNames ? ` 확인된 주문 내역에는 ${itemNames}이(가) 포함되어 있습니다.` : ''}`,
+    merchantResponseSummary: merchantStatement
+      ? `매장은 “${merchantStatement}”라고 답변했습니다.`
+      : '아직 매장 확인이 이루어지지 않았습니다.',
+    escalationReasonSummary: merchantTimeout
+      ? '매장 확인 기한 내에 답변이 없어 자동 처리를 종료하고 상담원에게 이관되었습니다.'
+      : frequentRefund
+        ? '최근 30일 기준을 초과한 반복 환불 이력으로 자동 환불과 재배달이 제한되어 상담원에게 이관되었습니다.'
+        : merchantConflict
+          ? '고객과 매장의 진술이 일치하지 않아 자동 처리를 종료하고 상담원에게 이관되었습니다.'
+          : `${caseData.escalationReason || '현재 정보만으로 자동 처리하기 어려워'} 상담원에게 이관되었습니다.`,
+    reviewGuidance: {
+      caution: frequentRefund
+        ? '최근 30일 기준을 초과한 반복 환불 이력으로 자동 환불과 재배달이 제한됩니다. 이 이력만으로 고객의 부정행위를 단정할 수는 없습니다.'
+        : merchantConflict
+          ? '고객과 매장의 진술이 충돌하며, 어느 한쪽도 확인된 사실로 처리되지 않았습니다.'
+          : '확인되지 않은 진술과 시스템으로 확인된 정보를 구분해야 합니다.',
+      verification: merchantStatement
+        ? '고객 주장, 매장 답변, 제공된 증빙 사이의 남은 차이를 확인해야 합니다.'
+        : '매장의 포장·전달 내용은 아직 확인되지 않았습니다.',
+      nextAction: '남은 사실관계를 확인한 후 환불, 재배달 또는 추가 확인 여부를 결정해 주세요.',
+    },
+  }
+}
+
 function EvidenceCard({ url, caption }: { url: string; caption?: string }) {
   const { t } = useTranslation('cs')
-  const isMock = url.startsWith('mock://')
+  const [resolvedUrl, setResolvedUrl] = useState(url)
+  useEffect(() => {
+    let cancelled = false
+    void resolvePersistedEvidenceUrl(url).then((value) => {
+      if (!cancelled) setResolvedUrl(value)
+    })
+    return () => { cancelled = true }
+  }, [url])
+  const displayable = /^(https?:|blob:|data:)/.test(resolvedUrl)
   return (
-    <figure className={isMock ? 'cs-evidence cs-evidence--mock' : 'cs-evidence'}>
-      {isMock ? <span aria-hidden="true" /> : <img src={url} alt="" />}
+    <figure className={displayable ? 'cs-evidence' : 'cs-evidence cs-evidence--mock'}>
+      {displayable ? <img src={resolvedUrl} alt="" /> : <span aria-hidden="true" />}
       <figcaption>
-        <strong>{isMock ? t('detail.photoMock') : t('detail.photo')}</strong>
-        <small>{caption || url}</small>
+        <strong>{displayable ? t('detail.photo') : t('detail.photoMock')}</strong>
+        <small>{caption || (resolvedUrl.startsWith('saved-image://')
+          ? t('detail.photoReloadUnavailable')
+          : resolvedUrl)}</small>
       </figcaption>
     </figure>
   )
@@ -93,14 +172,18 @@ function ConversationToggle({
       <summary>{toggleLabel}</summary>
       <div className="cs-conversation__thread">
         {messages.map((message) => {
-          const isAgent = message.role === 'agent'
+          const isAgent = message.role === 'agent' || message.role === 'human_cs'
           return (
             <article
               key={`${message.createdAt}-${message.role}-${message.content}`}
               className={`cs-conversation__bubble ${isAgent ? 'is-agent' : 'is-participant'}`}
             >
               <header>
-                <strong>{isAgent ? t('detail.agentName') : participantLabel}</strong>
+                <strong>{message.role === 'human_cs'
+                  ? t('detail.humanCsName')
+                  : isAgent
+                    ? t('detail.agentName')
+                    : participantLabel}</strong>
                 <time dateTime={message.createdAt}>{formatWhen(message.createdAt, i18n.language)}</time>
               </header>
               <p>{message.content}</p>
@@ -120,6 +203,7 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
   const [order, setOrder] = useState<OrderData | null>(null)
   const [delivery, setDelivery] = useState<DeliveryData | null>(null)
   const [summaryState, setSummaryState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [summaryRetry, setSummaryRetry] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const caseId = caseData?.caseId
   const updatedAt = caseData?.updatedAt
@@ -199,7 +283,7 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
     return () => {
       cancelled = true
     }
-  }, [caseId, updatedAt, caseData, i18n.language, i18n.resolvedLanguage])
+  }, [caseId, updatedAt, caseData, i18n.language, i18n.resolvedLanguage, summaryRetry])
 
   if (!caseData) {
     return (
@@ -222,9 +306,9 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
     && caseData.humanHandoffSummary.language === summaryLanguage
     ? caseData.humanHandoffSummary
     : undefined
-  const summaryFallback = summaryState === 'error'
-    ? t('detail.summaryUnavailable')
-    : t('detail.summaryGenerating')
+  const fallbackSummary = sourceFallbackSummary(caseData, summaryLanguage)
+  const summaryFallback = summaryState === 'error' ? fallbackSummary : undefined
+  const summaryLoading = t('detail.summaryGenerating')
 
   const submit = async () => {
     if (!action) {
@@ -363,7 +447,15 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
       </dl>
 
       <h3>{t('detail.claim')}</h3>
-      <blockquote>{handoffSummary?.customerClaimSummary || summaryFallback}</blockquote>
+      {summaryState === 'error' && (
+        <div className="cs-summary-alert" role="status">
+          <span>{t('detail.summaryFallbackNotice')}</span>
+          <button type="button" onClick={() => setSummaryRetry((value) => value + 1)}>
+            {t('detail.summaryRetry')}
+          </button>
+        </div>
+      )}
+      <blockquote>{handoffSummary?.customerClaimSummary || summaryFallback?.customerClaimSummary || summaryLoading}</blockquote>
       <ConversationToggle
         messages={caseData.conversation}
         participantLabel={t('detail.customerName')}
@@ -393,14 +485,35 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
           <div className="cs-evidence-row">
             {caseData.evidenceUrls.map((url) => {
               const analysis = caseData.evidenceAnalysis?.find((item) => item.evidenceUrl === url)
-              return <EvidenceCard key={url} url={url} caption={analysis?.observation} />
+              return (
+                <article className="cs-evidence-case" key={url}>
+                  <EvidenceCard url={url} />
+                  <section className="cs-evidence-analysis">
+                    <header>
+                      <strong>{t('detail.evidenceAgentAnalysis')}</strong>
+                      {analysis && (
+                        <span>{t(`detail.review.assessmentValue.${analysis.assessment}`)}</span>
+                      )}
+                    </header>
+                    <p>{analysis?.observation ?? t('detail.evidenceAnalysisPending')}</p>
+                    {analysis && analysis.limitations.length > 0 && (
+                      <ul>
+                        {analysis.limitations.map((limitation) => (
+                          <li key={limitation}>{limitation}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <small>{t('detail.evidenceAnalysisNotice')}</small>
+                  </section>
+                </article>
+              )
             })}
           </div>
         </>
       )}
 
       <h3>{t('detail.merchant')}</h3>
-      <blockquote>{handoffSummary?.merchantResponseSummary || summaryFallback}</blockquote>
+      <blockquote>{handoffSummary?.merchantResponseSummary || summaryFallback?.merchantResponseSummary || summaryLoading}</blockquote>
       <ConversationToggle
         messages={merchant?.conversation ?? []}
         participantLabel={t('detail.merchantName')}
@@ -408,12 +521,12 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
       />
 
       <h3>{t('detail.handoff')}</h3>
-      <blockquote>{handoffSummary?.escalationReasonSummary || summaryFallback}</blockquote>
+      <blockquote>{handoffSummary?.escalationReasonSummary || summaryFallback?.escalationReasonSummary || summaryLoading}</blockquote>
 
       <HumanReviewGuidanceCard
-        guidance={handoffSummary?.reviewGuidance}
+        guidance={handoffSummary?.reviewGuidance || summaryFallback?.reviewGuidance}
         isLoading={summaryState === 'idle' || summaryState === 'loading'}
-        hasError={summaryState === 'error'}
+        hasError={false}
       />
 
       <Link className="cs-policy-link" to={`/cs/cases/${caseData.caseId}/policy`}>{t('detail.openPolicy')}</Link>

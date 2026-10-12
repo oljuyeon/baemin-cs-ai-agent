@@ -5,7 +5,8 @@
     "history": "My cases"
   },
   "welcome": {
-    "eyebrow": "Hi, Minji",
+    "eyebrow": "Hi, {{name}}",
+    "customerFallback": "Customer",
     "title": "What went wrong?",
     "description": "AI will review your recent order and start resolving it right away."
   },
@@ -24,6 +25,12 @@
     "deliveredAt": "Actually arrived {{time}}",
     "delayedBy": "Currently {{minutes}} min late",
     "arrivingIn": "About {{minutes}} min remaining",
+    "statuses": {
+      "delivering": "On the way",
+      "picked_up": "Picked up",
+      "delivered": "Delivered"
+    },
+    "deliveredAtLabel": "Delivered at",
     "eta": "7:35 PM",
     "orderedAt": "Ordered today at 6:42 PM"
   },
@@ -52,7 +59,12 @@
     "photoReadError": "We could not read that image. Please attach a different one.",
     "savedWithoutAgent": "Your message is saved on the case. The AI agent is not connected yet, so no lookup or refund was run.",
     "unsupported": "This demo currently supports delivery delay, missing item, and wrong delivery cases. Please describe what happened in a little more detail.",
+    "unsupportedLanguage": "This demo currently supports Korean and English. Please ask again in either language.",
     "issueConflict": "Your quick selection was '{{selected}}', but the message looks like '{{detected}}'. Please confirm which issue you want to continue with.",
+    "issueReclassificationConflict": "Based on the new details, this looks closer to {{proposed}} than the current {{current}} issue. Would you like to change the issue type?",
+    "issueReclassificationConfirmed": "Got it. I changed the issue type to {{issue}} and will continue with the conversation so far.",
+    "issueReclassificationKept": "Got it. I will continue with the existing {{issue}} issue.",
+    "issueChangeLocked": "This case already has a restaurant request or completed action, so its issue type cannot be changed automatically. Please start a new inquiry for the additional problem.",
     "itemNotInOrder": "The selected order {{orderId}} does not include '{{itemName}}'. Its items are {{orderItems}}. Please choose the correct order or check the item name.",
     "recognized": {
       "delay": "I understood this as a delivery delay. I saved it as a case for checking the order and delivery status. Automated delay lookup is still being connected in this demo.",
@@ -72,8 +84,7 @@
       "resolved": "Action complete · chat remains open"
     },
     "newCase": "New case",
-    "thinking": "Checking your order and policy",
-    "toolLabel": "Agent action complete",
+    "thinking": "Reviewing your request",
     "nextAction": "Solutions I can execute now",
     "analysis": {
       "delay": "I checked the delivery data. The order is 18 minutes past its ETA and the rider is heading from the restaurant toward you. I can enable live updates or check delay compensation now.",
@@ -102,8 +113,8 @@
       "checkRisk": "Checked duplicate refunds and risk signals",
       "analyzeEvidence": "Analyzed the attached evidence",
       "requestMerchant": "Sent a confirmation request to the restaurant",
-      "refund": "Executed the Mock partial refund after customer approval",
-      "redelivery": "Executed the Mock redelivery request",
+      "refund": "Partial refund completed",
+      "redelivery": "Redelivery request accepted",
       "escalateHuman": "Added the case to the human review queue"
     },
     "actions": {
@@ -117,17 +128,19 @@
       "confirmRefund": "Refund ₩3,500 for fries",
       "confirmDetectedIssue": "Continue as {{issue}}",
       "keepSelectedIssue": "Keep {{issue}} selection",
+      "confirmIssueChange": "Yes",
+      "rejectIssueChange": "No, I'll explain again",
       "cancelAction": "Wait without extra action"
     },
     "results": {
       "trackingDone": "Live delivery updates are on. I’ll notify you when the location or ETA changes. You can keep asking for help in this chat.",
-      "compensationOffer": "Delivery data shows a {{delayMinutes}}-minute delay, meeting the {{minimumMinutes}}-minute Mock policy threshold. Issue a ₩{{amount}} coupon?",
-      "compensationNotEligible": "Delivery data shows a {{delayMinutes}}-minute delay. The current Mock policy requires at least {{minimumMinutes}} minutes, so this order is not eligible for a coupon.",
+      "compensationOffer": "Delivery data shows a {{delayMinutes}}-minute delay, meeting the {{minimumMinutes}}-minute compensation threshold. Issue a ₩{{amount}} coupon?",
+      "compensationNotEligible": "Delivery data shows a {{delayMinutes}}-minute delay. The current compensation policy requires at least {{minimumMinutes}} minutes, so this order is not eligible for a coupon.",
       "compensationNeedsData": "I cannot determine coupon eligibility because delivery timing data is unavailable.",
       "compensationAlreadyIssued": "A delay compensation coupon has already been issued for this order, so another coupon cannot be issued.",
-      "refundOffer": "This meets the automated resolution policy. I can refund ₩3,500 for the missing fries to your original payment method.",
+      "refundOffer": "I can refund ₩3,500 for the missing fries. Would you like a refund?",
       "merchantPending": "I sent the restaurant a confirmation request. When they reply, the Agent will automatically continue in this chat. Progress is saved if you close the page.",
-      "redeliveryDone": "Redelivery is confirmed. The restaurant has started preparing it and the new ETA is 8:20 PM. You can track it in this chat.",
+      "redeliveryDone": "Sure, I’ll have the missing item delivered again. I’ll let you know the estimated arrival time once the restaurant starts preparing it.",
       "escalationDone": "I sent the order, photo, and findings so the agent can decide immediately. You won’t need to explain everything again.",
       "couponDone": "Your ₩{{amount}} delay coupon has been issued. You can find it in Coupons. Is there anything else to resolve?",
       "refundDone": "The ₩3,500 refund is complete. It may take 2–3 business days to appear on your original payment method.",

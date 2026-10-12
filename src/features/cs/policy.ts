@@ -254,7 +254,7 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
         policyId: 'WRONG_DELIVERY_AFTER_ADMISSION',
         allowedActions: ['mock_coupon', 'mock_refund', 'mock_redelivery', 'human_review'],
         constraints: supportiveEvidence ? [] : ['증빙이 주장을 확정하지는 않습니다.'],
-        reason: '매장이 누락을 인정해 Mock 재배달을 허용합니다.',
+        reason: '매장이 오배달을 인정해 후속 해결 조치를 허용합니다.',
       })
     }
 
@@ -286,7 +286,7 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
       return decide(caseData, {
         policyId: 'MISSING_ITEM_ADMITTED',
         allowedActions: ['mock_coupon', 'mock_refund', 'mock_redelivery', 'human_review'],
-        reason: '매장이 누락을 인정해 Mock 환불 또는 재배달을 허용합니다.',
+        reason: '매장이 누락을 인정해 환불 또는 재배달을 허용합니다.',
       })
     }
 
@@ -294,7 +294,7 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
       return decide(caseData, {
         policyId: 'MISSING_ITEM_AFTER_MERCHANT_CONFIRMATION',
         allowedActions: ['mock_refund', 'mock_redelivery', 'human_review'],
-        reason: '매장이 누락을 확인하고 해결 조치에 동의해 Mock 환불 또는 재배달을 허용합니다.',
+        reason: '매장이 누락을 확인하고 해결 조치에 동의해 환불 또는 재배달을 허용합니다.',
       })
     }
 
@@ -312,6 +312,6 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
   return decide(caseData, {
     policyId: 'OUT_OF_SCOPE',
     allowedActions: ['guide_customer', 'human_review'],
-    reason: 'MVP 범위 밖 문의이므로 안내하거나 Human CS로 이관합니다.',
+    reason: 'MVP 범위 밖 문의이므로 안내하거나 상담원에게 이관합니다.',
   })
 }

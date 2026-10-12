@@ -21,6 +21,8 @@ export type AgentActionId =
   | 'confirmRefund'
   | 'confirmDetectedIssue'
   | 'keepSelectedIssue'
+  | 'confirmIssueChange'
+  | 'rejectIssueChange'
   | 'cancelAction'
 
 export interface AgentAction {

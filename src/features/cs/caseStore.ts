@@ -18,6 +18,11 @@ import type {
   ToolCallLogDraft,
   UserRole,
 } from './types'
+import {
+  createCaseSyncChannel,
+  readPersistedCases,
+  writePersistedCases,
+} from './casePersistence'
 
 const clone = <T>(value: T): T => structuredClone(value)
 const nowIso = () => new Date().toISOString()
@@ -27,7 +32,8 @@ const newId = (prefix: string) => {
 }
 
 export const isMerchantTimeoutEscalation = (caseData: CsCase) =>
-  caseData.escalationReason === 'Merchant 응답 3분 타임아웃'
+  caseData.escalationCode === 'MERCHANT_TIMEOUT'
+  || caseData.escalationReason === 'Merchant 응답 3분 타임아웃'
   || caseData.history.some((entry) =>
     entry.event === 'ESCALATED'
     && entry.detail?.includes('Merchant 응답 3분 타임아웃'),
@@ -54,6 +60,16 @@ const finalActionForHumanCs = (action: HumanCsAction): FinalAction => {
 export class MemoryCaseStore implements CaseStore {
   private cases = new Map<string, CsCase>()
   private listeners = new Map<string, Set<(caseData: CsCase) => void>>()
+  private syncChannel = createCaseSyncChannel((cases) => {
+    this.cases = new Map(cases.map((caseData) => [caseData.caseId, caseData]))
+    this.notifyAll()
+  })
+
+  constructor() {
+    this.cases = new Map(
+      readPersistedCases().map((caseData) => [caseData.caseId, caseData]),
+    )
+  }
 
   createCase(input: CreateCaseInput): CsCase {
     const timestamp = nowIso()
@@ -67,6 +83,10 @@ export class MemoryCaseStore implements CaseStore {
       orderId: input.orderId,
       storeId: input.storeId,
       issueType: input.issueType,
+      issueClassificationStatus: input.issueClassificationStatus ?? 'CONFIRMED',
+      issueConfidence: input.issueConfidence ?? 1,
+      issueVersion: 1,
+      issueClarificationQuestion: input.issueClarificationQuestion,
       tasks: [{
         taskId,
         issueType: input.issueType,
@@ -80,6 +100,7 @@ export class MemoryCaseStore implements CaseStore {
       activeTaskId: taskId,
       status: 'NEW',
       customerClaim: input.customerClaim,
+      customerLanguage: input.customerLanguage,
       claimedItemName: input.claimedItemName,
       receivedItemDescription: input.receivedItemDescription,
       liability: 'UNKNOWN',
@@ -173,6 +194,7 @@ export class MemoryCaseStore implements CaseStore {
           ...task,
           issueType: next.issueType,
           status: taskStatusForCaseStatus(next.status),
+          customerClaim: next.customerClaim,
           claimedItemName: next.claimedItemName,
           liability: next.liability,
           resolutionPreference: next.resolutionPreference,
@@ -231,7 +253,7 @@ export class MemoryCaseStore implements CaseStore {
       const latestAgentRequest = Math.max(
         toTime(confirmation.requestedAt),
         ...confirmation.conversation
-          .filter((message) => message.role === 'agent')
+          .filter((message) => message.role === 'agent' || message.role === 'human_cs')
           .map((message) => toTime(message.createdAt)),
       )
       const latestMerchantAnswer = Math.max(
@@ -253,6 +275,7 @@ export class MemoryCaseStore implements CaseStore {
           decision: 'ESCALATE',
           finalAction: 'human_review',
           liability: 'UNKNOWN',
+          escalationCode: 'MERCHANT_TIMEOUT',
           escalationReason: 'Merchant 응답 3분 타임아웃',
           agentSummary: [
             `문의 유형: ${caseData.issueType}`,
@@ -271,7 +294,7 @@ export class MemoryCaseStore implements CaseStore {
           event: 'ESCALATED',
           fromStatus: 'WAITING_MERCHANT',
           toStatus: 'ESCALATED',
-          detail: 'Merchant 응답 3분 타임아웃으로 Human CS 이관',
+          detail: '매장 응답 3분 타임아웃으로 상담원 이관',
         }],
       })
       expired.push(next)
@@ -353,6 +376,7 @@ export class MemoryCaseStore implements CaseStore {
           comment: comment === undefined ? confirmation.comment : comment,
           status: 'waiting',
           respondedAt,
+          pendingIntent: undefined,
           conversation: confirmation.conversation ?? [],
         },
       },
@@ -407,25 +431,39 @@ export class MemoryCaseStore implements CaseStore {
 
     if (action === 'request_additional_confirmation') {
       const merchantQuestion = comment?.trim()
-        || 'Human CS 검토 결과 추가 확인이 필요합니다. 주문 포장 및 전달 내역을 확인해 주세요.'
+        || '상담원 검토 결과 추가 확인이 필요합니다. 주문 포장 및 전달 내역을 확인해 주세요.'
       const customerMessage = '상담원이 위험 신호와 전체 문의 맥락을 먼저 검토한 뒤 매장에 추가 확인을 요청했습니다. 매장 답변도 상담원이 다시 확인해 안내할게요.'
       return this.commitCase(caseId, {
         changes: {
           status: 'WAITING_MERCHANT',
           decision: 'WAITING_MERCHANT',
           finalAction: undefined,
+          escalationCode: undefined,
           escalationReason: undefined,
           humanCsResolution: undefined,
           merchantConfirmation: {
+            ...current.merchantConfirmation,
             requestId: newId('MC'),
             caseId: current.caseId,
             orderId: current.orderId,
             itemName: current.claimedItemName,
             customerClaim: current.customerClaim,
             evidenceUrl: current.evidenceUrls[0],
-            conversation: [{ role: 'agent', content: merchantQuestion, createdAt: handledAt }],
+            requestedBy: 'human_cs',
+            conversation: [
+              ...(current.merchantConfirmation?.conversation ?? []),
+              { role: 'human_cs', content: merchantQuestion, createdAt: handledAt },
+            ],
             status: 'waiting',
             requestedAt: handledAt,
+            response: undefined,
+            comment: undefined,
+            respondedAt: undefined,
+            followUpCount: 0,
+            customerInfoRequest: undefined,
+            customerInfoRequestedAt: undefined,
+            customerInfoProvidedAt: undefined,
+            pendingIntent: undefined,
           },
           conversation: [
             ...current.conversation,
@@ -437,7 +475,7 @@ export class MemoryCaseStore implements CaseStore {
           event: 'MERCHANT_REQUESTED',
           fromStatus: current.status,
           toStatus: 'WAITING_MERCHANT',
-          detail: `Human CS가 매장 추가 확인 요청: ${merchantQuestion}`,
+          detail: `상담원이 매장 추가 확인 요청: ${merchantQuestion}`,
           createdAt: handledAt,
         }],
       })
@@ -450,14 +488,14 @@ export class MemoryCaseStore implements CaseStore {
     const refundAmount = current.issueType === 'missing_item'
       ? resolvedItem?.price
       : current.order?.totalAmount
-    const refundDescription = `${current.claimedItemName ?? '주문'} ${refundAmount?.toLocaleString('ko-KR') ?? ''}원 Mock 환불`
+    const refundDescription = `${current.claimedItemName ?? '주문'} ${refundAmount?.toLocaleString('ko-KR') ?? ''}원 환불`
     const customerMessage = merchantTimedOut
       ? action === 'approve_refund'
         ? `매장이 3분 동안 응답하지 않아 상담원이 주문·증빙·정책을 검토하고 ${refundDescription}을 완료했습니다. 처리 결과는 매장에도 사후 통지했습니다.`
         : '매장이 3분 동안 응답하지 않아 상담원이 주문·증빙·정책을 검토했습니다. 추가 환불 없이 문의를 종료하고 처리 결과를 매장에 사후 통지했습니다.'
       : undefined
     const merchantNotice = merchantTimedOut
-      ? `매장 응답 기한 내 회신이 없어 플랫폼 Human CS가 ${action === 'approve_refund' ? `${refundDescription}로` : '추가 환불 없는 문의 종료로'} 처리했습니다. 이 메시지는 추가 확인 요청이 아닌 사후 통지입니다.${comment ? ` 상담원 메모: ${comment}` : ''}`
+      ? `매장 응답 기한 내 회신이 없어 플랫폼 상담원이 ${action === 'approve_refund' ? `${refundDescription}로` : '추가 환불 없는 문의 종료로'} 처리했습니다. 이 메시지는 추가 확인 요청이 아닌 사후 통지입니다.${comment ? ` 상담원 메모: ${comment}` : ''}`
       : undefined
     const merchantConfirmation = merchantTimedOut && current.merchantConfirmation
       ? {
@@ -466,7 +504,7 @@ export class MemoryCaseStore implements CaseStore {
           respondedAt: handledAt,
           conversation: [
             ...(current.merchantConfirmation.conversation ?? []),
-            { role: 'agent' as const, content: merchantNotice!, createdAt: handledAt },
+            { role: 'human_cs' as const, content: merchantNotice!, createdAt: handledAt },
           ],
         }
       : current.merchantConfirmation
@@ -489,7 +527,7 @@ export class MemoryCaseStore implements CaseStore {
         event: 'HUMAN_CS_ACTION_COMPLETED',
         fromStatus: current.status,
         toStatus: 'CLOSED',
-        detail: `Human CS 최종 처리: ${action}${comment ? ` - ${comment}` : ''}`,
+        detail: `상담원 최종 처리: ${action}${comment ? ` - ${comment}` : ''}`,
         createdAt: handledAt,
       }],
     })
@@ -525,10 +563,16 @@ export class MemoryCaseStore implements CaseStore {
       removed = true
     }
     if (removed) this.notifyAll()
+    if (removed) {
+      writePersistedCases([...this.cases.values()])
+      this.syncChannel.publish()
+    }
     return []
   }
 
   private persistAndNotify(caseId: string) {
+    writePersistedCases([...this.cases.values()])
+    this.syncChannel.publish()
     this.notify(caseId)
   }
 
