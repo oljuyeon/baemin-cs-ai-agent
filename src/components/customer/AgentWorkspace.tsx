@@ -14,6 +14,7 @@ interface Props {
   isThinking: boolean
   focusRequest: number
   hasStarted: boolean
+  conversationEnded: boolean
   onDraftChange: (value: string) => void
   onAttach: (file: File) => void
   onSend: () => void
@@ -21,13 +22,13 @@ interface Props {
   onReset: () => void
 }
 
-export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, caseState, isThinking, focusRequest, hasStarted, onDraftChange, onAttach, onSend, onAction, onReset }: Props) {
+export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, caseState, isThinking, focusRequest, hasStarted, conversationEnded, onDraftChange, onAttach, onSend, onAction, onReset }: Props) {
   const { t } = useTranslation('customer')
   const fileRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const isComposingRef = useRef(false)
-  const canSubmit = Boolean((draft.trim() || attachedFile) && !isThinking)
+  const canSubmit = Boolean((draft.trim() || attachedFile) && !isThinking && !conversationEnded)
 
   useEffect(() => {
     if (focusRequest > 0) textareaRef.current?.focus()
@@ -73,7 +74,7 @@ export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, 
 
         {isThinking && <div className="agent-thinking"><span /><span /><span /><small>{t('agent.thinking')}</small></div>}
 
-        {actions.length > 0 && !isThinking && (
+        {actions.length > 0 && !isThinking && !conversationEnded && (
           <div className="agent-actions">
             <span>{t('agent.nextAction')}</span>
             {actions.map((action) => <button className={action.primary ? 'is-primary' : ''} type="button" onClick={() => onAction(action)} key={action.id}>{action.label ?? t(action.labelKey)}</button>)}
@@ -82,7 +83,7 @@ export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, 
         <div ref={chatEndRef} />
       </div>
 
-      <div className="chat-composer chat-composer--persistent">
+      {!conversationEnded && <div className="chat-composer chat-composer--persistent">
         {issue && !hasStarted && <span className="chat-composer__draft-label">{t('chat.draftReady')}</span>}
         <textarea
           ref={textareaRef}
@@ -100,7 +101,7 @@ export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, 
           <button type="button" className="chat-composer__send" disabled={!canSubmit} onClick={onSend} aria-label={t('chat.send')}><SendIcon /></button>
         </div>
         {issue === 'wrong' && !attachedFile && !hasStarted && <small className="chat-composer__hint">{t('chat.requiredHint')}</small>}
-      </div>
+      </div>}
     </section>
   )
 }

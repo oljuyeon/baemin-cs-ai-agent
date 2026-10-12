@@ -179,7 +179,19 @@ const conversationToMessages = (caseData: CsCase): ChatMessage[] => {
     }),
   ].sort((left, right) => left.at.localeCompare(right.at))
 
-  return [...initialMessages, ...timeline.map((entry) => entry.message)]
+  const messages = [...initialMessages, ...timeline.map((entry) => entry.message)]
+  if (caseData.status !== 'ESCALATED') return messages
+
+  return [
+    ...messages,
+    {
+      id: `escalated-${caseData.caseId}`,
+      role: 'agent',
+      content: caseData.customerLanguage === 'en'
+        ? 'Your case has been transferred to a support agent. They will take it from here and help you further.'
+        : '상담원에게 이관되었습니다. 이제 상담원이 이어서 도와드릴게요.',
+    },
+  ]
 }
 
 const delayActions: CustomerAgentAction[] = [
@@ -305,7 +317,7 @@ const followUpWithRules = (caseData: CsCase, customerMessage: string) => {
   }
 
   if (caseData.status === 'ESCALATED') {
-    return text('현재 데모의 상담원 연결은 상담원 대기열에 접수하는 단계까지만 구현되어 있어, 기다려도 전화나 실시간 상담이 자동으로 시작되지는 않습니다.', 'In this demo, escalation only adds the case to the support queue. Waiting will not automatically start a call or live chat.')
+    return text('상담원에게 이관되었습니다. 이제 상담원이 이어서 도와드릴게요.', 'Your case has been transferred to a support agent. They will take it from here and help you further.')
   }
 
   return text('앞서 확인한 주문 정보와 처리 결과를 유지하고 있어요. 궁금한 내용을 조금 더 구체적으로 말씀해 주세요.', 'I still have the order details and previous result. Please describe what you would like to know in a little more detail.')
@@ -1465,6 +1477,7 @@ export function CustomerPage() {
               isThinking={isThinking}
               focusRequest={focusRequest}
               hasStarted={hasStarted}
+              conversationEnded={orderCardCase?.status === 'ESCALATED'}
               onDraftChange={setDraft}
               onAttach={attachImage}
               onSend={sendMessage}

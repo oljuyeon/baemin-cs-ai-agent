@@ -30,7 +30,6 @@ type ConversationEntry = {
 }
 
 const actions: HumanCsAction[] = [
-  'request_more_info',
   'request_additional_confirmation',
 ]
 
