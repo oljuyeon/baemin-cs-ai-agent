@@ -150,9 +150,9 @@ export function CsPage() {
               caseData={selected}
               showBack={mobileDetail}
               onBack={() => setMobileDetail(false)}
-              onSaved={(message) => {
+              onSaved={(message, destination = 'history') => {
                 setFlash(message)
-                setPanel('history')
+                setPanel(destination)
                 setMobileDetail(false)
                 refresh()
               }}

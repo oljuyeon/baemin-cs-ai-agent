@@ -1,6 +1,8 @@
 import {
+  assessRisk,
   caseStore,
   inferLiability,
+  requiresHumanCsBeforeMerchant,
   type CsCase,
   type MerchantConditionalAction,
   type MerchantConversationMessage,
@@ -319,10 +321,13 @@ export async function processMerchantResponse(
   })
   const confirmedResponse = confirmed.merchantConfirmation?.response
   if (confirmedResponse) {
+    const customerUpdate = requiresHumanCsBeforeMerchant(assessRisk(confirmed))
+      ? '매장 답변이 접수되었습니다. 위험 신호가 있는 문의이므로 환불이나 재배달을 바로 확정하지 않고 상담원이 매장 답변과 전체 맥락을 다시 검토합니다.'
+      : customerUpdateByResponse[confirmedResponse]
     caseStore.appendConversation(
       caseId,
       'agent',
-      customerUpdateByResponse[confirmedResponse],
+      customerUpdate,
     )
   }
 

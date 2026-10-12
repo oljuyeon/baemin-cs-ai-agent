@@ -18,6 +18,7 @@
     "sampleExists": "That sample is already waiting.",
     "sampleNoneLeft": "No samples left to add.",
     "sampleFailed": "Could not create the sample.",
+    "merchantRequested": "Support asked the store for more information. The case will return to the support queue after the store replies.",
     "saved": "Saved. This case is closed and the agent will not continue it.",
     "saveFailed": "Could not save the decision."
   },
@@ -200,7 +201,7 @@
     "reject_refund": "Reject refund",
     "approve_redelivery": "Approve redelivery",
     "request_more_info": "Request more information from customer",
-    "request_additional_confirmation": "Check store or delivery process"
+    "request_additional_confirmation": "Have support ask the store"
   },
   "history": {
     "title": "History",

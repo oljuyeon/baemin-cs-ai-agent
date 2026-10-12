@@ -284,6 +284,7 @@ const buildToolAction = (
   toolName: RemoteDecision['toolName'],
 ): Extract<AgentAction, { type: 'CALL_TOOL' }> | null => {
   if (!toolName) return null
+  const risk = latestResult<RiskResult>(caseData, 'check_risk')
 
   switch (toolName) {
     case 'get_order':
@@ -310,6 +311,9 @@ const buildToolAction = (
     case 'request_merchant_confirmation':
       return caseData.issueType !== 'delivery_delay'
         && caseData.order
+        && risk?.status === 'success'
+        && !risk.data.blockedActions.includes('mock_refund')
+        && !risk.data.blockedActions.includes('mock_redelivery')
         && !caseData.merchantConfirmation ? {
         type: 'CALL_TOOL',
         toolName,

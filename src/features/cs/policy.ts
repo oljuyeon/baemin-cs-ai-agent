@@ -145,6 +145,14 @@ export function assessRisk(caseData: CsCase): RiskResult {
   }
 }
 
+/**
+ * 고객을 낙인찍지 않고, 자동 해결을 차단할 정도의 객관적 위험 신호가 있는지만 본다.
+ * 이 경우 매장에 고객 문의를 바로 전달하지 않고 Human CS가 먼저 맥락을 검토한다.
+ */
+export const requiresHumanCsBeforeMerchant = (risk: RiskResult) =>
+  risk.blockedActions.includes('mock_refund')
+  || risk.blockedActions.includes('mock_redelivery')
+
 /** 수업용 Mock 정책: 실측 지연 30분 이상이며 동일 주문 쿠폰이 아직 없을 때만 허용한다. */
 export function evaluateDelayCompensation(caseData: CsCase): DelayCompensationResult {
   const base = {

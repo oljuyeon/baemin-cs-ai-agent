@@ -6,6 +6,7 @@ import type {
   ToolName,
   ToolResult,
 } from '../cs'
+import { requiresHumanCsBeforeMerchant } from '../cs'
 
 const wasCalled = (caseData: CsCase, toolName: ToolName) =>
   caseData.toolHistory.some((log) => log.toolName === toolName)
@@ -147,6 +148,12 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
     const policy = latestResult<PolicyResult>(caseData, 'get_policy')
     const risk = latestResult<RiskResult>(caseData, 'check_risk')
 
+    if (risk?.status === 'success' && requiresHumanCsBeforeMerchant(risk.data)) {
+      return finishForHumanReview(
+        '반복 보상 이력, 중복 처리 또는 증빙 불일치 등 위험 신호가 확인되어 매장에 직접 전달하지 않고 상담원이 먼저 전체 맥락을 검토합니다. 필요한 매장 확인은 상담원이 중재합니다.',
+      )
+    }
+
     if (!caseData.merchantConfirmation) {
       return {
         type: 'CALL_TOOL',
@@ -235,6 +242,12 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
   if (policy?.status !== 'success' || risk?.status !== 'success') {
     return finishForHumanReview(
       '정책 또는 위험 정보를 확인하지 못해 상담원이 이어서 확인합니다.',
+    )
+  }
+
+  if (requiresHumanCsBeforeMerchant(risk.data)) {
+    return finishForHumanReview(
+      '반복 보상 이력, 중복 처리 또는 주문·주장 불일치 위험 신호가 확인되어 매장에 직접 전달하지 않고 상담원이 먼저 전체 맥락을 검토합니다. 필요한 매장 확인은 상담원이 중재합니다.',
     )
   }
 

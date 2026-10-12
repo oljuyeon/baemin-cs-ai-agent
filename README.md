@@ -79,7 +79,10 @@ Customer, Merchant, Human CS는 같은 `caseId`와 `CsCase`를 사용합니다. 
 ```text
 Customer 문의 접수
 → Agent가 필요한 정보와 Tool 선택
-→ 필요하면 Merchant 확인
+→ Policy·Risk 확인
+→ 자동 해결 차단 위험 신호가 있으면 Human CS 선검토
+→ 위험 신호가 없으면 Merchant 확인
+→ Human CS가 필요하다고 판단한 위험 건만 CS를 통해 Merchant 확인
 → 같은 Case로 Agent 재개
 → 자동 처리 또는 Human CS 이관
 → Customer 결과·이력 반영
@@ -100,7 +103,11 @@ Tool은 Mock 또는 외부 시스템의 결과만 반환합니다. Case 상태, 
 - Policy: 현재 Case에서 허용되는 Action과 제약
 - Risk: Risk Flag와 그 Flag가 막는 Action
 
-Risk Flag만으로 즉시 Human CS에 이관하지 않습니다. 허용된 추가 질문이나 조회로 해결할 수 있는지 먼저 판단합니다.
+주문·증빙·기존 처리 이력을 먼저 조회한 뒤 Risk를 판단합니다. `frequent_refund`,
+`duplicate_refund`, 주문·주장 불일치, 증빙 불일치처럼 환불 또는 재배달을 차단하는
+위험 신호가 있으면 Merchant에게 고객 문의를 직접 전달하지 않고 Human CS가 먼저
+전체 맥락을 검토합니다. Human CS가 매장 확인이 필요하다고 판단하면 같은 Case를
+Merchant Queue로 보내고, 매장 답변 뒤 다시 Human CS Queue로 돌려받습니다.
 
 ## 화면별 구현 내용
 
@@ -171,11 +178,15 @@ Agent Loop가 아직 없으므로 현재는 샘플 버튼으로 임시 확인 �
   - 환불 거절
   - 재배달 승인
   - 추가 정보 요청
-  - 추가 확인 요청
-- 처리 계정·시각·의견 저장 후 Case를 `CLOSED`로 전환
+  - 상담원을 통한 매장 추가 확인 요청
+- 매장 추가 확인 요청은 Case를 `WAITING_MERCHANT`로 전환하고, 매장 답변 뒤 위험
+  신호를 다시 확인해 Human CS Queue로 복귀
+- 최종 처리 Action은 처리 계정·시각·의견 저장 후 Case를 `CLOSED`로 전환
 - 새 이관 알림, 3분 미처리 표시, 상담 진행 표시
 
-모든 환불과 재배달은 가상 기록입니다. 현재 계약에서는 다섯 Action 모두 최종 처리이며, 추가 요청 뒤 Customer 채팅을 다시 여는 흐름은 포함하지 않습니다. Agent Loop가 아직 없으므로 이관 Queue도 샘플 버튼으로 확인합니다.
+모든 환불과 재배달은 가상 기록입니다. 매장 추가 확인은 최종 처리가 아니라 Human
+CS가 중재하는 왕복 단계이며, 고객 화면에도 상담원이 매장 확인을 요청했다는 상태가
+반영됩니다.
 
 ## 공통 모듈
 

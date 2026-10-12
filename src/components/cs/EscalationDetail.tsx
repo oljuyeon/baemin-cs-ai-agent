@@ -34,7 +34,7 @@ interface Props {
   caseData: CsCase | null
   showBack: boolean
   onBack: () => void
-  onSaved: (message: string) => void
+  onSaved: (message: string, destination?: 'queue' | 'history') => void
   onError: (message: string) => void
 }
 
@@ -222,7 +222,12 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
     }
     try {
       caseStore.recordHumanCsResolution(caseData.caseId, action, CS_AGENT_ID, comment.trim() || undefined)
-      onSaved(t('alerts.saved'))
+      onSaved(
+        action === 'request_additional_confirmation'
+          ? t('alerts.merchantRequested')
+          : t('alerts.saved'),
+        action === 'request_additional_confirmation' ? 'queue' : 'history',
+      )
     } catch {
       onError(t('alerts.saveFailed'))
     }

@@ -18,6 +18,7 @@
     "sampleExists": "이미 대기 중인 샘플입니다.",
     "sampleNoneLeft": "넣을 샘플이 없습니다.",
     "sampleFailed": "샘플을 만들지 못했습니다.",
+    "merchantRequested": "상담원이 매장에 추가 확인을 요청했습니다. 매장 답변 뒤 다시 상담원 대기열에서 검토합니다.",
     "saved": "처리를 저장했습니다. Agent가 이어서 판단하지 않고, 이 건은 종료됩니다.",
     "saveFailed": "처리를 저장하지 못했습니다."
   },
@@ -200,7 +201,7 @@
     "reject_refund": "환불 거절",
     "approve_redelivery": "재배달 승인",
     "request_more_info": "고객에게 추가 정보 요청",
-    "request_additional_confirmation": "매장·배송 과정 추가 확인"
+    "request_additional_confirmation": "상담원이 매장에 추가 확인 요청"
   },
   "history": {
     "title": "처리 이력",

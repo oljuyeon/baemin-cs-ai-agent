@@ -397,6 +397,45 @@ export class MemoryCaseStore implements CaseStore {
   ): CsCase {
     const current = this.requireCase(caseId)
     const handledAt = nowIso()
+
+    if (action === 'request_additional_confirmation') {
+      const merchantQuestion = comment?.trim()
+        || 'Human CS 검토 결과 추가 확인이 필요합니다. 주문 포장 및 전달 내역을 확인해 주세요.'
+      const customerMessage = '상담원이 위험 신호와 전체 문의 맥락을 먼저 검토한 뒤 매장에 추가 확인을 요청했습니다. 매장 답변도 상담원이 다시 확인해 안내할게요.'
+      return this.commitCase(caseId, {
+        changes: {
+          status: 'WAITING_MERCHANT',
+          decision: 'WAITING_MERCHANT',
+          finalAction: undefined,
+          escalationReason: undefined,
+          humanCsResolution: undefined,
+          merchantConfirmation: {
+            requestId: newId('MC'),
+            caseId: current.caseId,
+            orderId: current.orderId,
+            itemName: current.claimedItemName,
+            customerClaim: current.customerClaim,
+            evidenceUrl: current.evidenceUrls[0],
+            conversation: [{ role: 'agent', content: merchantQuestion, createdAt: handledAt }],
+            status: 'waiting',
+            requestedAt: handledAt,
+          },
+          conversation: [
+            ...current.conversation,
+            { role: 'agent', content: customerMessage, createdAt: handledAt },
+          ],
+        },
+        history: [{
+          actor: 'cs',
+          event: 'MERCHANT_REQUESTED',
+          fromStatus: current.status,
+          toStatus: 'WAITING_MERCHANT',
+          detail: `Human CS가 매장 추가 확인 요청: ${merchantQuestion}`,
+          createdAt: handledAt,
+        }],
+      })
+    }
+
     return this.commitCase(caseId, {
       changes: {
         status: 'CLOSED',
