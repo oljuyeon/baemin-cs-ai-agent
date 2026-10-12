@@ -6,12 +6,14 @@ import {
   caseStore,
   findCustomer,
   findMerchant,
+  isMerchantTimeoutEscalation,
   type CsCase,
   type DeliveryData,
   type HumanCsAction,
   type OrderData,
 } from '../../features/cs'
 import {
+  executeTool,
   getHumanHandoffSourceFingerprint,
   summarizeHumanHandoffWithOpenAI,
 } from '../../features/agent'
@@ -28,6 +30,11 @@ type ConversationEntry = {
 const actions: HumanCsAction[] = [
   'request_more_info',
   'request_additional_confirmation',
+]
+
+const merchantTimeoutActions: HumanCsAction[] = [
+  'approve_refund',
+  'reject_refund',
 ]
 
 interface Props {
@@ -113,6 +120,7 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
   const [order, setOrder] = useState<OrderData | null>(null)
   const [delivery, setDelivery] = useState<DeliveryData | null>(null)
   const [summaryState, setSummaryState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const caseId = caseData?.caseId
   const updatedAt = caseData?.updatedAt
 
@@ -120,6 +128,7 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
     setAction(null)
     setComment('')
     setError(null)
+    setIsSubmitting(false)
     setSummaryState('idle')
   }, [caseId])
 
@@ -205,6 +214,8 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
   const customer = findCustomer(caseData.customerId)
   const resolution = caseData.humanCsResolution
   const merchant = caseData.merchantConfirmation
+  const merchantTimedOut = isMerchantTimeoutEscalation(caseData)
+  const availableActions = merchantTimedOut ? merchantTimeoutActions : actions
   const summaryLanguage = i18n.resolvedLanguage || i18n.language || 'ko'
   const summaryFingerprint = getHumanHandoffSourceFingerprint(caseData)
   const handoffSummary = caseData.humanHandoffSummary?.sourceFingerprint === summaryFingerprint
@@ -215,12 +226,38 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
     ? t('detail.summaryUnavailable')
     : t('detail.summaryGenerating')
 
-  const submit = () => {
+  const submit = async () => {
     if (!action) {
       setError(t('detail.needAction'))
       return
     }
+    if (isSubmitting) return
+    setIsSubmitting(true)
     try {
+      if (merchantTimedOut && action === 'approve_refund') {
+        const targetOrder = caseData.order ?? order
+        const item = targetOrder?.items.find(
+          (candidate) => candidate.name === caseData.claimedItemName,
+        )
+        const amount = caseData.issueType === 'missing_item'
+          ? item?.price
+          : targetOrder?.totalAmount
+        if (!amount) throw new Error(t('detail.refundAmountMissing'))
+
+        const updated = await executeTool(caseData.caseId, {
+          type: 'CALL_TOOL',
+          toolName: 'refund',
+          input: {
+            caseId: caseData.caseId,
+            orderId: caseData.orderId,
+            itemName: item?.name,
+            amount,
+          },
+        })
+        if (updated.finalActionResult?.action !== 'mock_refund') {
+          throw new Error(t('detail.refundFailed'))
+        }
+      }
       caseStore.recordHumanCsResolution(caseData.caseId, action, CS_AGENT_ID, comment.trim() || undefined)
       onSaved(
         action === 'request_additional_confirmation'
@@ -228,8 +265,11 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
           : t('alerts.saved'),
         action === 'request_additional_confirmation' ? 'queue' : 'history',
       )
-    } catch {
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : t('alerts.saveFailed'))
       onError(t('alerts.saveFailed'))
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -394,9 +434,11 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
       ) : (
         <div className="cs-response">
           <h3>{t('detail.decide')}</h3>
-          <p className="cs-muted">{t('detail.mockNote')}</p>
+          <p className="cs-muted">
+            {merchantTimedOut ? t('detail.timeoutDecisionNote') : t('detail.mockNote')}
+          </p>
           <div className="cs-response__choices">
-            {actions.map((item) => (
+            {availableActions.map((item) => (
               <button
                 key={item}
                 type="button"
@@ -406,7 +448,9 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
                   setError(null)
                 }}
               >
-                {t(`actions.${item}`)}
+                {merchantTimedOut
+                  ? t(`actions.timeout_${item}`, { defaultValue: t(`actions.${item}`) })
+                  : t(`actions.${item}`)}
               </button>
             ))}
           </div>
@@ -415,7 +459,9 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
             <textarea value={comment} onChange={(event) => setComment(event.target.value)} />
           </label>
           {error && <p className="cs-form-error">{error}</p>}
-          <button className="cs-submit" type="button" onClick={submit}>{t('detail.submit')}</button>
+          <button className="cs-submit" type="button" onClick={submit} disabled={isSubmitting}>
+            {isSubmitting ? t('detail.submitting') : t('detail.submit')}
+          </button>
         </div>
       )}
     </section>

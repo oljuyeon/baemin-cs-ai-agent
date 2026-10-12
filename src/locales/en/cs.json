@@ -192,13 +192,19 @@
     "resolution": "Decision",
     "decide": "Customer-support follow-up",
     "mockNote": "The store approves refunds or redelivery. Platform support only gathers more information and mediates when the customer requests help.",
+    "timeoutDecisionNote": "The store did not respond within three minutes. Support decides the refund from the order, evidence, and policy, informs the customer, and sends the store an after-the-fact notice.",
+    "refundAmountMissing": "The order or item amount for the refund is unavailable.",
+    "refundFailed": "The Mock refund failed.",
     "comment": "Comment",
     "needAction": "Choose a decision.",
-    "submit": "Save decision"
+    "submit": "Save decision",
+    "submitting": "Processing"
   },
   "actions": {
     "approve_refund": "Approve refund",
     "reject_refund": "Reject refund",
+    "timeout_approve_refund": "Refund by support and notify store",
+    "timeout_reject_refund": "Close without refund and notify store",
     "approve_redelivery": "Approve redelivery",
     "request_more_info": "Request more information from customer",
     "request_additional_confirmation": "Have support ask the store"

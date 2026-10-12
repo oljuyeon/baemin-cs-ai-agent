@@ -26,6 +26,13 @@ const newId = (prefix: string) => {
   return `${prefix}-${suffix}`
 }
 
+export const isMerchantTimeoutEscalation = (caseData: CsCase) =>
+  caseData.escalationReason === 'Merchant 응답 3분 타임아웃'
+  || caseData.history.some((entry) =>
+    entry.event === 'ESCALATED'
+    && entry.detail?.includes('Merchant 응답 3분 타임아웃'),
+  )
+
 const taskStatusForCaseStatus = (status: CaseStatus) => {
   if (status === 'WAITING_MERCHANT') return 'WAITING_MERCHANT' as const
   if (status === 'ESCALATED') return 'WAITING_HUMAN_CS' as const
@@ -436,11 +443,46 @@ export class MemoryCaseStore implements CaseStore {
       })
     }
 
+    const merchantTimedOut = isMerchantTimeoutEscalation(current)
+    const resolvedItem = current.order?.items.find(
+      (item) => item.name === current.claimedItemName,
+    )
+    const refundAmount = current.issueType === 'missing_item'
+      ? resolvedItem?.price
+      : current.order?.totalAmount
+    const refundDescription = `${current.claimedItemName ?? '주문'} ${refundAmount?.toLocaleString('ko-KR') ?? ''}원 Mock 환불`
+    const customerMessage = merchantTimedOut
+      ? action === 'approve_refund'
+        ? `매장이 3분 동안 응답하지 않아 상담원이 주문·증빙·정책을 검토하고 ${refundDescription}을 완료했습니다. 처리 결과는 매장에도 사후 통지했습니다.`
+        : '매장이 3분 동안 응답하지 않아 상담원이 주문·증빙·정책을 검토했습니다. 추가 환불 없이 문의를 종료하고 처리 결과를 매장에 사후 통지했습니다.'
+      : undefined
+    const merchantNotice = merchantTimedOut
+      ? `매장 응답 기한 내 회신이 없어 플랫폼 Human CS가 ${action === 'approve_refund' ? `${refundDescription}로` : '추가 환불 없는 문의 종료로'} 처리했습니다. 이 메시지는 추가 확인 요청이 아닌 사후 통지입니다.${comment ? ` 상담원 메모: ${comment}` : ''}`
+      : undefined
+    const merchantConfirmation = merchantTimedOut && current.merchantConfirmation
+      ? {
+          ...current.merchantConfirmation,
+          status: 'completed' as const,
+          respondedAt: handledAt,
+          conversation: [
+            ...(current.merchantConfirmation.conversation ?? []),
+            { role: 'agent' as const, content: merchantNotice!, createdAt: handledAt },
+          ],
+        }
+      : current.merchantConfirmation
+
     return this.commitCase(caseId, {
       changes: {
         status: 'CLOSED',
         finalAction: finalActionForHumanCs(action),
         humanCsResolution: { action, handledBy, comment, handledAt },
+        merchantConfirmation,
+        conversation: customerMessage
+          ? [
+              ...current.conversation,
+              { role: 'agent', content: customerMessage, createdAt: handledAt },
+            ]
+          : current.conversation,
       },
       history: [{
         actor: 'cs',
