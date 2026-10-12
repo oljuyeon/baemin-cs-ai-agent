@@ -83,7 +83,7 @@ type HumanHandoffSummaryResponse = Pick<
 const handoffRequests = new Map<string, Promise<HumanHandoffSummary>>()
 const merchantClaimRequests = new Map<string, Promise<string>>()
 const merchantClaimCache = new Map<string, string>()
-const HUMAN_HANDOFF_SUMMARY_VERSION = 'v3'
+const HUMAN_HANDOFF_SUMMARY_VERSION = 'v4'
 const MERCHANT_CLAIM_SUMMARY_VERSION = 'v1'
 
 type OptionalHandoffTask = {
