@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AgentAction, AgentCaseState, ChatMessage, CustomerIssue } from '../../types/customer'
-import { CheckIcon, SparkIcon } from '../common/icons'
+import { CheckIcon } from '../common/icons'
 import { CameraIcon, SendIcon } from './CustomerIcons'
 
 interface Props {
@@ -48,7 +48,7 @@ export function AgentWorkspace({ issue, messages, actions, draft, attachedFile, 
   return (
     <section className="agent-workspace agent-workspace--conversation" aria-live="polite">
       <div className="agent-workspace__header">
-        <span><SparkIcon /></span>
+        <span><img src="/brand/ieum-symbol.jpeg" alt="" /></span>
         <div><strong>{t('header.title')}</strong><small><i className={`case-dot case-dot--${caseState}`} />{t(`agent.state.${caseState}`)}</small></div>
         {messages.length > 1 && <button className="agent-workspace__reset" type="button" onClick={onReset}>{t('agent.newCase')}</button>}
       </div>
