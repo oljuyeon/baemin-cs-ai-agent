@@ -1,4 +1,4 @@
-import { createAgentApiHandler } from '../server/agentApiHandler.js'
+import { createAgentApiHandler } from './agentApiHandler.js'
 
 const handler = createAgentApiHandler({
   apiKey: process.env.OPENAI_API_KEY,

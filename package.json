@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run build:api",
+    "build:api": "node scripts/build-vercel-api.mjs",
     "preview": "vite preview",
     "lint": "tsc -b --pretty false"
   },
@@ -23,6 +24,7 @@
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.4",
+    "esbuild": "^0.28.2",
     "typescript": "~5.9.3",
     "vite": "^7.1.7"
   }
