@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { createAgentApiPlugin, type PluginOptions } from './agentApiPlugin'
+import { createAgentApiPlugin, type PluginOptions } from './agentApiPlugin.js'
 
 type Next = (error?: unknown) => void
 type RouteHandler = (
