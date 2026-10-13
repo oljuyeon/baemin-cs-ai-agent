@@ -55,7 +55,7 @@
     "draftReady": "I drafted a message from your selection. Review it and send it when ready.",
     "requiredHint": "Please attach a photo so we can verify the wrong delivery.",
     "wrongDeliveryPhotoRequired": "A wrong-delivery claim requires a photo of the received food and its packaging or receipt when the case is first submitted. Attach a photo and send again.",
-    "photoTooLarge": "Attach a JPG, PNG, WebP, or GIF image no larger than 5 MB.",
+    "photoTooLarge": "Attach a JPG, PNG, WebP, or GIF image no larger than 3 MB.",
     "photoReadError": "We could not read that image. Please attach a different one.",
     "savedWithoutAgent": "Your message is saved on the case. The AI agent is not connected yet, so no lookup or refund was run.",
     "unsupported": "This demo currently supports delivery delay, missing item, and wrong delivery cases. Please describe what happened in a little more detail.",

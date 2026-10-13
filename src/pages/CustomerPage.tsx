@@ -588,7 +588,7 @@ export function CustomerPage() {
   }
 
   const attachImage = (file: File) => {
-    if (file.size > 5_000_000) {
+    if (file.size > 3_000_000) {
       appendMessages({
         id: `photo-too-large-${Date.now()}`,
         role: 'agent',

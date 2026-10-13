@@ -95,7 +95,7 @@ const reassessmentSchema = z.object({
 
 const evidenceRequestSchema = z.object({
   imageDataUrl: z.string()
-    .max(7_000_000)
+    .max(4_200_000)
     .regex(/^data:image\/(?:jpeg|png|webp|gif);base64,/),
   issueType: z.enum(['missing_item', 'wrong_delivery']),
   customerClaim: z.string().trim().min(1).max(2_000),
@@ -471,7 +471,7 @@ const localizeHandoffSummary = (
   }
 }
 
-type PluginOptions = {
+export type PluginOptions = {
   apiKey?: string
   model: string
 }
@@ -484,12 +484,19 @@ const writeJson = (response: ServerResponse, status: number, body: unknown) => {
 }
 
 const readJson = async (request: IncomingMessage) => {
+  const requestWithBody = request as IncomingMessage & { body?: unknown }
+  if (requestWithBody.body !== undefined) {
+    return typeof requestWithBody.body === 'string'
+      ? JSON.parse(requestWithBody.body) as unknown
+      : requestWithBody.body
+  }
+
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
     size += buffer.length
-    if (size > 7_500_000) throw new Error('요청 본문이 너무 큽니다.')
+    if (size > 4_400_000) throw new Error('요청 본문이 너무 큽니다.')
     chunks.push(buffer)
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
