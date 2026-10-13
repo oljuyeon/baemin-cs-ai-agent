@@ -16,9 +16,15 @@
     }
   },
   "roles": {
-    "eyebrow": "Start by role",
-    "title": "Which workspace do you need?",
-    "description": "Each role sees only the information and actions they need.",
+    "eyebrow": "Ieum-i demo flow",
+    "title": "Follow one issue from customer\nto store and support",
+    "description": "See how the same case stays connected across every role until it is resolved.",
+    "flow": {
+      "label": "Ieum-i role-based support flow",
+      "customer": "Customer inquiry",
+      "merchant": "Store confirmation",
+      "cs": "CS when needed"
+    },
     "customer": {
       "label": "Customer",
       "quote": "Where is my order?",
