@@ -124,6 +124,7 @@
       "requestMerchant": "매장 확인 요청 전송",
       "refund": "부분 환불 완료",
       "redelivery": "재배달 접수 완료",
+      "issueCoupon": "지연 보상 쿠폰 발급 완료",
       "escalateHuman": "상담원 검토 대기열 접수"
     },
     "actions": {

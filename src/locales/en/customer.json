@@ -115,6 +115,7 @@
       "requestMerchant": "Sent a confirmation request to the restaurant",
       "refund": "Partial refund completed",
       "redelivery": "Redelivery request accepted",
+      "issueCoupon": "Delay compensation coupon issued",
       "escalateHuman": "Added the case to the human review queue"
     },
     "actions": {

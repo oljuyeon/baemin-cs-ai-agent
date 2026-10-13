@@ -23,6 +23,10 @@ const finalActions = [
   'human_review',
   'no_action',
 ] as const
+const policyActions = [
+  ...finalActions,
+  'mock_coupon',
+] as const
 
 const normalizeComparableText = (value: string) => value
   .normalize('NFKC')
@@ -126,8 +130,8 @@ const decisionContextSchema = z.object({
     deliveryStatus: z.string().max(80),
     delayMinutes: z.number(),
   }).nullable(),
-  policyAllowedActions: z.array(z.enum(finalActions)),
-  riskBlockedActions: z.array(z.enum(finalActions)),
+  policyAllowedActions: z.array(z.enum(policyActions)),
+  riskBlockedActions: z.array(z.enum(policyActions)),
   toolHistory: z.array(toolStatusSchema).max(30),
 })
 
@@ -933,6 +937,7 @@ export function createAgentApiPlugin({ apiKey, model }: PluginOptions): Plugin {
               '같은 Tool을 불필요하게 반복하지 않는다.',
               '환불이나 재배달 전에는 get_policy와 check_risk 성공 결과가 모두 있어야 한다.',
               'policyAllowedActions에 없거나 riskBlockedActions에 있는 보상은 선택하지 않는다.',
+              'policyAllowedActions에 mock_coupon이 있어도 쿠폰은 고객이 명시적으로 확정하는 화면에서만 실행하므로 finalAction으로 선택하지 않는다.',
               'mock_refund가 허용되고 차단되지 않은 누락 건은 상담원에게 이관하지 않는다.',
               '환불과 재배달은 고객에게 대상과 내용을 보여주고 명시적 동의를 받은 UI만 실행하므로 refund 또는 redelivery Tool을 직접 선택하지 않는다.',
               '매장 확인 요청은 주문·정책·위험 확인이 끝났고 고객 설명이나 증빙이 충분할 때만 제안한다.',

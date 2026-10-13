@@ -153,6 +153,7 @@ const toolMessageKeys: Partial<Record<ToolName, string>> = {
   request_merchant_confirmation: 'agent.toolEvents.requestMerchant',
   refund: 'agent.toolEvents.refund',
   redelivery: 'agent.toolEvents.redelivery',
+  issue_coupon: 'agent.toolEvents.issueCoupon',
   escalate_to_human: 'agent.toolEvents.escalateHuman',
 }
 
@@ -1413,7 +1414,80 @@ export function CustomerPage() {
       return
     }
 
-    if (action.id === 'checkCompensation' || action.id === 'confirmCoupon') {
+    if (action.id === 'confirmCoupon' && currentCase && !isThinking) {
+      const compensation = currentCase
+        ? evaluateDelayCompensation(currentCase)
+        : null
+      if (!compensation?.eligible) {
+        const resultKey = compensation?.reason === 'already_issued'
+          ? 'agent.results.compensationAlreadyIssued'
+          : compensation?.reason === 'insufficient_delay'
+            ? 'agent.results.compensationNotEligible'
+            : 'agent.results.compensationNeedsData'
+        appendAgentContent(t(resultKey, {
+          delayMinutes: compensation?.delayMinutes ?? 0,
+          minimumMinutes: compensation?.minimumMinutes ?? 30,
+          amount: (compensation?.amount ?? 3_000).toLocaleString('ko-KR'),
+        }))
+        setActions([])
+        setCaseState('resolved')
+        return
+      }
+
+      const content = t('agent.results.couponDone', {
+        amount: compensation.amount.toLocaleString('ko-KR'),
+      })
+      setActions([])
+      setIsThinking(true)
+      setCaseState('working')
+      try {
+        caseStore.updateCase(currentCase.caseId, { status: 'ACTION_EXECUTING' })
+        await executeTool(currentCase.caseId, {
+          type: 'CALL_TOOL',
+          toolName: 'issue_coupon',
+          input: {
+            caseId: currentCase.caseId,
+            orderId: currentCase.orderId,
+            amount: compensation.amount,
+          },
+        })
+        const afterTool = caseStore.getCase(currentCase.caseId)
+        if (afterTool?.finalActionResult?.action !== 'mock_coupon') {
+          throw new Error('쿠폰 발급 Tool이 완료되지 않았습니다.')
+        }
+        caseStore.commitCase(currentCase.caseId, {
+          changes: {
+            status: 'AUTO_RESOLVED',
+            decision: 'AUTO_RESOLVE',
+            finalAction: 'mock_coupon',
+          },
+          history: [{
+            actor: 'agent',
+            event: 'FINAL_ACTION_COMPLETED',
+            fromStatus: 'ACTION_EXECUTING',
+            toStatus: 'AUTO_RESOLVED',
+            detail: content,
+          }],
+        })
+        appendAgentContent(content)
+        setCaseState('resolved')
+      } catch (error) {
+        caseStore.updateCase(currentCase.caseId, { status: 'ACTION_READY' })
+        appendAgentContent(error instanceof Error
+          ? `쿠폰 발급 중 오류가 발생했습니다: ${error.message}`
+          : '쿠폰 발급 중 알 수 없는 오류가 발생했습니다.')
+        setActions([
+          { id: 'confirmCoupon', labelKey: 'agent.actions.confirmCoupon', primary: true },
+          { id: 'cancelAction', labelKey: 'agent.actions.cancelAction' },
+        ])
+        setCaseState('waiting')
+      } finally {
+        setIsThinking(false)
+      }
+      return
+    }
+
+    if (action.id === 'checkCompensation') {
       const compensation = currentCase
         ? evaluateDelayCompensation(currentCase)
         : null
@@ -1423,21 +1497,16 @@ export function CustomerPage() {
           ? 'agent.results.compensationNotEligible'
           : compensation?.reason === 'missing_delivery' || !compensation
             ? 'agent.results.compensationNeedsData'
-            : action.id === 'confirmCoupon'
-              ? 'agent.results.couponDone'
-              : 'agent.results.compensationOffer'
+            : 'agent.results.compensationOffer'
       const content = t(resultKey, {
         delayMinutes: compensation?.delayMinutes ?? 0,
         minimumMinutes: compensation?.minimumMinutes ?? 30,
         amount: (compensation?.amount ?? 3_000).toLocaleString('ko-KR'),
       })
 
-      if (action.id === 'confirmCoupon' && compensation?.eligible && currentCase) {
-        caseStore.updateCase(currentCase.caseId, { finalAction: 'mock_coupon' })
-      }
       appendAgentContent(content)
 
-      if (action.id === 'checkCompensation' && compensation?.eligible) {
+      if (compensation?.eligible) {
         setActions([
           { id: 'confirmCoupon', labelKey: 'agent.actions.confirmCoupon', primary: true },
           { id: 'cancelAction', labelKey: 'agent.actions.cancelAction' },
