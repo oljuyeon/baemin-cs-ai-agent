@@ -42,7 +42,12 @@ export function createAgentApiHandler(options: PluginOptions) {
   })
 
   return async (request: IncomingMessage, response: ServerResponse) => {
-    const pathname = new URL(request.url ?? '/', 'http://localhost').pathname.replace(/\/$/, '')
+    const requestUrl = new URL(request.url ?? '/', 'http://localhost')
+    const rewrittenAction = requestUrl.searchParams.get('action')
+    const pathname = (rewrittenAction
+      ? `/api/agent/${rewrittenAction}`
+      : requestUrl.pathname
+    ).replace(/\/$/, '')
     const handler = routes.get(pathname)
     if (!handler) {
       return writeJson(response, 404, { error: 'Agent API route not found.' })
