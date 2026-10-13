@@ -9,7 +9,8 @@
   },
   "nav": {
     "service": "서비스 소개",
-    "roles": "역할별 시작"
+    "roles": "역할별 시작",
+    "agentLogs": "Agent 판단 로그"
   },
   "actions": {
     "start": "시작하기",
@@ -47,5 +48,96 @@
     "eyebrow": "PoC 로그인",
     "title": "어떤 역할로 시작할까요?",
     "description": "실제 인증은 추후 연동 예정이며, 지금은 데모 계정으로 화면에 진입합니다."
+  },
+  "agentLogs": {
+    "eyebrow": "Agent 관찰 화면",
+    "title": "Agent가 선택한 행동을 확인해요",
+    "description": "Case의 현재 상태, Tool 실행, 관찰 결과와 최종 조치를 시간순으로 볼 수 있어요. 모델의 비공개 추론이 아니라 실제 저장된 판단과 실행 기록입니다.",
+    "caseList": "Case 목록",
+    "caseCount": "총 {{count}}건",
+    "empty": "아직 저장된 Agent 로그가 없어요. 고객 화면에서 문의를 시작하면 여기에 표시됩니다.",
+    "selectCase": "확인할 Case를 선택해 주세요.",
+    "customerClaim": "고객 문의",
+    "currentDecision": "현재 판단",
+    "status": "Case 상태",
+    "decision": "선택한 결정",
+    "finalAction": "최종 조치",
+    "policy": "적용 정책",
+    "risk": "확인된 주의 조건",
+    "none": "없음",
+    "pending": "아직 선택되지 않음",
+    "timeline": "판단·실행 로그",
+    "timelineDescription": "Agent가 관찰한 결과와 선택한 행동을 Case 기록 기준으로 표시합니다.",
+    "toolAction": "Tool 실행",
+    "caseEvent": "Case 변경",
+    "success": "성공",
+    "error": "오류",
+    "step": "{{count}}단계",
+    "updatedAt": "최근 변경 {{time}}",
+    "issue": {
+      "delivery_delay": "배달 지연",
+      "missing_item": "메뉴 누락",
+      "wrong_delivery": "오배달",
+      "other": "기타"
+    },
+    "statusValue": {
+      "NEW": "문의 접수",
+      "COLLECTING_INFO": "고객 정보 대기",
+      "WAITING_EVIDENCE": "자료 대기",
+      "CHECKING_DATA": "데이터 확인",
+      "WAITING_MERCHANT": "매장 답변 대기",
+      "POLICY_CHECK": "정책 확인",
+      "RISK_CHECK": "위험 통제 확인",
+      "ACTION_READY": "고객 조치 선택 대기",
+      "ACTION_EXECUTING": "조치 실행 중",
+      "AUTO_RESOLVED": "자동 처리 완료",
+      "ESCALATED": "상담원 이관",
+      "CLOSED": "종료"
+    },
+    "decisionValue": {
+      "AUTO_RESOLVE": "자동 해결",
+      "NEED_MORE_INFO": "추가 정보 요청",
+      "WAITING_MERCHANT": "매장 확인 대기",
+      "ESCALATE": "상담원 이관"
+    },
+    "actionValue": {
+      "guide_customer": "배송·정책 안내",
+      "mock_coupon": "쿠폰 발급",
+      "mock_refund": "환불",
+      "mock_redelivery": "재배달",
+      "human_review": "상담원 검토",
+      "no_action": "추가 조치 없음"
+    },
+    "riskValue": {
+      "duplicate_refund": "중복 환불 이력",
+      "frequent_refund": "반복 환불 이력",
+      "order_claim_mismatch": "주문·주장 불일치",
+      "evidence_mismatch": "자료·주장 불일치",
+      "high_value_claim": "자동 처리 금액 기준 초과"
+    },
+    "tool": {
+      "get_order": "주문 내역 조회",
+      "get_delivery": "배달 상태 조회",
+      "get_cs_history": "기존 CS 이력 조회",
+      "get_policy": "적용 정책 확인",
+      "check_risk": "위험 통제 확인",
+      "analyze_evidence": "첨부 자료 확인",
+      "request_merchant_confirmation": "매장 확인 요청",
+      "refund": "환불 실행",
+      "redelivery": "재배달 실행",
+      "issue_coupon": "쿠폰 발급",
+      "escalate_to_human": "상담원 이관"
+    },
+    "event": {
+      "CASE_CREATED": "Case 생성",
+      "ISSUE_TYPE_CHANGED": "문의 유형 정정",
+      "STATUS_CHANGED": "Case 상태 변경",
+      "EVIDENCE_ADDED": "첨부 자료 추가",
+      "MERCHANT_REQUESTED": "매장 확인 요청",
+      "MERCHANT_RESPONDED": "매장 답변 반영",
+      "ESCALATED": "상담원 이관",
+      "HUMAN_CS_ACTION_COMPLETED": "상담원 처리 완료",
+      "FINAL_ACTION_COMPLETED": "최종 조치 완료"
+    }
   }
 }

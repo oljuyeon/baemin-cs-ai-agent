@@ -9,7 +9,8 @@
   },
   "nav": {
     "service": "About",
-    "roles": "Choose a role"
+    "roles": "Choose a role",
+    "agentLogs": "Agent decision log"
   },
   "actions": {
     "start": "Get started",
@@ -47,5 +48,96 @@
     "eyebrow": "PoC login",
     "title": "Which role would you like to use?",
     "description": "Real authentication will be connected later. For now, use a sample account to enter each role."
+  },
+  "agentLogs": {
+    "eyebrow": "Agent observability",
+    "title": "See the actions selected by the Agent",
+    "description": "Review each Case state, Tool execution, observation, and final action in chronological order. This page shows stored decisions and actions, not private model reasoning.",
+    "caseList": "Cases",
+    "caseCount": "{{count}} total",
+    "empty": "There are no saved Agent logs yet. Start an inquiry from the customer screen to populate this page.",
+    "selectCase": "Select a Case to review.",
+    "customerClaim": "Customer inquiry",
+    "currentDecision": "Current decision",
+    "status": "Case status",
+    "decision": "Selected decision",
+    "finalAction": "Final action",
+    "policy": "Applied policy",
+    "risk": "Review conditions",
+    "none": "None",
+    "pending": "Not selected yet",
+    "timeline": "Decision and action log",
+    "timelineDescription": "The timeline shows observations and selected actions recorded on the Case.",
+    "toolAction": "Tool action",
+    "caseEvent": "Case change",
+    "success": "Success",
+    "error": "Error",
+    "step": "Step {{count}}",
+    "updatedAt": "Updated {{time}}",
+    "issue": {
+      "delivery_delay": "Delivery delay",
+      "missing_item": "Missing item",
+      "wrong_delivery": "Wrong delivery",
+      "other": "Other"
+    },
+    "statusValue": {
+      "NEW": "Inquiry received",
+      "COLLECTING_INFO": "Waiting for customer information",
+      "WAITING_EVIDENCE": "Waiting for evidence",
+      "CHECKING_DATA": "Checking data",
+      "WAITING_MERCHANT": "Waiting for merchant",
+      "POLICY_CHECK": "Checking policy",
+      "RISK_CHECK": "Checking risk controls",
+      "ACTION_READY": "Waiting for customer action",
+      "ACTION_EXECUTING": "Executing action",
+      "AUTO_RESOLVED": "Automatically resolved",
+      "ESCALATED": "Transferred to support",
+      "CLOSED": "Closed"
+    },
+    "decisionValue": {
+      "AUTO_RESOLVE": "Automatic resolution",
+      "NEED_MORE_INFO": "Request more information",
+      "WAITING_MERCHANT": "Wait for merchant",
+      "ESCALATE": "Transfer to support"
+    },
+    "actionValue": {
+      "guide_customer": "Delivery or policy guidance",
+      "mock_coupon": "Issue coupon",
+      "mock_refund": "Refund",
+      "mock_redelivery": "Redelivery",
+      "human_review": "Human review",
+      "no_action": "No additional action"
+    },
+    "riskValue": {
+      "duplicate_refund": "Duplicate refund history",
+      "frequent_refund": "Repeat refund history",
+      "order_claim_mismatch": "Order and claim mismatch",
+      "evidence_mismatch": "Evidence and claim mismatch",
+      "high_value_claim": "Above automatic handling amount"
+    },
+    "tool": {
+      "get_order": "Retrieve order",
+      "get_delivery": "Retrieve delivery status",
+      "get_cs_history": "Retrieve prior CS history",
+      "get_policy": "Check applicable policy",
+      "check_risk": "Check risk controls",
+      "analyze_evidence": "Check attachment",
+      "request_merchant_confirmation": "Request merchant confirmation",
+      "refund": "Execute refund",
+      "redelivery": "Execute redelivery",
+      "issue_coupon": "Issue coupon",
+      "escalate_to_human": "Transfer to support"
+    },
+    "event": {
+      "CASE_CREATED": "Case created",
+      "ISSUE_TYPE_CHANGED": "Issue type corrected",
+      "STATUS_CHANGED": "Case status changed",
+      "EVIDENCE_ADDED": "Evidence added",
+      "MERCHANT_REQUESTED": "Merchant confirmation requested",
+      "MERCHANT_RESPONDED": "Merchant response recorded",
+      "ESCALATED": "Transferred to support",
+      "HUMAN_CS_ACTION_COMPLETED": "Support action completed",
+      "FINAL_ACTION_COMPLETED": "Final action completed"
+    }
   }
 }

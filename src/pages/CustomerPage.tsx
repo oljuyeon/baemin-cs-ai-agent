@@ -803,7 +803,36 @@ export function CustomerPage() {
           })
         }
 
-        if (typedMessage && hasPotentialIssueUpdate(typedMessage)) {
+        const waitingForWrongDeliveryEvidence =
+          currentCase.issueType === 'wrong_delivery'
+          && currentCase.status === 'WAITING_EVIDENCE'
+        const followUpUnderstanding = typedMessage
+          ? understandCustomerMessage(typedMessage, orderItems)
+          : null
+        const clearlyChangesIssueWhileWaitingForEvidence = Boolean(
+          waitingForWrongDeliveryEvidence
+          && followUpUnderstanding
+          && followUpUnderstanding.issueType !== 'other'
+          && followUpUnderstanding.issueType !== currentCase.issueType
+          && followUpUnderstanding.confidence >= 0.85,
+        )
+        const isWrongDeliveryEvidenceDescription = Boolean(
+          waitingForWrongDeliveryEvidence
+          && typedMessage
+          && !clearlyChangesIssueWhileWaitingForEvidence,
+        )
+
+        if (isWrongDeliveryEvidenceDescription) {
+          currentCase = caseStore.updateCase(currentCase.caseId, {
+            receivedItemDescription: typedMessage,
+          })
+        }
+
+        if (
+          typedMessage
+          && hasPotentialIssueUpdate(typedMessage)
+          && (!waitingForWrongDeliveryEvidence || clearlyChangesIssueWhileWaitingForEvidence)
+        ) {
           const customerMessages = currentCase.conversation
             .filter((entry) => entry.role === 'customer')
             .map((entry) => entry.content)
