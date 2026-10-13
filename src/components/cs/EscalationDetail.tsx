@@ -482,31 +482,11 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
         <>
           <h3>{t('detail.evidence')}</h3>
           <div className="cs-evidence-row">
-            {caseData.evidenceUrls.map((url) => {
-              const analysis = caseData.evidenceAnalysis?.find((item) => item.evidenceUrl === url)
-              return (
-                <article className="cs-evidence-case" key={url}>
-                  <EvidenceCard url={url} />
-                  <section className="cs-evidence-analysis">
-                    <header>
-                      <strong>{t('detail.evidenceAgentAnalysis')}</strong>
-                      {analysis && (
-                        <span>{t(`detail.review.assessmentValue.${analysis.assessment}`)}</span>
-                      )}
-                    </header>
-                    <p>{analysis?.observation ?? t('detail.evidenceAnalysisPending')}</p>
-                    {analysis && analysis.limitations.length > 0 && (
-                      <ul>
-                        {analysis.limitations.map((limitation) => (
-                          <li key={limitation}>{limitation}</li>
-                        ))}
-                      </ul>
-                    )}
-                    <small>{t('detail.evidenceAnalysisNotice')}</small>
-                  </section>
-                </article>
-              )
-            })}
+            {caseData.evidenceUrls.map((url) => (
+              <article className="cs-evidence-case" key={url}>
+                <EvidenceCard url={url} />
+              </article>
+            ))}
           </div>
         </>
       )}

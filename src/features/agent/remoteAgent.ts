@@ -1,4 +1,4 @@
-import { evaluateDelayCompensation } from '../cs'
+import { evaluateDelayCompensation, requiresHumanCsBeforeMerchant } from '../cs'
 import type {
   AgentAction,
   CsCase,
@@ -15,6 +15,7 @@ import type {
   IssueReassessment,
   MessageUnderstanding,
 } from './nlu'
+import { customerCannotProvidePhoto } from './nlu'
 import {
   currentIssueToolHistory,
   latestToolResult,
@@ -394,6 +395,11 @@ export async function reassessIssueWithOpenAI(
 const latestResult = latestToolResult
 const wasCalled = wasToolCalled
 
+const customerReportedNoPhoto = (caseData: CsCase) =>
+  caseData.conversation.some((message) =>
+    message.role === 'customer' && customerCannotProvidePhoto(message.content),
+  )
+
 const toSafeContext = (caseData: CsCase) => {
   const policy = latestResult<PolicyResult>(caseData, 'get_policy')
   const risk = latestResult<RiskResult>(caseData, 'check_risk')
@@ -500,8 +506,16 @@ const buildToolAction = (
       return caseData.issueType !== 'delivery_delay'
         && caseData.order
         && risk?.status === 'success'
+        && wasCalled(caseData, 'get_policy')
         && !risk.data.blockedActions.includes('mock_refund')
         && !risk.data.blockedActions.includes('mock_redelivery')
+        && (
+          Boolean(caseData.customerDetailRequestedAt)
+          || Boolean(caseData.customerDetailProvidedAt)
+          || caseData.evidenceUrls.length > 0
+          || customerReportedNoPhoto(caseData)
+        )
+        && (caseData.issueType !== 'missing_item' || Boolean(caseData.claimedItemName))
         && !caseData.merchantConfirmation ? {
         type: 'CALL_TOOL',
         toolName,
@@ -511,16 +525,15 @@ const buildToolAction = (
           issueType: caseData.issueType,
           itemName: caseData.claimedItemName,
           customerClaim: caseData.customerClaim,
+          evidenceUrl: caseData.evidenceUrls[0],
         },
       } : null
     case 'refund': {
-      // 환불은 고객이 금액을 확인하고 UI에서 명시적으로 동의한 뒤에만 실행한다.
+      // 금전·배송 조치는 고객이 UI에서 명시적으로 동의한 뒤에만 실행한다.
       return null
     }
     case 'redelivery':
-      return actionIsAllowed(caseData, 'mock_redelivery') && !wasCalled(caseData, toolName)
-        ? { type: 'CALL_TOOL', toolName, input: { caseId: caseData.caseId, orderId: caseData.orderId } }
-        : null
+      return null
   }
 }
 
@@ -541,12 +554,40 @@ const buildFinishAction = (
   }
 
   if (decision.decision === 'ESCALATE') {
+    const risk = latestResult<RiskResult>(caseData, 'check_risk')
     if (
       caseData.issueType !== 'other'
       && (!wasCalled(caseData, 'get_policy') || !wasCalled(caseData, 'check_risk'))
     ) return null
 
     if (caseData.issueType === 'delivery_delay' && actionIsAllowed(caseData, 'guide_customer')) {
+      return null
+    }
+
+    if (!actionIsAllowed(caseData, 'human_review')) return null
+
+    if (
+      (caseData.issueType === 'missing_item' || caseData.issueType === 'wrong_delivery')
+      && !caseData.merchantConfirmation
+      && risk?.status === 'success'
+      && !requiresHumanCsBeforeMerchant(risk.data)
+    ) {
+      // 일반 누락·오배달은 자동 해결 후보 또는 매장 확인 경로를 먼저 거친다.
+      // 위험 차단이 없는 상태에서 LLM이 정책상 human_review가 보인다는 이유만으로
+      // 조기에 이관하지 못하게 한다.
+      return null
+    }
+
+    if (
+      caseData.merchantConfirmation?.status === 'completed'
+      && caseData.merchantConfirmation.response
+      && (
+        caseData.merchantConfirmation.response === 'POSSIBLE'
+        || caseData.merchantConfirmation.response === 'UNKNOWN'
+      )
+    ) {
+      // 가능성·확인 불가 응답은 고객이 종료 또는 상담원 검토를 선택하도록
+      // 기존 규칙 흐름에 맡긴다. DENIED는 주장 충돌이므로 자동 이관할 수 있다.
       return null
     }
 
@@ -574,15 +615,14 @@ const buildFinishAction = (
     if (latestResult(caseData, 'refund')?.status !== 'success') return null
   } else if (decision.finalAction === 'mock_redelivery') {
     if (latestResult(caseData, 'redelivery')?.status !== 'success') return null
-  } else if (
-    decision.finalAction !== 'guide_customer'
-    && decision.finalAction !== 'no_action'
-  ) {
+  } else if (decision.finalAction === 'guide_customer') {
+    if (!actionIsAllowed(caseData, 'guide_customer')) return null
+  } else {
     return null
   }
 
   if (
-    (decision.finalAction === 'guide_customer' || decision.finalAction === 'no_action')
+    decision.finalAction === 'guide_customer'
     && (!wasCalled(caseData, 'get_policy') || !wasCalled(caseData, 'check_risk'))
   ) return null
 
@@ -597,9 +637,32 @@ const buildFinishAction = (
 const toAgentAction = (caseData: CsCase, decision: RemoteDecision): AgentAction | null => {
   if (!decision.message.trim()) return null
   if (decision.type === 'ASK_CUSTOMER') {
-    if (caseData.issueType === 'delivery_delay') return null
-    if (caseData.issueType === 'missing_item' && caseData.claimedItemName) return null
-    return { type: 'ASK_CUSTOMER', question: decision.message }
+    if (caseData.issueClassificationStatus === 'PROVISIONAL') {
+      return {
+        type: 'ASK_CUSTOMER',
+        waitStatus: 'COLLECTING_INFO',
+        question: decision.message,
+      }
+    }
+    if (caseData.issueType === 'missing_item' && !caseData.claimedItemName) {
+      return {
+        type: 'ASK_CUSTOMER',
+        waitStatus: 'COLLECTING_INFO',
+        question: decision.message,
+      }
+    }
+    if (
+      caseData.issueType === 'wrong_delivery'
+      && caseData.evidenceUrls.length === 0
+      && !customerReportedNoPhoto(caseData)
+    ) {
+      return {
+        type: 'ASK_CUSTOMER',
+        waitStatus: 'WAITING_EVIDENCE',
+        question: decision.message,
+      }
+    }
+    return null
   }
   if (decision.type === 'CALL_TOOL') return buildToolAction(caseData, decision.toolName)
   if (decision.type === 'FINISH') return buildFinishAction(caseData, decision)

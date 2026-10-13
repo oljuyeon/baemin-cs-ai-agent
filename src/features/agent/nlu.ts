@@ -139,9 +139,16 @@ const detectLanguageWithRules = (message: string): MessageUnderstanding['detecte
 
 const noNewIssueFactPattern = /^(네|넵|예|응|알겠(?:어|어요|습니다)?|확인했(?:어|어요|습니다)?|고마워(?:요)?|감사(?:해요|합니다)?|사진(?:을)?\s*(?:보냈|첨부했)(?:어|어요|습니다)?|ok(?:ay)?|yes|got it|thanks?|thank you)[.!?\s]*$/i
 
+export const customerCannotProvidePhoto = (message: string) =>
+  /(?:사진|이미지|영수증).{0,24}(?:없|안\s*찍|못\s*찍|찍지\s*않|첨부.{0,8}(?:못|어렵|불가)|보낼\s*수\s*없|제공.{0,8}(?:못|어렵|불가))/i.test(message)
+  || /(?:안|못)\s*(?:찍|보내|첨부).{0,12}(?:사진|이미지)/i.test(message)
+  || /(?:don['’]?t|do not)\s+have\s+(?:a\s+)?(?:photo|picture|receipt)|(?:didn['’]?t|did not|couldn['’]?t|could not)\s+(?:take|upload|attach|send)\s+(?:a\s+)?(?:photo|picture)/i.test(message)
+
 export const hasPotentialIssueUpdate = (message: string) => {
   const trimmed = message.trim()
-  return trimmed.length > 0 && !noNewIssueFactPattern.test(trimmed)
+  return trimmed.length > 0
+    && !noNewIssueFactPattern.test(trimmed)
+    && !customerCannotProvidePhoto(trimmed)
 }
 
 const scoreIntent = (message: string, issueType: Exclude<IssueType, 'other'>) =>

@@ -5,8 +5,11 @@ import type {
   RiskResult,
 } from '../cs'
 import { requiresHumanCsBeforeMerchant } from '../cs'
-import { latestOrderItemStatement } from './nlu'
-import { decidePreMerchantInformationWithOpenAI } from './remoteAgent'
+import { customerCannotProvidePhoto, latestOrderItemStatement } from './nlu'
+import {
+  decidePreMerchantInformationWithOpenAI,
+  decideWithOpenAI,
+} from './remoteAgent'
 import { latestToolResult, wasToolCalled } from './toolHistory'
 
 const wasCalled = wasToolCalled
@@ -19,6 +22,11 @@ const formatAmount = (caseData: CsCase, amount: number) =>
   caseData.customerLanguage === 'en'
     ? `KRW ${amount.toLocaleString('en-US')}`
     : `${amount.toLocaleString('ko-KR')}원`
+
+const customerReportedNoPhoto = (caseData: CsCase) =>
+  caseData.conversation.some((message) =>
+    message.role === 'customer' && customerCannotProvidePhoto(message.content),
+  )
 
 const finishForHumanReview = (
   customerMessage: string,
@@ -37,16 +45,13 @@ const waitForCustomerAfterUnapprovedMerchantResponse = (caseData: CsCase): Agent
     confirmation?.status !== 'completed'
     || !confirmation.response
     || confirmation.response === 'CONFIRMED'
+    || confirmation.response === 'DENIED'
   ) return null
 
   const responseMessage: Record<Exclude<typeof confirmation.response, undefined | 'CONFIRMED'>, {
     ko: string
     en: string
   }> = {
-    DENIED: {
-      ko: '매장은 주문대로 포장했다고 답변했습니다.',
-      en: 'The restaurant states that it packed the order as requested.',
-    },
     POSSIBLE: {
       ko: '매장은 문제가 발생했을 가능성은 있지만 현재 확정하기 어렵다고 답변했습니다.',
       en: 'The restaurant says the problem may have occurred but cannot confirm it yet.',
@@ -66,6 +71,28 @@ const waitForCustomerAfterUnapprovedMerchantResponse = (caseData: CsCase): Agent
       `${message.en} You can close the request after reviewing this response or ask a support agent for further review.`,
     ),
   }
+}
+
+const escalateMerchantClaimConflict = (
+  caseData: CsCase,
+  policy: ReturnType<typeof latestResult<PolicyResult>>,
+  risk: ReturnType<typeof latestResult<RiskResult>>,
+): AgentAction | null => {
+  if (
+    caseData.merchantConfirmation?.status !== 'completed'
+    || caseData.merchantConfirmation.response !== 'DENIED'
+    || policy?.status !== 'success'
+    || risk?.status !== 'success'
+  ) return null
+
+  return finishForHumanReview(
+    customerText(
+      caseData,
+      '고객 설명과 매장의 정상 포장 답변이 서로 달라 상담원에게 이관되었습니다. 이제 상담원이 양쪽 내용과 확인 자료를 이어서 검토할게요.',
+      'Your account conflicts with the restaurant’s statement that the order was packed correctly, so the case has been transferred to a support agent. A support agent will now review both accounts and the available evidence.',
+    ),
+    '고객 주장과 매장의 정상 포장 진술이 상충하여 자동 조치를 결정할 수 없습니다.',
+  )
 }
 
 const hasEnoughDetailForFallback = (caseData: CsCase) => {
@@ -202,7 +229,7 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
   }
 
   if (caseData.issueType === 'wrong_delivery') {
-    if (caseData.evidenceUrls.length === 0) {
+    if (caseData.evidenceUrls.length === 0 && !customerReportedNoPhoto(caseData)) {
       return {
         type: 'ASK_CUSTOMER',
         waitStatus: 'WAITING_EVIDENCE',
@@ -226,6 +253,9 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
 
     const policy = latestResult<PolicyResult>(caseData, 'get_policy')
     const risk = latestResult<RiskResult>(caseData, 'check_risk')
+
+    const conflictEscalation = escalateMerchantClaimConflict(caseData, policy, risk)
+    if (conflictEscalation) return conflictEscalation
 
     if (risk?.status === 'success' && requiresHumanCsBeforeMerchant(risk.data)) {
       return finishForHumanReview(
@@ -351,6 +381,9 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
     )
   }
 
+  const conflictEscalation = escalateMerchantClaimConflict(caseData, policy, risk)
+  if (conflictEscalation) return conflictEscalation
+
   if (requiresHumanCsBeforeMerchant(risk.data)) {
     return finishForHumanReview(
       customerText(caseData, '자동 처리를 진행하기 전에 추가 검토가 필요해 상담원에게 전달했습니다. 상담원이 내용을 이어서 확인해 안내할게요.', 'Additional review is needed before automatic handling, so I sent the case to a support agent.'),
@@ -436,6 +469,11 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
 }
 
 export async function decideNextAction(caseData: CsCase): Promise<AgentAction> {
-  // v2 원칙: LLM은 자연어 이해에 사용하고, Action Route는 Policy와 Risk로 결정한다.
+  // LLM은 현재 관찰을 바탕으로 다음 행동 후보만 제안한다. remoteAgent의
+  // 상태·Policy·Risk 검증을 통과하지 못하거나 API를 사용할 수 없으면
+  // 결정적인 규칙 경로로 즉시 폴백한다.
+  const proposedAction = await decideWithOpenAI(caseData)
+  if (proposedAction) return proposedAction
+
   return decideNextActionWithRules(caseData)
 }

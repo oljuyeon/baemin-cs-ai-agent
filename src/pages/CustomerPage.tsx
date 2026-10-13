@@ -16,6 +16,7 @@ import {
   evaluatePolicy,
   findCustomer,
   findOrder,
+  requiresHumanCsBeforeMerchant,
   type CsCase,
   type CreateCaseInput,
   type CustomerLanguage,
@@ -331,10 +332,15 @@ const canRecoverMissingItem = (caseData: CsCase) => {
     || !caseData.order
   ) return false
 
-  const policy = evaluatePolicy(caseData)
+  const customerRequestedHumanCs = caseData.history.some((entry) =>
+    entry.actor === 'customer' && entry.event === 'ESCALATED',
+  ) || /(고객이|고객센터|상담원.*요청|support agent.*requested)/i.test(
+    caseData.escalationReason ?? '',
+  )
+  if (customerRequestedHumanCs || caseData.merchantConfirmation) return false
+
   const risk = assessRisk(caseData)
-  return policy.allowedActions.includes('mock_refund')
-    && !risk.blockedActions.includes('mock_refund')
+  return !requiresHumanCsBeforeMerchant(risk)
 }
 
 const wantsHumanCs = (message: string) =>
@@ -527,6 +533,55 @@ export function CustomerPage() {
     })
   }, [activeCaseKey])
 
+  useEffect(() => {
+    if (!activeCaseKey) return undefined
+    const staleEscalation = caseStore.getCase(activeCaseKey)
+    if (!staleEscalation || !canRecoverMissingItem(staleEscalation)) return undefined
+
+    let cancelled = false
+    setIsThinking(true)
+    setCaseState('working')
+    const reopened = caseStore.updateCase(staleEscalation.caseId, {
+      status: 'CHECKING_DATA',
+      decision: undefined,
+      finalAction: undefined,
+      escalationCode: undefined,
+      escalationReason: undefined,
+      agentSummary: undefined,
+    })
+
+    void (async () => {
+      await executeTool(reopened.caseId, {
+        type: 'CALL_TOOL',
+        toolName: 'get_policy',
+        input: { caseData: reopened },
+      })
+      await executeTool(reopened.caseId, {
+        type: 'CALL_TOOL',
+        toolName: 'check_risk',
+        input: { caseData: caseStore.getCase(reopened.caseId) ?? reopened },
+      })
+      return agentController.runNextStep(reopened.caseId)
+    })()
+      .then((continued) => {
+        if (cancelled || !mounted.current) return
+        setMessages(conversationToMessages(continued))
+        setActions(actionsForCase(continued))
+        setCaseState(toCustomerUiState(continued))
+      })
+      .catch((error) => {
+        console.error('이전 누락 문의를 매장 확인 단계로 복구하지 못했습니다.', error)
+        if (!cancelled && mounted.current) setCaseState('waiting')
+      })
+      .finally(() => {
+        if (!cancelled && mounted.current) setIsThinking(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeCaseKey])
+
   const appendMessages = (...nextMessages: ChatMessage[]) => {
     if (mounted.current) setMessages((current) => [...current, ...nextMessages])
   }
@@ -711,22 +766,6 @@ export function CustomerPage() {
         }
 
         const confirmedIssue = issue ?? inferredIssue
-        if (confirmedIssue === 'wrong' && !attachment) {
-          appendMessages({
-            id: `wrong-delivery-photo-${Date.now()}`,
-            role: 'agent',
-            content: 'chat.wrongDeliveryPhotoRequired',
-            translate: true,
-          })
-          if (mounted.current) {
-            setIssue('wrong')
-            setDraft(message)
-            setCaseState('waiting')
-            setHasStarted(false)
-          }
-          return
-        }
-
         currentCase = createCaseForIssue(
           message,
           attachment,

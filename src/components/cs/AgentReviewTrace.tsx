@@ -257,21 +257,22 @@ export function HumanReviewGuidanceCard({ guidance, isLoading, hasError }: Decis
 
 export function AgentReviewTrace({ caseData }: Props) {
   const { t, i18n } = useTranslation('cs')
-  const successful = caseData.toolHistory.filter((log) => log.result.status === 'success').length
-  const failed = caseData.toolHistory.length - successful
+  const visibleLogs = caseData.toolHistory.filter((log) => log.toolName !== 'analyze_evidence')
+  const successful = visibleLogs.filter((log) => log.result.status === 'success').length
+  const failed = visibleLogs.length - successful
 
-  if (caseData.toolHistory.length === 0) return null
+  if (visibleLogs.length === 0) return null
 
   return (
     <details className="cs-trace">
-      <summary>{t('detail.trace', { count: caseData.toolHistory.length })}</summary>
+      <summary>{t('detail.trace', { count: visibleLogs.length })}</summary>
       <div className="cs-trace__overview">
         <span className="is-success">{t('detail.review.successCount', { count: successful })}</span>
         <span className={failed > 0 ? 'is-error' : undefined}>{t('detail.review.errorCount', { count: failed })}</span>
       </div>
       {failed > 0 && <p className="cs-trace__warning">{t('detail.review.failedWarning')}</p>}
       <ol className="cs-trace__list">
-        {caseData.toolHistory.map((log) => {
+        {visibleLogs.map((log) => {
           const duration = formatDuration(log, t)
           return (
             <li key={log.id}>

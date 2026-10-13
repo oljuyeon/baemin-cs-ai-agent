@@ -159,13 +159,6 @@
 .cs-conversation__bubble time { color: var(--color-muted); font-size: .58rem; }
 .cs-conversation__bubble p { margin: 0; color: var(--color-text); font-size: .78rem; line-height: 1.45; }
 .cs-evidence-case { display: grid; gap: 10px; min-width: 0; }
-.cs-evidence-analysis { display: grid; gap: 8px; padding: 12px; border: 1px solid #d9d6f5; border-radius: 14px; background: #f7f6ff; font-family: Pretendard, "Noto Sans KR", sans-serif; }
-.cs-evidence-analysis header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.cs-evidence-analysis header strong { color: #4f46c6; font-size: .82rem; }
-.cs-evidence-analysis header span { padding: 4px 8px; border-radius: 999px; background: #e8e5ff; color: #4f46c6; font-size: .68rem; font-weight: 800; }
-.cs-evidence-analysis p { margin: 0; color: var(--color-text); font-size: .82rem; line-height: 1.5; }
-.cs-evidence-analysis ul { margin: 0; padding-left: 18px; color: var(--color-muted); font-size: .74rem; line-height: 1.5; }
-.cs-evidence-analysis small { color: var(--color-muted); font-size: .68rem; line-height: 1.45; }
 .cs-policy-page__back { display: inline-flex; align-items: center; gap: 6px; }
 .cs-policy-page__back svg { width: 16px; height: 16px; }
 

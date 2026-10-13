@@ -5,7 +5,7 @@ import {
   type CsCase,
 } from '../cs'
 import { decideNextAction } from './decisionEngine'
-import { resolveOrderItem } from './nlu'
+import { customerCannotProvidePhoto, resolveOrderItem } from './nlu'
 import { executeTool } from './toolExecutor'
 
 const MAX_STEPS = 8
@@ -153,10 +153,15 @@ export const agentController: AgentController = {
           action.toolName === 'request_merchant_confirmation'
           && updated.status === 'WAITING_MERCHANT'
         ) {
+          const photoUnavailable = updated.conversation.some((message) =>
+            message.role === 'customer' && customerCannotProvidePhoto(message.content),
+          )
           caseStore.appendConversation(
             caseId,
             'agent',
-            customerText(updated, '매장에 확인 요청을 보냈습니다. 답변이 오면 이 대화에서 바로 이어서 안내할게요.', 'I sent a confirmation request to the restaurant. I will continue in this chat when it replies.'),
+            photoUnavailable
+              ? customerText(updated, '사진이 없어도 괜찮아요. 말씀해 주신 내용과 주문 내역을 바탕으로 매장에 확인 요청을 보냈습니다. 답변이 오면 이 대화에서 바로 이어서 안내할게요.', 'That is okay if you do not have a photo. I sent the restaurant a confirmation request based on your description and order details, and I will continue here when it replies.')
+              : customerText(updated, '매장에 확인 요청을 보냈습니다. 답변이 오면 이 대화에서 바로 이어서 안내할게요.', 'I sent a confirmation request to the restaurant. I will continue in this chat when it replies.'),
           )
           return requireCase(caseId)
         }
