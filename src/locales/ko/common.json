@@ -1,16 +1,17 @@
 {
   "brand": {
     "name": "이음이",
-    "tagline": "배달 문제 해결 도우미"
+    "tagline": "배달 CS 처리 Agent"
   },
   "meta": {
-    "title": "이음이",
-    "description": "배달 문제를 더 빠르게 해결하는 AI 고객센터"
+    "title": "이음이 | 배달 CS 처리 Agent",
+    "description": "고객과 매장, 상담원을 연결해 배달 문제의 해결까지 이어가는 AI Agent"
   },
   "nav": {
     "service": "서비스 소개",
     "roles": "역할별 시작",
-    "agentLogs": "Agent 판단 로그"
+    "agentLogs": "Agent 판단 로그",
+    "login": "데모 시작"
   },
   "actions": {
     "start": "시작하기",
@@ -38,7 +39,7 @@
   "placeholder": {
     "eyebrow": "페이지 준비 중",
     "description": "팀원이 이 경로에 독립적으로 화면을 추가할 수 있도록 연결해 두었습니다.",
-    "customer": "고객 AI 고객센터",
+    "customer": "이음이 고객 상담",
     "merchant": "음식점 사장님 확인 요청",
     "cs": "플랫폼 CS 담당자 대시보드",
     "demo": "AI Agent 데모",

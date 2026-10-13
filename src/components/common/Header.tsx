@@ -19,6 +19,7 @@ export function Header() {
           <a href="/#roles" onClick={close}>{t('nav.roles')}</a>
           <Link to="/agent-logs" onClick={close}>{t('nav.agentLogs')}</Link>
           <LanguageSwitcher />
+          <Link className="header__login" to="/login" onClick={close}>{t('nav.login')}</Link>
         </nav>
         <button
           className="header__menu"

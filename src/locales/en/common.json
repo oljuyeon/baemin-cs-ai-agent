@@ -1,16 +1,17 @@
 {
   "brand": {
-    "name": "이음이",
-    "tagline": "Your delivery issue assistant"
+    "name": "Ieum-i",
+    "tagline": "Delivery CS Agent"
   },
   "meta": {
-    "title": "이음이",
-    "description": "AI support that resolves delivery issues faster"
+    "title": "Ieum-i | Delivery CS Agent",
+    "description": "An AI agent connecting customers, merchants and human support through resolution"
   },
   "nav": {
     "service": "About",
     "roles": "Choose a role",
-    "agentLogs": "Agent decision log"
+    "agentLogs": "Agent decision log",
+    "login": "Start demo"
   },
   "actions": {
     "start": "Get started",

@@ -16,6 +16,7 @@ export function RoleEntrySection() {
         <div className="role-grid">
           {roles.map((role) => (
             <Link className={`role-card role-card--${role.id}`} to={role.path} key={role.id}>
+              <span className="role-card__quote">{t(`roles.${role.id}.quote`)}</span>
               <div className="role-card__top">
                 <span className="role-card__icon"><RoleIcon type={role.icon} /></span>
                 <span className="role-card__label">{t(`roles.${role.id}.label`)}</span>

@@ -3,11 +3,17 @@
     "eyebrow": "AI support without the wait",
     "title": "Delivery issues,\nresolved right away",
     "description": "AI reviews your order, delivery, and support history, then keeps the resolution moving.",
-    "primaryCta": "Start the AI demo",
+    "primaryCta": "Start for free",
+    "secondaryCta": "Learn about the service",
     "status": "AI is checking now",
     "message": "I checked your order and delivery. It is currently 18 minutes past the estimated arrival time.",
     "resolution": "Delay compensation policy checked",
-    "time": "First guidance in about 3 minutes"
+    "time": "First guidance in about 3 minutes",
+    "benefits": {
+      "always": "24/7 support",
+      "faster": "Faster resolutions",
+      "connected": "Customer · store · CS"
+    }
   },
   "roles": {
     "eyebrow": "Start by role",
@@ -15,18 +21,21 @@
     "description": "Each role sees only the information and actions they need.",
     "customer": {
       "label": "Customer",
+      "quote": "Where is my order?",
       "title": "Report a delivery issue",
       "description": "Describe the issue, attach a photo, and follow the resolution.",
       "action": "Open customer view"
     },
     "merchant": {
       "label": "Restaurant owner",
+      "quote": "I'll check now!",
       "title": "Respond to a request",
       "description": "Review the order and quickly confirm packing or missing-item details.",
       "action": "Open merchant view"
     },
     "cs": {
       "label": "Platform CS agent",
+      "quote": "Full context at a glance",
       "title": "Review escalated cases",
       "description": "See the AI summary, relevant policy, and risks in one place to make the final call.",
       "action": "Open CS view"
@@ -81,6 +90,6 @@
   },
   "footer": {
     "notice": "This service is a PoC for validating an AI-powered CS workflow.",
-    "copyright": "© 2026 이음이"
+    "copyright": "© 2026 Ieum-i · Delivery CS Agent"
   }
 }

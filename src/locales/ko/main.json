@@ -1,13 +1,19 @@
 {
   "hero": {
-    "eyebrow": "배달 CS Agent 이음이",
-    "title": "배달 문제,\n이제 바로 해결해요",
-    "description": "주문부터 배달, CS 이력까지 AI가 한 번에 확인하고 해결 과정을 이어갑니다.",
-    "primaryCta": "AI 해결 데모 시작",
-    "status": "AI가 지금 확인 중",
+    "eyebrow": "배달 CS 처리 Agent · 이음이",
+    "title": "배달 문제의 끝까지,\n이음이가 이어드려요",
+    "description": "고객의 문의부터 매장 확인, 상담원 중재와 최종 조치까지. 끊기기 쉬운 배달 CS의 모든 순간을 하나의 맥락으로 연결합니다.",
+    "primaryCta": "무료로 시작하기",
+    "secondaryCta": "서비스 알아보기",
+    "status": "이음이가 지금 확인 중",
     "message": "주문과 배달 상황을 확인했어요. 예상 도착 시간보다 18분 늦어지고 있어요.",
     "resolution": "지연 보상 정책 확인 완료",
-    "time": "평균 3분 내 1차 안내"
+    "time": "평균 3분 내 1차 안내",
+    "benefits": {
+      "always": "24시간 상담",
+      "faster": "더 빠른 문제 해결",
+      "connected": "고객·매장·CS 연결"
+    }
   },
   "roles": {
     "eyebrow": "화면별 데모",
@@ -15,25 +21,28 @@
     "description": "고객, 사장님, 상담원 화면에서 AI가 문의를 처리하고 연결하는 과정을 확인할 수 있어요.",
     "customer": {
       "label": "고객",
+      "quote": "언제 와요?",
       "title": "배달 문제를 문의해요",
       "description": "자연어 문의와 사진 첨부로 결과를 확인해요.",
       "action": "고객 화면으로"
     },
     "merchant": {
       "label": "음식점 사장님",
+      "quote": "바로 확인할게요!",
       "title": "확인 요청에 답해요",
       "description": "주문을 확인하고 포장·누락 여부에 답해요.",
       "action": "사장님 화면으로"
     },
     "cs": {
       "label": "플랫폼 CS 담당자",
+      "quote": "맥락까지 한눈에",
       "title": "이관된 건을 검토해요",
       "description": "AI 요약과 정책·리스크로 최종 처리해요.",
       "action": "상담사 화면으로"
     }
   },
   "features": {
-    "eyebrow": "AI Agent가 하는 일",
+    "eyebrow": "이음이가 하는 일",
     "title": "문의부터 해결까지,\n흐름이 끊기지 않도록",
     "description": "단순 답변에 그치지 않고 필요한 정보를 모으고, 시스템을 조회하고,\n다음 행동까지 이어갑니다.",
     "items": {
@@ -64,8 +73,8 @@
   },
   "process": {
     "eyebrow": "Agentic workflow",
-    "agentLabel": "AI",
-    "title": "AI가 알아서 확인하고,\n사람이 필요한 순간을 판단해요",
+    "agentLabel": "이음이",
+    "title": "이음이가 먼저 확인하고,\n사람이 필요한 순간을 연결해요",
     "steps": {
       "inquiry": "문의 접수",
       "data": "데이터 확인",
@@ -75,12 +84,12 @@
     "badge": "맥락이 끊기지 않는 해결 경험"
   },
   "finalCta": {
-    "title": "배달 문제 해결,\n더 빠르게 경험해보세요",
-    "description": "샘플 주문으로 AI Agent의 전체 흐름을 확인할 수 있어요.",
-    "button": "데모 모드로 시작"
+    "title": "배달 CS의 모든 순간을,\n이음이로 연결해보세요",
+    "description": "샘플 주문으로 고객·매장·상담원이 이어지는 Agent 흐름을 확인할 수 있어요.",
+    "button": "이음이 체험하기"
   },
   "footer": {
     "notice": "이 서비스는 AI 기반 CS 흐름을 검증하기 위한 PoC입니다.",
-    "copyright": "© 2026 이음이"
+    "copyright": "© 2026 이음이 · Delivery CS Agent"
   }
 }
