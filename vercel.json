@@ -6,7 +6,7 @@
       "destination": "/api/agent?action=:action"
     },
     {
-      "source": "/:path*",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
