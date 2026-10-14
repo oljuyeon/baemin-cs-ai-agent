@@ -488,16 +488,29 @@ export class MemoryCaseStore implements CaseStore {
     const refundAmount = current.issueType === 'missing_item'
       ? resolvedItem?.price
       : current.order?.totalAmount
-    const refundDescription = `${current.claimedItemName ?? '주문'} ${refundAmount?.toLocaleString('ko-KR') ?? ''}원 환불`
+    const refundDescription = refundAmount
+      ? `${current.claimedItemName ?? '주문'} ${refundAmount.toLocaleString('ko-KR')}원 환불`
+      : `${current.claimedItemName ?? '주문'} 환불`
+    const resolutionDescription = action === 'approve_refund'
+      ? refundDescription
+      : action === 'approve_redelivery'
+        ? `${current.claimedItemName ?? '주문'} 재배달 접수`
+        : '추가 보상 없는 문의 종료'
     const customerMessage = merchantTimedOut
       ? action === 'approve_refund'
         ? `매장이 3분 동안 응답하지 않아 상담원이 주문·증빙·정책을 검토하고 ${refundDescription}을 완료했습니다. 처리 결과는 매장에도 사후 통지했습니다.`
-        : '매장이 3분 동안 응답하지 않아 상담원이 주문·증빙·정책을 검토했습니다. 추가 환불 없이 문의를 종료하고 처리 결과를 매장에 사후 통지했습니다.'
+        : '매장이 3분 동안 응답하지 않아 상담원이 주문·증빙·정책을 검토했습니다. 추가 보상 없이 문의를 완료하고 처리 결과를 매장에 사후 통지했습니다.'
+      : action === 'approve_refund'
+        ? `상담원이 고객·매장 답변과 주문·정책을 검토한 뒤 ${refundDescription}을 완료했습니다. 이 문의는 처리 완료되었습니다.`
+        : action === 'approve_redelivery'
+          ? `상담원이 고객·매장 답변과 주문·정책을 검토한 뒤 ${current.claimedItemName ?? '주문'} 재배달을 접수했습니다. 이 문의는 처리 완료되었습니다.`
+          : '상담원이 고객·매장 답변과 주문·정책을 검토했습니다. 확인된 내용을 바탕으로 추가 보상 없이 문의를 완료했습니다.'
+    const merchantNotice = current.merchantConfirmation
+      ? merchantTimedOut
+        ? `매장 응답 기한 내 회신이 없어 플랫폼 상담원이 ${resolutionDescription}로 처리했습니다. 이 메시지는 추가 확인 요청이 아닌 사후 통지입니다.${comment ? ` 상담원 메모: ${comment}` : ''}`
+        : `플랫폼 상담원이 고객과 매장의 답변을 검토하고 ${resolutionDescription}로 최종 처리했습니다. 이 Case는 종료되었으며 추가 답변은 필요하지 않습니다.${comment ? ` 상담원 메모: ${comment}` : ''}`
       : undefined
-    const merchantNotice = merchantTimedOut
-      ? `매장 응답 기한 내 회신이 없어 플랫폼 상담원이 ${action === 'approve_refund' ? `${refundDescription}로` : '추가 환불 없는 문의 종료로'} 처리했습니다. 이 메시지는 추가 확인 요청이 아닌 사후 통지입니다.${comment ? ` 상담원 메모: ${comment}` : ''}`
-      : undefined
-    const merchantConfirmation = merchantTimedOut && current.merchantConfirmation
+    const merchantConfirmation = current.merchantConfirmation && merchantNotice
       ? {
           ...current.merchantConfirmation,
           status: 'completed' as const,
@@ -515,12 +528,10 @@ export class MemoryCaseStore implements CaseStore {
         finalAction: finalActionForHumanCs(action),
         humanCsResolution: { action, handledBy, comment, handledAt },
         merchantConfirmation,
-        conversation: customerMessage
-          ? [
-              ...current.conversation,
-              { role: 'agent', content: customerMessage, createdAt: handledAt },
-            ]
-          : current.conversation,
+        conversation: [
+          ...current.conversation,
+          { role: 'agent', content: customerMessage, createdAt: handledAt },
+        ],
       },
       history: [{
         actor: 'cs',

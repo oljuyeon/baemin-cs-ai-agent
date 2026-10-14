@@ -29,14 +29,34 @@ type ConversationEntry = {
   createdAt: string
 }
 
-const actions: HumanCsAction[] = [
-  'request_additional_confirmation',
-]
-
 const merchantTimeoutActions: HumanCsAction[] = [
   'approve_refund',
   'reject_refund',
 ]
+
+const resolutionActionsForCase = (caseData: CsCase): HumanCsAction[] => {
+  if (caseData.issueType === 'missing_item' || caseData.issueType === 'wrong_delivery') {
+    return [
+      'approve_refund',
+      'approve_redelivery',
+      'reject_refund',
+      'request_additional_confirmation',
+    ]
+  }
+
+  if (caseData.issueType === 'delivery_delay') {
+    return [
+      'approve_refund',
+      'reject_refund',
+      'request_additional_confirmation',
+    ]
+  }
+
+  return [
+    'reject_refund',
+    'request_additional_confirmation',
+  ]
+}
 
 interface Props {
   caseData: CsCase | null
@@ -298,7 +318,9 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
   const resolution = caseData.humanCsResolution
   const merchant = caseData.merchantConfirmation
   const merchantTimedOut = isMerchantTimeoutEscalation(caseData)
-  const availableActions = merchantTimedOut ? merchantTimeoutActions : actions
+  const availableActions = merchantTimedOut
+    ? merchantTimeoutActions
+    : resolutionActionsForCase(caseData)
   const summaryLanguage = i18n.resolvedLanguage || i18n.language || 'ko'
   const summaryFingerprint = getHumanHandoffSourceFingerprint(caseData)
   const handoffSummary = caseData.humanHandoffSummary?.sourceFingerprint === summaryFingerprint
@@ -317,7 +339,7 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
     if (isSubmitting) return
     setIsSubmitting(true)
     try {
-      if (merchantTimedOut && action === 'approve_refund') {
+      if (action === 'approve_refund') {
         const targetOrder = caseData.order ?? order
         const item = targetOrder?.items.find(
           (candidate) => candidate.name === caseData.claimedItemName,
@@ -341,6 +363,21 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
           throw new Error(t('detail.refundFailed'))
         }
       }
+
+      if (action === 'approve_redelivery') {
+        const updated = await executeTool(caseData.caseId, {
+          type: 'CALL_TOOL',
+          toolName: 'redelivery',
+          input: {
+            caseId: caseData.caseId,
+            orderId: caseData.orderId,
+          },
+        })
+        if (updated.finalActionResult?.action !== 'mock_redelivery') {
+          throw new Error(t('detail.redeliveryFailed'))
+        }
+      }
+
       caseStore.recordHumanCsResolution(caseData.caseId, action, CS_AGENT_ID, comment.trim() || undefined)
       onSaved(
         action === 'request_additional_confirmation'
@@ -521,7 +558,7 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
             {resolution.handledBy} · {formatWhen(resolution.handledAt, i18n.language)}
             {caseData.finalAction ? ` · ${t(`finalAction.${caseData.finalAction}`)}` : ''}
           </p>
-          <p className="cs-muted">{t('detail.mockNote')}</p>
+          <p className="cs-muted">{t('detail.completionNote')}</p>
         </div>
       ) : (
         <div className="cs-response">
