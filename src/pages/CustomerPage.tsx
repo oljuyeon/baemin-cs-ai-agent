@@ -204,7 +204,6 @@ const claimedItemConflictsWithCustomerStatement = (caseData: CsCase) => Boolean(
 const actionsForCase = (caseData: CsCase): CustomerAgentAction[] => {
   if (
     caseData.status === 'ESCALATED'
-    && caseData.finalAction === 'human_review'
     && (caseData.issueType === 'missing_item' || caseData.issueType === 'wrong_delivery')
   ) {
     return [
