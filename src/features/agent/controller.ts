@@ -149,6 +149,43 @@ export const agentController: AgentController = {
 
       if (action.type === 'CALL_TOOL') {
         const updated = await executeTool(caseId, action)
+        if (action.toolName === 'analyze_evidence') {
+          const evidenceUrl = (action.input as { evidenceUrl?: string }).evidenceUrl
+          const analysis = updated.evidenceAnalysis?.find(
+            (item) => item.evidenceUrl === evidenceUrl,
+          )
+          if (analysis?.provider === 'fallback') {
+            caseStore.appendConversation(
+              caseId,
+              'agent',
+              customerText(
+                updated,
+                '사진은 접수됐지만 AI 분석을 완료하지 못해 매장에 보내지 않고 상담원이 직접 확인하도록 전달합니다.',
+                'The photo was received, but AI analysis could not be completed, so it will be reviewed directly by a support agent instead of being sent to the restaurant.',
+              ),
+            )
+          } else if (analysis?.assessment === 'inconclusive') {
+            caseStore.appendConversation(
+              caseId,
+              'agent',
+              customerText(
+                updated,
+                `사진 분석 결과: ${analysis.observation} 사진만으로 누락 여부를 확정하기 어려워 매장 확인을 이어서 진행합니다.`,
+                `Photo analysis: ${analysis.observation} The photo alone is not enough to confirm the missing item, so I will continue with restaurant verification.`,
+              ),
+            )
+          } else if (analysis?.assessment === 'contradicts_claim') {
+            caseStore.appendConversation(
+              caseId,
+              'agent',
+              customerText(
+                updated,
+                `사진 분석 결과: ${analysis.observation} 고객 설명과 다른 정황이 있어 자동 처리하지 않고 상담원이 확인하도록 전달합니다.`,
+                `Photo analysis: ${analysis.observation} The photo conflicts with the reported issue, so the case will be reviewed by a support agent instead of being handled automatically.`,
+              ),
+            )
+          }
+        }
         if (
           action.toolName === 'request_merchant_confirmation'
           && updated.status === 'WAITING_MERCHANT'

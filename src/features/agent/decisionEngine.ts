@@ -10,6 +10,7 @@ import {
   decidePreMerchantInformationWithOpenAI,
   decideWithOpenAI,
 } from './remoteAgent'
+import { customerRiskEscalationMessage } from './riskCopy'
 import { latestToolResult, wasToolCalled } from './toolHistory'
 
 const wasCalled = wasToolCalled
@@ -259,7 +260,12 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
 
     if (risk?.status === 'success' && requiresHumanCsBeforeMerchant(risk.data)) {
       return finishForHumanReview(
-        customerText(caseData, '자동 처리를 진행하기 전에 추가 검토가 필요해 상담원에게 전달했습니다. 상담원이 내용을 이어서 확인해 안내할게요.', 'Additional review is needed before automatic handling, so I sent the case to a support agent.'),
+        customerRiskEscalationMessage(
+          caseData,
+          risk.data,
+          '자동 처리를 진행하기 전에 추가 검토가 필요해 상담원에게 전달했습니다. 상담원이 내용을 이어서 확인해 안내할게요.',
+          'Additional review is needed before automatic handling, so I sent the case to a support agent.',
+        ),
         '반복 보상 이력, 중복 처리 또는 증빙 불일치 등 주의할 이력이 확인되어 상담원이 매장 확인 전 전체 맥락을 먼저 검토해야 합니다.',
       )
     }
@@ -325,7 +331,12 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
       (action) => action === 'mock_refund' || action === 'mock_redelivery',
     )) {
       return finishForHumanReview(
-        customerText(caseData, '자동 처리를 진행하기 전에 추가 검토가 필요해 상담원에게 전달했습니다. 상담원이 내용을 이어서 확인해 안내할게요.', 'Additional review is needed before automatic handling, so I sent the case to a support agent.'),
+        customerRiskEscalationMessage(
+          caseData,
+          risk.data,
+          '자동 처리를 진행하기 전에 추가 검토가 필요해 상담원에게 전달했습니다. 상담원이 내용을 이어서 확인해 안내할게요.',
+          'Additional review is needed before automatic handling, so I sent the case to a support agent.',
+        ),
         '증빙 불일치 또는 반복 신고 등 주의할 이력으로 자동 처리가 제한되어 상담원 검토가 필요합니다.',
       )
     }
@@ -387,6 +398,19 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
   const supportiveEvidence = caseData.evidenceAnalysis?.find(
     (analysis) => analysis.assessment === 'supports_claim',
   )
+  const unavailableEvidenceAnalysis = caseData.evidenceAnalysis?.find(
+    (analysis) => analysis.provider === 'fallback',
+  )
+  if (unavailableEvidenceAnalysis) {
+    return finishForHumanReview(
+      customerText(
+        caseData,
+        '사진은 정상적으로 접수됐지만 AI 사진 분석을 완료하지 못했습니다. 매장에 다시 보내지 않고 상담원이 사진과 주문 내역을 직접 확인하도록 전달했어요.',
+        'The photo was received, but AI analysis could not be completed. Instead of sending it back to the restaurant, I sent it to a support agent for direct review with the order details.',
+      ),
+      'AI 사진 분석 실패로 매장 재확인 대신 Human CS가 사진과 주문 내역을 직접 검토해야 합니다.',
+    )
+  }
   if (supportiveEvidence) {
     return finishForHumanReview(
       customerText(
@@ -400,7 +424,12 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
 
   if (requiresHumanCsBeforeMerchant(risk.data)) {
     return finishForHumanReview(
-      customerText(caseData, '자동 처리를 진행하기 전에 추가 검토가 필요해 상담원에게 전달했습니다. 상담원이 내용을 이어서 확인해 안내할게요.', 'Additional review is needed before automatic handling, so I sent the case to a support agent.'),
+      customerRiskEscalationMessage(
+        caseData,
+        risk.data,
+        '자동 처리를 진행하기 전에 추가 검토가 필요해 상담원에게 전달했습니다. 상담원이 내용을 이어서 확인해 안내할게요.',
+        'Additional review is needed before automatic handling, so I sent the case to a support agent.',
+      ),
       '반복 보상 이력, 중복 처리 또는 주문·주장 불일치 등 주의할 이력이 확인되어 상담원이 매장 확인 전 전체 맥락을 먼저 검토해야 합니다.',
     )
   }
@@ -502,6 +531,13 @@ export async function decideNextAction(caseData: CsCase): Promise<AgentAction> {
       (analysis) => analysis.assessment === 'supports_claim',
     )
   if (missingItemPhotoSupportsClaim) {
+    return decideNextActionWithRules(caseData)
+  }
+
+  const evidenceAnalysisUnavailable = caseData.evidenceAnalysis?.some(
+    (analysis) => analysis.provider === 'fallback',
+  )
+  if (evidenceAnalysisUnavailable) {
     return decideNextActionWithRules(caseData)
   }
 

@@ -226,6 +226,20 @@ export async function processCustomerEvidence(
   )
   const conditionalAction = current.merchantConfirmation?.conditionalAction
 
+  if (analysis?.provider === 'fallback') {
+    current = await executeTool(caseId, {
+      type: 'CALL_TOOL',
+      toolName: 'get_policy',
+      input: { caseData: current },
+    })
+    current = await executeTool(caseId, {
+      type: 'CALL_TOOL',
+      toolName: 'check_risk',
+      input: { caseData: current },
+    })
+    return agentController.runNextStep(caseId)
+  }
+
   if (!analysis || analysis.assessment === 'inconclusive') {
     return waitForMerchant(
       current,

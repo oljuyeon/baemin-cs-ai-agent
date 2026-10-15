@@ -104,6 +104,8 @@ export interface EvidenceAnalysis {
   assessment: EvidenceAssessment
   observation: string
   limitations: string[]
+  provider?: 'openai' | 'fallback' | 'mock'
+  model?: string
 }
 
 export type HumanCsAction =

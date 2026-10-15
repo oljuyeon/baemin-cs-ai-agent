@@ -69,7 +69,8 @@ class MockAgentTools implements AgentTools {
         evidenceUrl: input.evidenceUrl,
         assessment: 'inconclusive',
         observation: '첨부 이미지는 받았지만 자동 사진 판정을 완료하지 못했습니다.',
-        limitations: ['매장 또는 상담원이 사진과 실제 포장·전달 상황을 추가로 확인해야 합니다.'],
+        limitations: ['상담원이 사진과 주문 내역을 직접 확인해야 합니다.'],
+        provider: 'fallback',
       }
     })
   }

@@ -16,6 +16,7 @@ import type {
   MessageUnderstanding,
 } from './nlu'
 import { customerCannotProvidePhoto } from './nlu'
+import { customerRiskEscalationMessage } from './riskCopy'
 import {
   currentIssueToolHistory,
   latestToolResult,
@@ -606,7 +607,14 @@ const buildFinishAction = (
           type: 'FINISH',
           decision: 'ESCALATE',
           finalAction: 'human_review',
-          customerMessage: decision.message,
+          customerMessage: risk?.status === 'success'
+            ? customerRiskEscalationMessage(
+                caseData,
+                risk.data,
+                decision.message,
+                decision.message,
+              )
+            : decision.message,
         }
       : null
   }

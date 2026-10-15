@@ -848,9 +848,10 @@ export function createAgentApiPlugin({ apiKey, model }: PluginOptions): Plugin {
             instructions: [
               '당신은 배달 플랫폼 CS의 사진 증빙 분석기다.',
               '사진에서 직접 확인되는 시각 정보만 말하고 고객 주장을 사실로 전제하지 않는다.',
-              'supports_claim은 사진이 고객 주장을 명확히 뒷받침할 때만 선택한다.',
-              '메뉴 누락은 포장 전체가 충분히 보이고 주문 메뉴와 비교해 주장 품목이 보이지 않을 때만 supports_claim이다.',
-              '사진 범위 밖에 음식이 있을 수 있거나 포장 전체가 보이지 않으면 inconclusive다.',
+              'supports_claim은 사진이 고객 주장을 합리적으로 뒷받침할 때 선택하며, 법적 확정이나 자동 환불 승인을 뜻하지 않는다.',
+              '메뉴 누락은 배달 봉투·용기와 수령한 구성품이 충분히 보이고 주문 메뉴와 비교해 주장 품목이 보이지 않으면 supports_claim이다.',
+              '콜라처럼 별도 포장되는 음료는 배달 봉투와 음식 구성이 넓게 보이는데 해당 음료가 보이지 않으면 supports_claim으로 판단하고, 사진 밖에 있을 가능성은 limitations에 기록한다.',
+              '배달 구성의 일부만 보이거나 주장 품목의 유무를 식별할 수 없으면 inconclusive다.',
               '오배달은 사진 속 식별 가능한 음식이 주문 메뉴와 명확히 다를 때 supports_claim이다.',
               '사진이 주장과 명확히 충돌할 때만 contradicts_claim이다.',
               '사람의 신원, 고의성, 위변조 여부, 법적 책임은 판단하지 않는다.',
