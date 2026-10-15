@@ -284,6 +284,7 @@
     "MISSING_ITEM_EVIDENCE_HUMAN_APPROVAL": "Support approval after photo review",
     "MISSING_ITEM_NEEDS_MERCHANT": "Missing item needs merchant check",
     "WRONG_DELIVERY_AFTER_ADMISSION": "Redelivery after admission",
+    "WRONG_DELIVERY_EVIDENCE_HUMAN_APPROVAL": "Support approval after photo review",
     "WRONG_DELIVERY_NEEDS_REVIEW": "Wrong delivery needs review",
     "WRONG_DELIVERY_NEEDS_MERCHANT": "Wrong delivery needs the store",
     "WRONG_DELIVERY_REDELIVERY_AFTER_MERCHANT": "Redelivery after store check",

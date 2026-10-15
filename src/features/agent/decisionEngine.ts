@@ -258,6 +258,33 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
     const conflictEscalation = escalateMerchantClaimConflict(caseData, policy, risk)
     if (conflictEscalation) return conflictEscalation
 
+    const supportiveEvidence = caseData.evidenceAnalysis?.find(
+      (analysis) => analysis.assessment === 'supports_claim',
+    )
+    const unavailableEvidenceAnalysis = caseData.evidenceAnalysis?.find(
+      (analysis) => analysis.provider === 'fallback',
+    )
+    if (unavailableEvidenceAnalysis) {
+      return finishForHumanReview(
+        customerText(
+          caseData,
+          '사진은 정상적으로 접수됐지만 AI 사진 분석을 완료하지 못했습니다. 매장에 보내지 않고 상담원이 사진과 주문 내역을 직접 확인하도록 전달했어요.',
+          'The photo was received, but AI analysis could not be completed. Instead of sending it to the restaurant, I sent it to a support agent for direct review with the order details.',
+        ),
+        'AI 사진 분석 실패로 매장 확인 대신 Human CS가 오배달 사진과 주문 내역을 직접 검토해야 합니다.',
+      )
+    }
+    if (supportiveEvidence) {
+      return finishForHumanReview(
+        customerText(
+          caseData,
+          `사진 분석 결과: ${supportiveEvidence.observation} 오배달 내용을 뒷받침하는 것으로 판단되어 매장 확인을 생략하고 상담원에게 바로 전달했어요. 상담원이 사진과 주문 내역을 확인한 뒤 환불 또는 재배달을 승인합니다.`,
+          `Photo analysis: ${supportiveEvidence.observation} The evidence appears to support the wrong-delivery claim, so I skipped restaurant verification and sent it directly to a support agent. The agent will review the photo and order before approving a refund or redelivery.`,
+        ),
+        'AI 사진 분석 결과가 오배달 주장을 뒷받침해 매장 확인을 생략하고 Human CS 최종 승인이 필요합니다.',
+      )
+    }
+
     if (risk?.status === 'success' && requiresHumanCsBeforeMerchant(risk.data)) {
       return finishForHumanReview(
         customerRiskEscalationMessage(
@@ -526,11 +553,14 @@ export async function decideNextAction(caseData: CsCase): Promise<AgentAction> {
     }
   }
 
-  const missingItemPhotoSupportsClaim = caseData.issueType === 'missing_item'
+  const photoSupportsClaim = (
+    caseData.issueType === 'missing_item'
+    || caseData.issueType === 'wrong_delivery'
+  )
     && caseData.evidenceAnalysis?.some(
       (analysis) => analysis.assessment === 'supports_claim',
     )
-  if (missingItemPhotoSupportsClaim) {
+  if (photoSupportsClaim) {
     return decideNextActionWithRules(caseData)
   }
 
