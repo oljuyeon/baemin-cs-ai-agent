@@ -11,6 +11,7 @@ import {
 } from '../cs'
 import { analyzeEvidenceWithOpenAI } from './remoteAgent'
 import { executeTool } from './toolExecutor'
+import { agentController } from './controller'
 
 const actionLabel: Record<MerchantConditionalAction, string> = {
   mock_coupon: '2,000원 쿠폰 지급',
@@ -239,6 +240,23 @@ export async function processCustomerEvidence(
       '사진에서 문의 내용과 다른 정황이 확인되어 자동 보상하지 않고 매장에 다시 확인을 요청했습니다.',
       `고객 사진 분석 결과: 고객 주장과 충돌. ${analysis.observation}`,
     )
+  }
+
+  if (analysis.assessment === 'supports_claim') {
+    // 매장이 추가 사진을 요청한 뒤 고객이 증빙을 제출한 경로도 최초 첨부
+    // 경로와 동일하게 처리한다. 사진이 주장을 뒷받침하면 매장에 재확인을
+    // 요청하지 않고 최신 Policy/Risk를 기록한 뒤 Human CS 승인으로 넘긴다.
+    current = await executeTool(caseId, {
+      type: 'CALL_TOOL',
+      toolName: 'get_policy',
+      input: { caseData: current },
+    })
+    current = await executeTool(caseId, {
+      type: 'CALL_TOOL',
+      toolName: 'check_risk',
+      input: { caseData: current },
+    })
+    return agentController.runNextStep(caseId)
   }
 
   if (!conditionalAction || conditionalAction === 'merchant_review') {

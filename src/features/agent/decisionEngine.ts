@@ -384,15 +384,15 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
   const conflictEscalation = escalateMerchantClaimConflict(caseData, policy, risk)
   if (conflictEscalation) return conflictEscalation
 
-  const supportiveEvidence = caseData.evidenceAnalysis?.some(
+  const supportiveEvidence = caseData.evidenceAnalysis?.find(
     (analysis) => analysis.assessment === 'supports_claim',
-  ) ?? false
+  )
   if (supportiveEvidence) {
     return finishForHumanReview(
       customerText(
         caseData,
-        '첨부 사진이 누락 내용을 뒷받침하는 것으로 분석됐습니다. 매장 확인을 기다리지 않고 상담원에게 바로 전달했어요. 상담원이 사진과 주문 내역을 확인한 뒤 환불 또는 재배달을 승인합니다.',
-        'The attached photo appears to support the missing-item claim. I sent the case directly to a support agent without waiting for restaurant confirmation. The agent will review the photo and order before approving a refund or redelivery.',
+        `사진 분석 결과: ${supportiveEvidence.observation} 누락 내용을 뒷받침하는 것으로 판단되어 매장에 다시 확인하지 않고 상담원에게 바로 전달했어요. 상담원이 사진과 주문 내역을 확인한 뒤 환불 또는 재배달을 승인합니다.`,
+        `Photo analysis: ${supportiveEvidence.observation} The evidence appears to support the missing-item claim, so I sent the case directly to a support agent without asking the restaurant again. The agent will review the photo and order before approving a refund or redelivery.`,
       ),
       'AI 사진 분석 결과가 메뉴 누락 주장을 뒷받침해 매장 확인을 생략하고 Human CS 최종 승인이 필요합니다.',
     )
