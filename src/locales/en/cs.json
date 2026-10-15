@@ -20,7 +20,8 @@
     "sampleFailed": "Could not create the sample.",
     "merchantRequested": "Support asked the store for more information. The case will return to the support queue after the store replies.",
     "saved": "Saved. This case is closed and the agent will not continue it.",
-    "saveFailed": "Could not save the decision."
+    "saveFailed": "Could not save the decision.",
+    "chatFailed": "Could not send the message to the customer."
   },
   "queue": {
     "title": "Escalations",
@@ -88,6 +89,16 @@
     "summaryFallbackNotice": "The AI summary could not be loaded, so a temporary source-based summary is shown.",
     "summaryRetry": "Retry AI summary",
     "humanCsName": "Support agent",
+    "liveChat": "Chat with customer",
+    "liveChatDescription": "Confirm the customer's preferred resolution and reply here before making the final decision.",
+    "liveChatPlaceholder": "Write a reply to the customer.",
+    "liveChatSend": "Send to customer",
+    "liveChatSending": "Sending",
+    "customerPreference": "Customer preference: {{preference}}",
+    "preference": {
+      "refund": "Refund",
+      "redelivery": "Redelivery"
+    },
     "guidance": {
       "caution": "① Caution",
       "verification": "② What to verify",

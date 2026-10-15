@@ -16,6 +16,8 @@ export type AgentActionId =
   | 'checkRefund'
   | 'requestMerchant'
   | 'requestRedelivery'
+  | 'requestHumanRefund'
+  | 'requestHumanRedelivery'
   | 'escalateHuman'
   | 'confirmCoupon'
   | 'confirmRefund'

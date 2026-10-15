@@ -20,7 +20,8 @@
     "sampleFailed": "샘플을 만들지 못했습니다.",
     "merchantRequested": "상담원이 매장에 추가 확인을 요청했습니다. 매장 답변 뒤 다시 상담원 대기열에서 검토합니다.",
     "saved": "처리를 저장했습니다. Agent가 이어서 판단하지 않고, 이 건은 종료됩니다.",
-    "saveFailed": "처리를 저장하지 못했습니다."
+    "saveFailed": "처리를 저장하지 못했습니다.",
+    "chatFailed": "고객에게 메시지를 보내지 못했습니다."
   },
   "queue": {
     "title": "이관 대기",
@@ -88,6 +89,16 @@
     "summaryFallbackNotice": "AI 요약을 불러오지 못해 Case 원문을 기준으로 임시 요약을 표시합니다.",
     "summaryRetry": "AI 요약 다시 시도",
     "humanCsName": "상담원",
+    "liveChat": "고객과 채팅",
+    "liveChatDescription": "고객의 원하는 처리를 확인하고, 최종 처리 전에 이 대화로 직접 답변하세요.",
+    "liveChatPlaceholder": "고객에게 보낼 답변을 입력하세요.",
+    "liveChatSend": "고객에게 보내기",
+    "liveChatSending": "보내는 중",
+    "customerPreference": "고객 희망 처리: {{preference}}",
+    "preference": {
+      "refund": "환불",
+      "redelivery": "재배달"
+    },
     "guidance": {
       "caution": "① 주의할 점",
       "verification": "② 확인해야 할 점",

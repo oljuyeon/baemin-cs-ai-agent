@@ -278,8 +278,8 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
       return finishForHumanReview(
         customerText(
           caseData,
-          `사진 분석 결과: ${supportiveEvidence.observation} 오배달 내용을 뒷받침하는 것으로 판단되어 매장 확인을 생략하고 상담원에게 바로 전달했어요. 상담원이 사진과 주문 내역을 확인한 뒤 환불 또는 재배달을 승인합니다.`,
-          `Photo analysis: ${supportiveEvidence.observation} The evidence appears to support the wrong-delivery claim, so I skipped restaurant verification and sent it directly to a support agent. The agent will review the photo and order before approving a refund or redelivery.`,
+          `사진 분석 결과: ${supportiveEvidence.observation} 오배달 내용을 뒷받침하는 것으로 판단되어 매장 확인을 생략하고 상담원에게 바로 전달했어요. 아래에서 환불과 재배달 중 원하는 처리를 선택하거나 상담원에게 메시지를 남겨주세요.`,
+          `Photo analysis: ${supportiveEvidence.observation} The evidence appears to support the wrong-delivery claim, so I skipped restaurant verification and sent it directly to a support agent. Choose a refund or redelivery below, or leave a message for support.`,
         ),
         'AI 사진 분석 결과가 오배달 주장을 뒷받침해 매장 확인을 생략하고 Human CS 최종 승인이 필요합니다.',
       )
@@ -453,8 +453,8 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
     return finishForHumanReview(
       customerText(
         caseData,
-        `사진 분석 결과: ${supportiveEvidence.observation} 누락 내용을 뒷받침하는 것으로 판단되어 매장에 다시 확인하지 않고 상담원에게 바로 전달했어요. 상담원이 사진과 주문 내역을 확인한 뒤 환불 또는 재배달을 승인합니다.`,
-        `Photo analysis: ${supportiveEvidence.observation} The evidence appears to support the missing-item claim, so I sent the case directly to a support agent without asking the restaurant again. The agent will review the photo and order before approving a refund or redelivery.`,
+        `사진 분석 결과: ${supportiveEvidence.observation} 누락 내용을 뒷받침하는 것으로 판단되어 매장에 다시 확인하지 않고 상담원에게 바로 전달했어요. 아래에서 환불과 재배달 중 원하는 처리를 선택하거나 상담원에게 메시지를 남겨주세요.`,
+        `Photo analysis: ${supportiveEvidence.observation} The evidence appears to support the missing-item claim, so I sent the case directly to a support agent without asking the restaurant again. Choose a refund or redelivery below, or leave a message for support.`,
       ),
       'AI 사진 분석 결과가 메뉴 누락 주장을 뒷받침해 매장 확인을 생략하고 Human CS 최종 승인이 필요합니다.',
     )

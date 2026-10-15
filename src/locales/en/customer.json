@@ -124,6 +124,8 @@
       "checkRefund": "Check instant refund",
       "requestMerchant": "Ask the restaurant",
       "requestRedelivery": "Request redelivery now",
+      "requestHumanRefund": "I want a refund",
+      "requestHumanRedelivery": "I want redelivery",
       "escalateHuman": "Contact customer support",
       "confirmCoupon": "Get ₩3,000 coupon",
       "confirmRefund": "Refund ₩3,500 for fries",

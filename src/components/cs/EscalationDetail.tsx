@@ -191,21 +191,25 @@ function ConversationToggle({
       <summary>{toggleLabel}</summary>
       <div className="cs-conversation__thread">
         {messages.map((message) => {
-          const isAgent = message.role === 'agent' || message.role === 'human_cs'
+          const isHumanCs = message.role === 'human_cs' || message.content.startsWith('[HUMAN_CS] ')
+          const isAgent = message.role === 'agent' || isHumanCs
+          const content = isHumanCs && message.content.startsWith('[HUMAN_CS] ')
+            ? message.content.slice('[HUMAN_CS] '.length)
+            : message.content
           return (
             <article
               key={`${message.createdAt}-${message.role}-${message.content}`}
               className={`cs-conversation__bubble ${isAgent ? 'is-agent' : 'is-participant'}`}
             >
               <header>
-                <strong>{message.role === 'human_cs'
+                <strong>{isHumanCs
                   ? t('detail.humanCsName')
                   : isAgent
                     ? t('detail.agentName')
                     : participantLabel}</strong>
                 <time dateTime={message.createdAt}>{formatWhen(message.createdAt, i18n.language)}</time>
               </header>
-              <p>{message.content}</p>
+              <p>{content}</p>
             </article>
           )
         })}
@@ -224,6 +228,8 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
   const [summaryState, setSummaryState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [summaryRetry, setSummaryRetry] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [chatMessage, setChatMessage] = useState('')
+  const [isSendingChat, setIsSendingChat] = useState(false)
   const caseId = caseData?.caseId
   const updatedAt = caseData?.updatedAt
 
@@ -232,6 +238,8 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
     setComment('')
     setError(null)
     setIsSubmitting(false)
+    setChatMessage('')
+    setIsSendingChat(false)
     setSummaryState('idle')
   }, [caseId])
 
@@ -393,6 +401,21 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
     }
   }
 
+  const sendChatMessage = () => {
+    const content = chatMessage.trim()
+    if (!content || isSendingChat || caseData.status !== 'ESCALATED') return
+    setIsSendingChat(true)
+    try {
+      caseStore.appendConversation(caseData.caseId, 'agent', `[HUMAN_CS] ${content}`)
+      setChatMessage('')
+    } catch (chatError) {
+      setError(chatError instanceof Error ? chatError.message : t('alerts.chatFailed'))
+      onError(t('alerts.chatFailed'))
+    } finally {
+      setIsSendingChat(false)
+    }
+  }
+
   return (
     <section className="cs-detail">
       {showBack && (
@@ -497,6 +520,42 @@ export function EscalationDetail({ caseData, showBack, onBack, onSaved, onError 
         participantLabel={t('detail.customerName')}
         toggleLabel={t('detail.customerConversation', { count: caseData.conversation.length })}
       />
+      {!resolution && caseData.status === 'ESCALATED' && (
+        <div className="cs-live-chat">
+          <div>
+            <h3>{t('detail.liveChat')}</h3>
+            <p>{t('detail.liveChatDescription')}</p>
+          </div>
+          {caseData.resolutionPreference && (
+            <p className="cs-live-chat__preference">
+              {t('detail.customerPreference', {
+                preference: t(`detail.preference.${caseData.resolutionPreference}`),
+              })}
+            </p>
+          )}
+          <label>
+            <span className="sr-only">{t('detail.liveChat')}</span>
+            <textarea
+              value={chatMessage}
+              onChange={(event) => setChatMessage(event.target.value)}
+              placeholder={t('detail.liveChatPlaceholder')}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault()
+                  sendChatMessage()
+                }
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={sendChatMessage}
+            disabled={!chatMessage.trim() || isSendingChat}
+          >
+            {isSendingChat ? t('detail.liveChatSending') : t('detail.liveChatSend')}
+          </button>
+        </div>
+      )}
       {caseData.claimedItemName && (
         <p className="cs-claim-item"><span>{t('detail.item')}</span>{caseData.claimedItemName}</p>
       )}

@@ -133,6 +133,8 @@
       "checkRefund": "즉시 환불 가능 여부 확인",
       "requestMerchant": "사장님께 확인 요청",
       "requestRedelivery": "재배달 바로 요청",
+      "requestHumanRefund": "환불을 원해요",
+      "requestHumanRedelivery": "재배달을 원해요",
       "escalateHuman": "고객센터에 직접 도움 요청",
       "confirmCoupon": "3,000원 쿠폰 받기",
       "confirmRefund": "감자튀김 3,500원 환불",

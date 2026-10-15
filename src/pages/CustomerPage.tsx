@@ -164,7 +164,9 @@ const conversationToMessages = (caseData: CsCase): ChatMessage[] => {
       message: {
         id: `${message.role}-${message.createdAt}-${index}`,
         role: message.role === 'customer' ? 'user' as const : 'agent' as const,
-        content: message.content,
+        content: message.content.startsWith('[HUMAN_CS] ')
+          ? `${caseData.customerLanguage === 'en' ? 'Support' : '상담원'} · ${message.content.slice('[HUMAN_CS] '.length)}`
+          : message.content,
       },
     })),
     ...caseData.toolHistory.flatMap((tool) => {
@@ -181,19 +183,7 @@ const conversationToMessages = (caseData: CsCase): ChatMessage[] => {
     }),
   ].sort((left, right) => left.at.localeCompare(right.at))
 
-  const messages = [...initialMessages, ...timeline.map((entry) => entry.message)]
-  if (caseData.status !== 'ESCALATED') return messages
-
-  return [
-    ...messages,
-    {
-      id: `escalated-${caseData.caseId}`,
-      role: 'agent',
-      content: caseData.customerLanguage === 'en'
-        ? 'Your case has been transferred to a support agent. They will take it from here and help you further.'
-        : '상담원에게 이관되었습니다. 이제 상담원이 이어서 도와드릴게요.',
-    },
-  ]
+  return [...initialMessages, ...timeline.map((entry) => entry.message)]
 }
 
 const delayActions: CustomerAgentAction[] = [
@@ -212,6 +202,27 @@ const claimedItemConflictsWithCustomerStatement = (caseData: CsCase) => Boolean(
 )
 
 const actionsForCase = (caseData: CsCase): CustomerAgentAction[] => {
+  if (
+    caseData.status === 'ESCALATED'
+    && caseData.finalAction === 'human_review'
+    && (caseData.issueType === 'missing_item' || caseData.issueType === 'wrong_delivery')
+  ) {
+    return [
+      {
+        id: 'requestHumanRefund',
+        labelKey: 'agent.actions.requestHumanRefund',
+        label: caseData.customerLanguage === 'en' ? 'I want a refund' : '환불을 원해요',
+        primary: caseData.resolutionPreference !== 'redelivery',
+      },
+      {
+        id: 'requestHumanRedelivery',
+        labelKey: 'agent.actions.requestHumanRedelivery',
+        label: caseData.customerLanguage === 'en' ? 'I want redelivery' : '재배달을 원해요',
+        primary: caseData.resolutionPreference === 'redelivery',
+      },
+    ]
+  }
+
   if (
     caseData.status === 'AUTO_RESOLVED'
     && caseData.issueType === 'delivery_delay'
@@ -1088,10 +1099,42 @@ export function CustomerPage() {
           })
         }
 
+        if (currentCase.status === 'ESCALATED') {
+          const preference = /(환불|refund)/i.test(message)
+            ? 'refund' as const
+            : /(재배달|다시\s*배달|redeliver|redelivery)/i.test(message)
+              ? 'redelivery' as const
+              : undefined
+          if (preference) {
+            currentCase = caseStore.updateCase(currentCase.caseId, {
+              resolutionPreference: preference,
+            })
+          }
+          const receipt = customerTextForCase(
+            currentCase,
+            preference === 'refund'
+              ? '환불 요청을 상담원에게 전달했어요. 상담원이 확인한 뒤 이 대화에서 답변할게요.'
+              : preference === 'redelivery'
+                ? '재배달 요청을 상담원에게 전달했어요. 상담원이 확인한 뒤 이 대화에서 답변할게요.'
+                : '메시지를 상담원에게 전달했어요. 상담원의 답변은 이 대화에 바로 표시됩니다.',
+            preference === 'refund'
+              ? 'Your refund request was sent to support. A support agent will reply here after reviewing it.'
+              : preference === 'redelivery'
+                ? 'Your redelivery request was sent to support. A support agent will reply here after reviewing it.'
+                : 'Your message was sent to support. Their reply will appear here.',
+          )
+          const continued = caseStore.appendConversation(currentCase.caseId, 'agent', receipt)
+          if (mounted.current) {
+            setMessages(conversationToMessages(continued))
+            setCaseState(toCustomerUiState(continued))
+            setActions(actionsForCase(continued))
+          }
+          return
+        }
+
         if (
           currentCase.status === 'AUTO_RESOLVED'
           || currentCase.status === 'CLOSED'
-          || currentCase.status === 'ESCALATED'
         ) {
           if (mounted.current) {
             setIsThinking(true)
@@ -1166,6 +1209,32 @@ export function CustomerPage() {
       } else {
         appendMessages({ id: `action-${Date.now()}`, role: 'agent', content })
       }
+    }
+
+    if (
+      (action.id === 'requestHumanRefund' || action.id === 'requestHumanRedelivery')
+      && currentCase?.status === 'ESCALATED'
+      && !isThinking
+    ) {
+      const preference = action.id === 'requestHumanRefund' ? 'refund' : 'redelivery'
+      const customerMessage = preference === 'refund' ? '환불을 원해요.' : '재배달을 원해요.'
+      let updated = caseStore.updateCase(currentCase.caseId, {
+        resolutionPreference: preference,
+      })
+      updated = caseStore.appendConversation(updated.caseId, 'customer', customerMessage)
+      updated = caseStore.appendConversation(
+        updated.caseId,
+        'agent',
+        customerTextForCase(
+          updated,
+          `${preference === 'refund' ? '환불' : '재배달'} 요청을 상담원에게 전달했어요. 상담원이 이 대화에서 답변할게요.`,
+          `Your ${preference} request was sent to support. A support agent will reply here.`,
+        ),
+      )
+      setMessages(conversationToMessages(updated))
+      setCaseState(toCustomerUiState(updated))
+      setActions(actionsForCase(updated))
+      return
     }
 
     if (
@@ -1614,7 +1683,7 @@ export function CustomerPage() {
               isThinking={isThinking}
               focusRequest={focusRequest}
               hasStarted={hasStarted}
-              conversationEnded={orderCardCase?.status === 'ESCALATED'}
+              conversationEnded={orderCardCase?.status === 'CLOSED'}
               onDraftChange={setDraft}
               onAttach={attachImage}
               onSend={sendMessage}
