@@ -284,6 +284,17 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
         'AI 사진 분석 결과가 오배달 주장을 뒷받침해 매장 확인을 생략하고 Human CS 최종 승인이 필요합니다.',
       )
     }
+    const reviewedEvidence = caseData.evidenceAnalysis?.[caseData.evidenceAnalysis.length - 1]
+    if (reviewedEvidence) {
+      return finishForHumanReview(
+        customerText(
+          caseData,
+          `사진 분석 결과: ${reviewedEvidence.observation} 사진만으로 오배달을 확정하기 어려운 부분은 상담원이 직접 확인하도록 전달했어요. 사진이 제출된 건은 매장에 다시 보내지 않습니다.`,
+          `Photo analysis: ${reviewedEvidence.observation} A support agent will directly review anything the photo could not conclusively establish. Cases with submitted photos are not sent back to the restaurant.`,
+        ),
+        '오배달 사진이 제출되어 매장 확인 대신 Human CS가 사진과 주문 내역을 직접 검토해야 합니다.',
+      )
+    }
 
     if (risk?.status === 'success' && requiresHumanCsBeforeMerchant(risk.data)) {
       return finishForHumanReview(
@@ -446,6 +457,17 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
         `Photo analysis: ${supportiveEvidence.observation} The evidence appears to support the missing-item claim, so I sent the case directly to a support agent without asking the restaurant again. The agent will review the photo and order before approving a refund or redelivery.`,
       ),
       'AI 사진 분석 결과가 메뉴 누락 주장을 뒷받침해 매장 확인을 생략하고 Human CS 최종 승인이 필요합니다.',
+    )
+  }
+  const reviewedEvidence = caseData.evidenceAnalysis?.[caseData.evidenceAnalysis.length - 1]
+  if (reviewedEvidence) {
+    return finishForHumanReview(
+      customerText(
+        caseData,
+        `사진 분석 결과: ${reviewedEvidence.observation} 사진만으로 누락을 확정하기 어려운 부분은 상담원이 직접 확인하도록 전달했어요. 사진이 제출된 건은 매장에 다시 보내지 않습니다.`,
+        `Photo analysis: ${reviewedEvidence.observation} A support agent will directly review anything the photo could not conclusively establish. Cases with submitted photos are not sent back to the restaurant.`,
+      ),
+      '누락 사진이 제출되어 매장 확인 대신 Human CS가 사진과 주문 내역을 직접 검토해야 합니다.',
     )
   }
 

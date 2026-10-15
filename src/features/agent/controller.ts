@@ -148,6 +148,34 @@ export const agentController: AgentController = {
       const action = await decideNextAction(current)
 
       if (action.type === 'CALL_TOOL') {
+        if (
+          action.toolName === 'request_merchant_confirmation'
+          && (current.issueType === 'missing_item' || current.issueType === 'wrong_delivery')
+          && current.evidenceUrls.length > 0
+        ) {
+          const latestEvidence = current.evidenceAnalysis?.[current.evidenceAnalysis.length - 1]
+          const reason = '고객 사진이 제출되어 매장 확인을 차단하고 Human CS 직접 검토로 전환했습니다.'
+          await executeTool(caseId, {
+            type: 'CALL_TOOL',
+            toolName: 'escalate_to_human',
+            input: {
+              caseId,
+              reason,
+              summary: buildHumanCsSummary(current, reason),
+            },
+          })
+          return finish(caseId, {
+            type: 'FINISH',
+            decision: 'ESCALATE',
+            finalAction: 'human_review',
+            customerMessage: customerText(
+              current,
+              `사진${latestEvidence ? ` 분석 결과(${latestEvidence.observation})` : ''}를 상담원에게 바로 전달했습니다. 사진이 제출된 건은 매장에 다시 확인하지 않고 상담원이 주문 내역과 함께 검토해 환불 또는 재배달을 승인합니다.`,
+              `I sent the photo${latestEvidence ? ` analysis (${latestEvidence.observation})` : ''} directly to a support agent. Cases with submitted photos are not sent back to the restaurant; the agent will review the order and approve a refund or redelivery.`,
+            ),
+            escalationReason: reason,
+          })
+        }
         const updated = await executeTool(caseId, action)
         if (action.toolName === 'analyze_evidence') {
           const evidenceUrl = (action.input as { evidenceUrl?: string }).evidenceUrl

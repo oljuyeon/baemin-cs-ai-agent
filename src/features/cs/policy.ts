@@ -261,6 +261,15 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
       })
     }
 
+    if (caseData.evidenceAnalysis?.length && !response) {
+      return decide(caseData, {
+        policyId: 'WRONG_DELIVERY_EVIDENCE_HUMAN_REVIEW',
+        allowedActions: ['human_review'],
+        constraints: ['상담원이 사진과 주문 내역을 직접 확인한 뒤 최종 조치를 결정한다.'],
+        reason: '오배달 사진이 제출되어 매장 확인 대신 상담원 직접 검토로 진행합니다.',
+      })
+    }
+
     if (response === 'CONFIRMED') {
       return decide(caseData, {
         policyId: 'WRONG_DELIVERY_AFTER_ADMISSION',
@@ -306,6 +315,15 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
           '상담원이 사진, 주문 내역, 고객 이력을 확인한 뒤 최종 조치를 승인한다.',
         ],
         reason: '사진이 누락 주장을 뒷받침해 매장 확인을 생략하고 상담원 최종 승인으로 진행합니다.',
+      })
+    }
+
+    if (caseData.evidenceAnalysis?.length && !response) {
+      return decide(caseData, {
+        policyId: 'MISSING_ITEM_EVIDENCE_HUMAN_REVIEW',
+        allowedActions: ['human_review'],
+        constraints: ['상담원이 사진과 주문 내역을 직접 확인한 뒤 최종 조치를 결정한다.'],
+        reason: '누락 사진이 제출되어 매장 확인 대신 상담원 직접 검토로 진행합니다.',
       })
     }
 
