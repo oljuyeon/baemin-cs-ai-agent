@@ -384,6 +384,20 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
   const conflictEscalation = escalateMerchantClaimConflict(caseData, policy, risk)
   if (conflictEscalation) return conflictEscalation
 
+  const supportiveEvidence = caseData.evidenceAnalysis?.some(
+    (analysis) => analysis.assessment === 'supports_claim',
+  ) ?? false
+  if (supportiveEvidence) {
+    return finishForHumanReview(
+      customerText(
+        caseData,
+        '첨부 사진이 누락 내용을 뒷받침하는 것으로 분석됐습니다. 매장 확인을 기다리지 않고 상담원에게 바로 전달했어요. 상담원이 사진과 주문 내역을 확인한 뒤 환불 또는 재배달을 승인합니다.',
+        'The attached photo appears to support the missing-item claim. I sent the case directly to a support agent without waiting for restaurant confirmation. The agent will review the photo and order before approving a refund or redelivery.',
+      ),
+      'AI 사진 분석 결과가 메뉴 누락 주장을 뒷받침해 매장 확인을 생략하고 Human CS 최종 승인이 필요합니다.',
+    )
+  }
+
   if (requiresHumanCsBeforeMerchant(risk.data)) {
     return finishForHumanReview(
       customerText(caseData, '자동 처리를 진행하기 전에 추가 검토가 필요해 상담원에게 전달했습니다. 상담원이 내용을 이어서 확인해 안내할게요.', 'Additional review is needed before automatic handling, so I sent the case to a support agent.'),
@@ -469,6 +483,28 @@ export async function decideNextActionWithRules(caseData: CsCase): Promise<Agent
 }
 
 export async function decideNextAction(caseData: CsCase): Promise<AgentAction> {
+  const pendingEvidenceUrl = caseData.order
+    && (caseData.issueType === 'missing_item' || caseData.issueType === 'wrong_delivery')
+    ? caseData.evidenceUrls.find((url) =>
+        !caseData.evidenceAnalysis?.some((analysis) => analysis.evidenceUrl === url),
+      )
+    : undefined
+  if (pendingEvidenceUrl) {
+    return {
+      type: 'CALL_TOOL',
+      toolName: 'analyze_evidence',
+      input: { evidenceUrl: pendingEvidenceUrl },
+    }
+  }
+
+  const missingItemPhotoSupportsClaim = caseData.issueType === 'missing_item'
+    && caseData.evidenceAnalysis?.some(
+      (analysis) => analysis.assessment === 'supports_claim',
+    )
+  if (missingItemPhotoSupportsClaim) {
+    return decideNextActionWithRules(caseData)
+  }
+
   // LLM은 현재 관찰을 바탕으로 다음 행동 후보만 제안한다. remoteAgent의
   // 상태·Policy·Risk 검증을 통과하지 못하거나 API를 사용할 수 없으면
   // 결정적인 규칙 경로로 즉시 폴백한다.

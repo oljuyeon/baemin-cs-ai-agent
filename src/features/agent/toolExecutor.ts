@@ -8,6 +8,7 @@ import {
   type OrderItem,
   type ToolResult,
 } from '../cs'
+import { analyzeEvidenceWithOpenAI } from './remoteAgent'
 
 type ToolAction = Extract<AgentAction, { type: 'CALL_TOOL' }>
 
@@ -84,7 +85,10 @@ export async function executeTool(caseId: string, action: ToolAction): Promise<C
     }
     case 'analyze_evidence': {
       const input = action.input as { evidenceUrl: string }
-      const toolResult = await agentTools.analyzeEvidence(input)
+      const remoteAnalysis = await analyzeEvidenceWithOpenAI(current, input.evidenceUrl)
+      const toolResult = remoteAnalysis
+        ? { status: 'success' as const, data: remoteAnalysis }
+        : await agentTools.analyzeEvidence(input)
       result = toolResult
       if (toolResult.status === 'success') {
         const previous = current.evidenceAnalysis ?? []

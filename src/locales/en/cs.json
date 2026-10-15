@@ -281,6 +281,7 @@
     "MISSING_ITEM_ADMITTED": "Refund after admission",
     "MISSING_ITEM_AFTER_MERCHANT_CONFIRMATION": "Missing after store check",
     "MISSING_ITEM_AUTO_CANDIDATE": "Automatic missing-item candidate",
+    "MISSING_ITEM_EVIDENCE_HUMAN_APPROVAL": "Support approval after photo review",
     "MISSING_ITEM_NEEDS_MERCHANT": "Missing item needs merchant check",
     "WRONG_DELIVERY_AFTER_ADMISSION": "Redelivery after admission",
     "WRONG_DELIVERY_NEEDS_REVIEW": "Wrong delivery needs review",

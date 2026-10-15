@@ -273,12 +273,27 @@ export function evaluatePolicy(caseData: CsCase): PolicyResult {
 
   if (caseData.issueType === 'missing_item') {
     const item = claimedItem(caseData)
+    const supportiveEvidence = caseData.evidenceAnalysis?.some(
+      (analysis) => analysis.assessment === 'supports_claim',
+    ) ?? false
 
     if (!item) {
       return decide(caseData, {
         policyId: 'MISSING_ITEM_NEEDS_MORE_INFO',
         allowedActions: ['human_review'],
         reason: '누락 메뉴 또는 주문 정보를 추가로 확인해야 합니다.',
+      })
+    }
+
+    if (supportiveEvidence && !response) {
+      return decide(caseData, {
+        policyId: 'MISSING_ITEM_EVIDENCE_HUMAN_APPROVAL',
+        allowedActions: ['human_review'],
+        constraints: [
+          'AI 사진 분석만으로 환불이나 재배달을 자동 실행하지 않는다.',
+          '상담원이 사진, 주문 내역, 고객 이력을 확인한 뒤 최종 조치를 승인한다.',
+        ],
+        reason: '사진이 누락 주장을 뒷받침해 매장 확인을 생략하고 상담원 최종 승인으로 진행합니다.',
       })
     }
 
